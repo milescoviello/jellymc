@@ -4,275 +4,226 @@ Every feature is tagged with the milestone that delivers it. Milestones are defi
 
 | Tag | Milestone |
 |---|---|
-| **M1** | Watch MVP |
-| **M2** | Offline + platform integration |
+| **M1** | Watch |
+| **M2** | iPhone essentials + Linux integration |
 | **M3** | Music |
-| **M4** | 1.0 hardening |
-| **M5** | Post-1.0: social & power |
-| **M6** | Expansion |
+| **M4** | Polish ("1.0 for me") |
+| **M5** | Extras |
+| **M6** | Maybe |
 
-The API references are 12.2 routes.
+The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPad), or Linux. API references are 12.2 routes.
 
-## 1. Onboarding, servers, accounts
+## 1. Server and account
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Add a server by URL, with `/System/Info/Public` validation and version check | M1 | Friendly errors for "not Jellyfin", "too old", TLS problems |
-| LAN server discovery (UDP 7359) | M1 | iOS needs the multicast entitlement, and falls back to manual entry until it's granted |
-| Username/password login | M1 | `/Users/AuthenticateByName`; the public user list shows avatars when the server exposes it |
-| Quick Connect login (code shown on this device) | M1 | `POST /QuickConnect/Initiate` → poll `Connect` → `AuthenticateWithQuickConnect` |
-| Authorize another device's Quick Connect code | M2 | `POST /QuickConnect/Authorize`, so the phone can sign in the TV |
-| Multiple servers, multiple users each, fast switching | M1 | Tokens per user in secure storage |
-| LAN/WAN address auto-switching | M2 | Probe on network change |
-| Custom HTTP headers per server (Cloudflare Access, auth proxies) | M2 | |
-| Self-signed certificates via trust-on-first-use pinning, client certificates | M2 | |
-| Reverse-proxy base paths | M1 | |
-| SSO login (OIDC plugin) | M4 | In-app browser flow |
-| Profile PIN / biometric lock, kid-safe profile switching | M5 | Local lock on top of server parental controls |
-| First-run server setup wizard (for a brand-new server) | M6 | `/Startup/*` routes |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Add server by URL, with `/System/Info/Public` check | M1 | Both | Friendly errors for "not Jellyfin", "too old", TLS |
+| Username/password login | M1 | Both | Token in Keychain or Secret Service |
+| Multiple addresses per server (LAN + remote) with auto-switching on network change | M2 | Both | Matters most on the iPhone |
+| Reverse-proxy base path, custom headers, your own CA | M2 | Both | Only if your setup needs them |
+| Approve another device's Quick Connect code from the app | M5 | Both | `POST /QuickConnect/Authorize`, handy for signing in TV apps |
+| Quick Connect login (code shown on this device) | M6 | Both | Rarely needed for one user |
+| Multi-server / multi-user switching UI | M6 | Both | The data model already supports it |
+| LAN discovery | — | — | Needs the iOS multicast entitlement (not on a free Apple ID), and you know your URL |
 
 ## 2. Home and discovery
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Continue Watching | M1 | `/UserItems/Resume` |
-| Next Up | M1 | `/Shows/NextUp`, with an optional rewatching mode |
-| Latest per library | M1 | `/Items/Latest` |
-| Library tiles | M1 | `/UserViews` |
-| Hero/spotlight carousel (backdrops, logos) | M1 | Random unplayed or recently added items |
-| Favourites rows | M1 | |
-| Customizable home: reorder, hide, add rows (genre, collection, playlist, smart filters) | M2 | Roams via DisplayPreferences |
-| "Because you watched…" (Similar) rows | M2 | `/Items/{id}/Similar` |
-| Recently added episodes grouped by series | M2 | |
-| Collections spotlight | M2 | |
-| Seerr "trending / request" row | M5 | When Seerr is configured |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Continue Watching | M1 | Both | `/UserItems/Resume` |
+| Next Up | M1 | Both | `/Shows/NextUp` |
+| Latest per library | M1 | Both | `/Items/Latest` |
+| Library tiles | M1 | Both | `/UserViews` |
+| Hero/spotlight carousel (backdrops, logos) | M1 | Both | |
+| Favourites rows | M1 | Both | |
+| Customizable home: reorder, hide, add rows (genre, collection, playlist, smart filter) | M2 | Both | Roams through DisplayPreferences, so it's the same on all devices |
+| "Because you watched…" rows | M2 | Both | `/Items/{id}/Similar` |
+| Recently added episodes grouped by series | M2 | Both | |
+| "Downloaded" row when offline | M2 | iOS | |
 
 ## 3. Library browsing
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Grid / list / banner / thumb views, adjustable density | M1 | Per-library memory |
-| Sorting: name, date added, release date, rating, runtime, play count, last played, random | M1 | |
-| Filters: played/unplayed, favourites, genres, years, decades, official rating, tags, studios | M1 | `/Items/Filters2` provides the filter values |
-| Technical filters: 4K, HDR, Dolby Vision, codec, 3D, subtitles available | M2 | |
-| Alphabet jump bar for large libraries | M1 | |
-| Shuffle a library or a filtered view | M1 | |
-| Series → seasons → episodes, with missing/unaired episode display (toggle) | M1 | |
-| Collections (box sets): browse; create/edit for admins | M1 / M5 | `/Collections` |
-| People pages (actor/director filmography) | M1 | `/Persons` |
-| Genre, studio and year pages | M2 | |
-| Multi-select: mark played, favourite, add to playlist or collection, download | M2 | Desktop gets shift/ctrl-click |
-| Folder view for mixed or home-video libraries | M2 | |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Grid / list / thumb views, adjustable density | M1 | Both | Remembered per library |
+| Sorting: name, date added, release date, rating, runtime, play count, last played, random | M1 | Both | |
+| Filters: played/unplayed, favourites, genres, years, rating, tags, studios | M1 | Both | Values from `/Items/Filters2` |
+| Technical filters: 4K, HDR, Dolby Vision, codec, subtitles available | M2 | Both | |
+| Alphabet jump bar | M1 | Both | |
+| Shuffle a library or filtered view | M1 | Both | |
+| Series → seasons → episodes, with missing-episode toggle | M1 | Both | |
+| Collections (box sets): browse; create and edit | M1 / M5 | Both | `/Collections` |
+| People pages (filmography) | M1 | Both | `/Persons` |
+| Genre, studio and year pages | M2 | Both | |
+| Multi-select: mark played, favourite, add to playlist, download | M2 | Both | Shift/ctrl-click on Linux; long-press on iOS |
+| Folder view for home videos and mixed libraries | M2 | Both | |
 
 ## 4. Item details
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Rich detail page: backdrop, logo, overview, ratings, genres, runtime, ends-at time | M1 | |
-| Media info panel: versions, video/audio/subtitle tracks, codecs, bitrate, HDR type | M1 | |
-| Choose version, audio track and subtitle track before playing | M1 | |
-| Resume or start over | M1 | |
-| Cast & crew with photos | M1 | |
-| Seasons/episodes with progress, played state, and a "next up" highlight | M1 | |
-| Trailers (local + remote), special features, extras | M2 | `/Items/{id}/SpecialFeatures`, `RemoteTrailers` |
-| Theme music/video on detail pages (opt-in) | M4 | `/Items/{id}/ThemeMedia` |
-| Similar items | M2 | |
-| Mark played/unplayed, favourite, user rating | M1 | `/UserPlayedItems`, `/UserFavoriteItems`, `/UserItems/{id}/Rating` |
-| Add to playlist, add to collection | M2 | |
-| Download (with quality picker) | M2 | |
-| Share deep link (`jellymc://item/{serverId}/{itemId}`) | M2 | Opens the right server and user |
-| Admin: refresh metadata, identify, edit images and metadata | M5 | `/Items/RemoteSearch/*`, `/Items/{id}/RemoteImages` |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Detail page: backdrop, logo, overview, ratings, genres, runtime, ends-at time | M1 | Both | |
+| Media info: versions, tracks, codecs, bitrate, HDR type, and **which engine will play it and how** | M1 | Both | Shows the engine rule's decision before you press play |
+| Pick version, audio track and subtitle track before playing | M1 | Both | |
+| Resume or start over | M1 | Both | |
+| Cast & crew | M1 | Both | |
+| Seasons/episodes with progress and a next-up highlight | M1 | Both | |
+| Trailers (local + remote), special features, extras | M2 | Both | `/Items/{id}/SpecialFeatures` |
+| Mark played/unplayed, favourite, rating | M1 | Both | `/UserPlayedItems`, `/UserFavoriteItems`, `/UserItems/{id}/Rating` |
+| Add to playlist or collection | M2 | Both | |
+| Download with a quality picker | M2 | Both | Mainly iOS |
+| Share a deep link (`jellymc://item/{itemId}`) | M4 | Both | E.g. send from Linux to the phone through KDE Connect |
+| Theme music/video on detail pages (opt-in) | M5 | Both | `/Items/{id}/ThemeMedia` |
+| Admin: refresh metadata, identify, edit images and metadata | M5 | Both | You're the admin. `/Items/RemoteSearch/*` |
 
 ## 5. Search
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Instant search across all libraries, grouped by type | M1 | `/Search/Hints` plus `/Items?searchTerm=` |
-| Recent searches, suggestions | M2 | |
-| Search filters (type, library, year, played) | M2 | |
-| Voice search (mobile) | M4 | Platform speech-to-text |
-| Seerr results for titles not in the library ("Request") | M5 | |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Instant search across libraries, grouped by type | M1 | Both | `/Search/Hints` + `/Items?searchTerm=` |
+| Recent searches | M2 | Both | |
+| Search filters (type, library, year, played) | M2 | Both | |
+| Global "/" or Ctrl+K search shortcut | M1 | Linux, iPad keyboard | |
+| Dictation | — | iOS | Comes free with the iOS keyboard |
 
 ## 6. Video player
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Multi-engine playback with automatic engine selection | M1 | See [playback.md](playback.md) |
-| Direct play / direct stream / transcode negotiation | M1 | |
-| Audio and subtitle track switching | M1 | |
-| Full ASS/SSA styling, PGS, VobSub | M1 | Through mpv |
-| Subtitle styling (size, colour, outline, background, position), ASS override | M1 | |
-| Subtitle and audio delay adjustment | M1 | |
-| External subtitle loading (from server; a local file on desktop) | M1 / M2 | |
-| Online subtitle search and download | M4 | When the server has a provider plugin |
-| Trickplay thumbnails while scrubbing | M1 | |
-| Chapters: markers, list, next/previous | M1 | |
-| Skip intro / recap / preview / commercial; per-type auto-skip | M1 | `/MediaSegments/{id}` |
-| Up next with countdown; "Are you still watching?" | M1 | |
-| Resume position and progress reporting | M1 | |
-| Quality selector (auto, original, bitrate ladder) | M1 | |
-| Playback speed with pitch correction | M1 | |
-| Aspect / zoom / crop modes, pinch-to-zoom | M1 | |
-| Gestures: swipe seek, brightness/volume, double-tap ±10 s | M1 | |
-| Desktop: keyboard shortcuts (mpv-like), scroll volume, double-click fullscreen | M1 | |
-| HDR tone-mapping everywhere; native HDR output on Android/Apple | M1 / M2 | |
-| Audio passthrough (AC-3, E-AC-3/Atmos, DTS, TrueHD) | M2 | |
-| Playback info overlay (stats for nerds, transcode reasons) | M1 | |
-| Video queue: play series from here, playlists, shuffle | M1 | |
-| Screenshots (desktop) | M4 | |
-| Picture-in-picture | M2 | |
-| Background audio for video (keep listening with the screen off) | M2 | Opt-in |
-| Sleep timer (end of episode / N minutes) | M2 | |
-| Lock controls (child lock) | M2 | |
-| Cinema mode: trailers and pre-rolls before the feature | M5 | `/Items/{id}/Intros` |
-| Custom mpv config for power users (desktop) | M4 | |
-| 3D (SBS/TAB) handling | M6 | |
-| True HDR output on desktop | M6 | Native-window mpv |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| mpv engine with full direct play | M1 | Both | |
+| AVPlayer engine and the iOS engine rule | M1 | iOS | See [playback.md](playback.md#engine-selection) |
+| Direct play / direct stream / transcode negotiation | M1 | Both | |
+| Audio and subtitle track switching | M1 | Both | |
+| Full ASS styling, PGS, VobSub | M1 | Both (mpv) | |
+| Subtitle styling, "override ASS styles", vertical position | M1 | Both | Roams |
+| Subtitle and audio delay | M1 | Both | |
+| Trickplay thumbnails | M1 | Both | |
+| Chapters: markers, list, next/previous | M1 | Both | |
+| Skip intro / recap / preview / commercial; per-type auto-skip | M1 | Both | `/MediaSegments/{id}` |
+| Up next countdown; "Still watching?" | M1 | Both | |
+| Resume and progress reporting | M1 | Both | |
+| Quality selector (auto, original, bitrate ladder) | M1 | Both | |
+| Playback speed with pitch correction | M1 | Both | |
+| Aspect, zoom and crop; pinch to fill | M1 | Both | |
+| Touch gestures: swipe seek, brightness/volume, double-tap ±10 s | M1 | iOS | |
+| mpv-style keyboard shortcuts, scroll volume, double-click fullscreen | M1 | Linux, iPad keyboard | |
+| Stats overlay (engine, play method, transcode reasons, dropped frames) | M1 | Both | |
+| Video queue: play series from here, playlists, shuffle | M1 | Both | |
+| HDR tone-mapping in mpv | M1 | Both | |
+| Real HDR / Dolby Vision through AVPlayer | M2 | iOS | |
+| Real HDR through the mpv HDR window on Plasma | M2 | Linux | Your panel and Plasma HDR mode |
+| Picture-in-picture, including auto-PiP when leaving the app | M2 | iOS (AVPlayer) | |
+| Always-on-top mini-player window | M2 | Linux | |
+| AirPlay to Apple TV or AirPlay TVs | M2 | iOS | |
+| Background audio for video (keep listening, screen off) | M2 | iOS | Opt-in |
+| Sleep timer (end of episode / N minutes) | M2 | Both | |
+| Touch lock | M2 | iOS | |
+| Screenshot to file | M4 | Linux | |
+| Custom `mpv.conf` passthrough | M4 | Linux | For power tweaks (shaders, scalers) |
+| Cinema mode (trailers before the feature) | M5 | Both | `/Items/{id}/Intros` |
+| HDMI audio passthrough | M5 | Linux | Only if you connect a receiver |
+| mpv PiP on iOS (sample-buffer layer bridge) | M6 | iOS | Swift-heavy; only if mpv-only titles in PiP matter |
 
 ## 7. Offline and downloads
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Download original file | M2 | Includes subtitles, trickplay, chapters, segments, images |
-| Download transcoded (quality presets) | M2 | Spike S5 picks the mechanism |
-| Download queue: pause, resume, retry, reorder; survives restarts | M2 | Background transfers on iOS and Android |
-| Wi-Fi-only, storage cap, storage location (SD card / external drive) | M2 | |
-| Offline mode: browse and play downloads with no connection | M2 | |
-| Played state and progress sync back on reconnect | M2 | Offline mutation queue |
-| Auto-download the next N episodes; delete after watched | M2 | |
-| Series/season download in one tap | M2 | |
-| Music: download albums, playlists, artists; keep playlists synced | M3 | |
-| Downloads screen with per-server grouping and storage use | M2 | |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Download original file (with subtitles, fonts, trickplay, chapters, segments, images) | M2 | Both | |
+| Download transcoded, as AVPlayer-friendly HEVC/AAC MP4 | M2 | Both | PiP and HDR work offline |
+| Download queue: pause, resume, retry; survives suspension | M2 | Both | iOS background `URLSession` |
+| Wi-Fi-only, storage cap, "show in Files app" | M2 | iOS | |
+| Offline mode: browse and play with no connection | M2 | Both | |
+| Played state and progress sync back on reconnect | M2 | Both | |
+| Auto-download the next N episodes; delete after watched | M2 | Both | |
+| Series/season download in one tap | M2 | Both | |
+| Music downloads: albums, playlists, artists; keep playlists synced | M3 | Both | |
 
 ## 8. Music
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Artists, album artists, albums, songs, genres, playlists | M3 | `/Artists`, `/Artists/AlbumArtists` |
-| Album/artist pages: discography, appears-on, similar artists | M3 | `/Artists/{id}/Similar` |
-| Now playing: full-screen with dynamic colours, mini-player, desktop sidebar | M3 | |
-| Queue: play next, add to queue, reorder, clear; persisted across restarts | M3 | |
-| Shuffle and repeat (one/all) | M3 | |
-| Gapless playback | M3 | |
-| ReplayGain-style normalization (track/album mode) | M3 | `NormalizationGain`, `AlbumNormalizationGain` |
-| Instant Mix from song, album, artist, genre or playlist | M3 | `/…/InstantMix` |
-| Synced lyrics (line and word-level), tap to seek | M3 | `/Audio/{id}/Lyrics` (`Start`, `Cues`) |
-| Playlists: create, edit, reorder, share with users | M3 | `/Playlists/{id}/Items/{itemId}/Move/{newIndex}`, `/Playlists/{id}/Users` |
-| Favourite songs, "liked" smart views | M3 | |
-| Streaming quality per network (original, or transcoded bitrate) | M3 | `/Audio/{id}/universal` |
-| Lock screen, notification, Bluetooth, media keys, MPRIS/SMTC | M3 | |
-| Android Auto | M3 | |
-| CarPlay | M3 | Needs the Apple entitlement; apply in M0 |
-| Sleep timer | M3 | |
-| Crossfade | M5 | Desktop first |
-| Equalizer | M6 | |
-| Music videos linked to tracks | M6 | |
-| Last.fm/ListenBrainz scrobbling | — | Handled server-side by plugins; no client work |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Artists, album artists, albums, songs, genres, playlists | M3 | Both | `/Artists`, `/Artists/AlbumArtists` |
+| Album and artist pages: discography, appears-on, similar | M3 | Both | |
+| Now playing: full-screen with dynamic colours, mini-player, desktop sidebar | M3 | Both | |
+| Queue: play next, add to queue, reorder; persisted | M3 | Both | |
+| Shuffle and repeat | M3 | Both | |
+| Gapless playback | M3 | Both | |
+| Normalization (track/album mode) | M3 | Both | `NormalizationGain`, `AlbumNormalizationGain` |
+| Instant Mix from song, album, artist, genre or playlist | M3 | Both | `/…/InstantMix` |
+| Synced lyrics (line and word-level), tap to seek | M3 | Both | `/Audio/{id}/Lyrics` |
+| Playlists: create, edit, reorder | M3 | Both | `/Playlists/{id}/Items/{itemId}/Move/{newIndex}` |
+| Lock screen, Control Center, Dynamic Island, AirPods controls | M3 | iOS | `audio_service` |
+| KDE media applet, media keys, KDE Connect controls | M3 | Linux | MPRIS |
+| Streaming quality per network | M3 | Both | `/Audio/{id}/universal` |
+| Sleep timer | M3 | Both | |
+| Crossfade | M5 | Linux first | |
+| Equalizer | M6 | Both | |
+| CarPlay | M6 | iOS | Needs a paid Apple account and an approved entitlement |
+| Scrobbling (Last.fm/ListenBrainz) | — | — | Server plugins; nothing in the client |
 
-## 9. Audiobooks, books, comics
+## 9. Remote control, SyncPlay, casting
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Audiobooks: chapters, per-book progress, speed, sleep timer, skip ±30 s | M6 | Uses the music pipeline |
-| Podcasts-style "continue listening" row | M6 | |
-| EPUB reader | M6 | |
-| PDF reader | M6 | |
-| Comics (CBZ/CBR) reader: page/strip modes | M6 | |
-| Reading progress sync | M6 | The server has no native page-progress field; needs a design spike |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Be a cast target: receive "Play on jellymc (Linux)" from jellyfin-web or the phone | M2 | Linux (and iOS in the foreground) | `/Sessions/Capabilities/Full` + WebSocket |
+| Use the iPhone as a remote for the Linux app or other sessions | M5 | iOS | `/Sessions/{id}/Playing`, `/Command` |
+| Hand-off: "continue on Linux" / "continue on phone" at the current position | M5 | Both | Built on the remote-control commands |
+| SyncPlay: watch in sync with friends | M5 | Both | 22 `/SyncPlay/*` routes + WebSocket; time sync via `/GetUtcTime` |
+| Chromecast | M6 | iOS | Only if you own a Chromecast |
 
-## 10. Photos and home videos
+## 10. Live TV, photos, books (only if your server has them)
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Photo albums, grid, zoomable viewer, EXIF info | M5 | |
-| Slideshow with music | M6 | |
-| Home videos through the normal player | M1 | |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Live TV channels, now/next, watch live | M5 | Both | Only with a tuner. `/LiveTv/Channels`, `AutoOpenLiveStream` |
+| EPG guide grid, recordings, timers | M5 | Both | `/LiveTv/Programs`, `/LiveTv/Recordings`, `/LiveTv/Timers` |
+| Photo albums, zoomable viewer, slideshow | M5 | Both | |
+| Audiobooks: chapters, per-book progress, speed, skip ±30 s | M6 | Both | Reuses the music pipeline |
+| EPUB, PDF and CBZ/CBR readers | M6 | Both | Reading-progress sync needs a design (no server field) |
 
-## 11. Live TV and DVR
+## 11. Light admin (you're the admin)
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Channel list with now/next | M5 | `/LiveTv/Channels` |
-| EPG guide grid (time × channel), favourite channels, categories | M5 | `/LiveTv/Programs` |
-| Watch live, channel up/down | M5 | `AutoOpenLiveStream`, `/LiveStreams/Close` |
-| Recordings library | M5 | `/LiveTv/Recordings` |
-| Schedule recordings, series timers, conflicts | M5 | `/LiveTv/Timers`, series timers |
-| Timer notifications | M5 | `TimerCreated`/`SeriesTimerCreated` WebSocket messages |
-| Timeshift (pause/rewind live) | M6 | Depends on tuner support |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Active sessions: who's playing what, transcode reasons, stop a session | M5 | Both | `/Sessions` |
+| Scheduled tasks: run a library scan, see progress | M5 | Both | `/ScheduledTasks` + WebSocket progress |
+| Refresh a library or item | M5 | Both | `/Library/Refresh` |
+| Activity log | M5 | Both | `/System/ActivityLog/Entries` |
+| Server log viewer | M6 | Linux | `/System/Logs` |
+| Plugin updates | M6 | Both | `/Plugins`, `/Packages` |
+| Everything else | — | — | Deep-link to jellyfin-web |
 
-## 12. Casting, remote control, SyncPlay
+## 12. Integrations
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Be controllable from other Jellyfin clients (receive Play, Playstate, GeneralCommand) | M2 | Register via `/Sessions/Capabilities/Full` |
-| Chromecast (Google Cast) with the Jellyfin receiver | M2 | Not in the F-Droid flavor |
-| AirPlay (video through AVPlayer, audio through route picker) | M2 | |
-| Control other sessions ("play on living-room TV"), as a remote with seek/volume/tracks | M5 | `/Sessions`, `/Sessions/{id}/Playing`, `/Command` |
-| Send a message to a session | M5 | |
-| SyncPlay: create/join groups, synced play/pause/seek, group queue | M5 | 22 `/SyncPlay/*` routes + WebSocket; time sync via `/GetUtcTime` |
-| DLNA rendering | M6 | |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Intro Skipper (or any media-segment plugin) | M1 | Both | Generic through media segments |
+| Seerr: discover and request | M5 | Both | Only if you run Seerr |
 
-## 13. Platform integration
+## 13. Platform polish
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Media session / Now Playing on every platform | M2 (video), M3 (music) | |
-| PiP on Android/iOS; always-on-top mini-player on desktop | M2 | |
-| Desktop: system tray, global media keys, single-instance, window state memory | M2 | |
-| Discord Rich Presence (desktop, opt-in) | M4 | |
-| Deep links and "open in jellymc" | M2 | |
-| Home-screen widgets (Continue Watching, Now Playing) | M6 | |
-| iOS Handoff / Android "Continue on…" | M6 | |
-| Foldables and tablets: list-detail layouts | M1 | Adaptive shell |
-| Notifications: download complete, recording scheduled | M2 / M5 | |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Adaptive layouts: iPhone, iPad Split View / Stage Manager, desktop window sizes | M1 | Both | |
+| iPad keyboard and trackpad: shortcuts, hover, context menus | M2 | iOS | Shared with Linux |
+| Tray icon, single instance, remembered window state | M2 | Linux | StatusNotifierItem on KDE |
+| Screen-saver inhibit during playback | M1 | Linux | |
+| Notifications (download done, library scan done) | M2 / M5 | Both | |
+| Deep links | M4 | Both | |
+| Discord Rich Presence | M5 | Linux | Opt-in |
+| Home-screen widgets, Live Activities, share extension | — | iOS | Each extension uses a free-account App ID, so only with a paid account |
 
-## 14. Settings and personalization
+## 14. Settings
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Theme (light/dark/AMOLED), accent, dynamic colour from artwork | M1 | |
-| Default audio and subtitle language rules | M1 | |
-| Playback: preferred engine, bitrate per network type, max resolution, passthrough, auto-skip rules, autoplay | M1 / M2 | |
-| Roaming settings via server DisplayPreferences | M2 | |
-| Per-library view preferences | M1 | |
-| Data saver mode | M2 | |
-| Import/export settings | M4 | |
-| Diagnostics: logs viewer, "send logs to server" | M1 | `/ClientLog/Document` |
+| Feature | Tag | Where | Notes |
+|---|---|---|---|
+| Theme (dark/light/AMOLED), dynamic colour from artwork | M1 | Both | |
+| Language rules for audio and subtitles | M1 | Both | |
+| Playback: engine overrides, bitrate for LAN/remote/cellular, max resolution, skip rules, autoplay, keep ASS styling | M1 / M2 | Both | |
+| Roaming settings through DisplayPreferences | M2 | Both | |
+| Diagnostics: log viewer, export, "send logs to server" | M1 | Both | `/ClientLog/Document`; essential on iOS without a debugger |
+| Data saver on cellular | M2 | iOS | |
 
-## 15. Integrations
+## Dropped (this applied to the public, five-platform scope only)
 
-| Feature | Tag | Notes |
-|---|---|---|
-| Intro Skipper and other media-segment plugins | M1 | Generic through media segments |
-| Seerr (Jellyseerr/Overseerr successor): discover, request, request status | M5 | Direct Seerr API with the user's credentials |
-| Trakt, Last.fm, ListenBrainz | — | Server plugins; nothing in the client |
-
-## 16. Light admin (admins only, read-mostly)
-
-| Feature | Tag | Notes |
-|---|---|---|
-| Active sessions dashboard: who's watching what, transcode reasons, stop or message a session | M5 | `/Sessions` |
-| Activity log | M5 | `/System/ActivityLog/Entries` |
-| Scheduled tasks: run library scan, see progress | M5 | `/ScheduledTasks`, `ScheduledTasksInfo` WebSocket messages |
-| Refresh a library or item | M5 | `/Library/Refresh` |
-| User list, enable/disable, reset password | M6 | `/Users` |
-| Server logs viewer | M6 | `/System/Logs` |
-| Plugins list and updates | M6 | `/Plugins`, `/Packages` |
-| Everything else | — | Deep-link to jellyfin-web's dashboard |
-
-## 17. Accessibility and localization
-
-| Feature | Tag | Notes |
-|---|---|---|
-| Screen-reader labels, focus order, large text, reduced motion | M1 (baseline), M4 (audit) | |
-| Full keyboard navigation | M1 | Focus-first design |
-| RTL layouts | M4 | |
-| Translations through Weblate | M4 | English at M1; the string pipeline is in place from M1 |
-
-## 18. TV / 10-foot UI
-
-| Feature | Tag | Notes |
-|---|---|---|
-| Android TV / Google TV / Fire TV build | M6 | Same app, TV layout, D-pad focus (already focus-first) |
-| tvOS build | M6 | Flutter tvOS support is community-maintained, so treat it as a spike |
-| Leanback-style home, remote-friendly player | M6 | |
+Android, Windows and macOS builds; TV builds; App Store/Play/F-Droid/Flathub distribution; translations and RTL; a formal accessibility audit (good practice stays); SSO; parental controls and profile PINs; voice search; Emby support.
