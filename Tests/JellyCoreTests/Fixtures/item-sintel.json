@@ -1,0 +1,479 @@
+{
+  "Name": "Sintel",
+  "OriginalTitle": "Sintel",
+  "ServerId": "44141b27c336469ea36cdd44f9f09662",
+  "Id": "4d9bae7ba369f70422265cc2c7634e95",
+  "Etag": "81d6644b1610a826c2a891edcdaa4e43",
+  "DateCreated": "2026-10-18T20:11:17.3269061Z",
+  "CanDelete": true,
+  "CanDownload": true,
+  "HasSubtitles": true,
+  "Container": "mkv",
+  "SortName": "sintel",
+  "PremiereDate": "2010-09-30T00:00:00.0000000Z",
+  "ExternalUrls": [
+    {
+      "Name": "IMDb",
+      "Url": "https://www.imdb.com/title/tt1727587"
+    },
+    {
+      "Name": "TMDB",
+      "Url": "https://www.themoviedb.org/movie/45745"
+    }
+  ],
+  "MediaSources": [
+    {
+      "Protocol": "File",
+      "Id": "4d9bae7ba369f70422265cc2c7634e95",
+      "Path": "/media/movies/Sintel (2010)/Sintel (2010).mkv",
+      "Type": "Default",
+      "Container": "mkv",
+      "Size": 89543141,
+      "Name": "Sintel (2010)",
+      "IsRemote": false,
+      "ETag": "88a577a315afc52bbaed84b91db6690d",
+      "RunTimeTicks": 1200210000,
+      "ReadAtNativeFramerate": false,
+      "IgnoreDts": false,
+      "IgnoreIndex": false,
+      "GenPtsInput": false,
+      "SupportsTranscoding": true,
+      "SupportsDirectStream": true,
+      "SupportsDirectPlay": true,
+      "IsInfiniteStream": false,
+      "UseMostCompatibleTranscodingProfile": false,
+      "RequiresOpening": false,
+      "RequiresClosing": false,
+      "RequiresLooping": false,
+      "SupportsProbing": true,
+      "VideoType": "VideoFile",
+      "MediaStreams": [
+        {
+          "Codec": "hevc",
+          "TimeBase": "1/1000",
+          "VideoRange": "SDR",
+          "VideoRangeType": "SDR",
+          "AudioSpatialFormat": "None",
+          "DisplayTitle": "1080p HEVC SDR",
+          "IsInterlaced": false,
+          "BitRate": 5648498,
+          "BitDepth": 10,
+          "RefFrames": 1,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "IsOriginal": false,
+          "Height": 1080,
+          "Width": 1920,
+          "AverageFrameRate": 24,
+          "RealFrameRate": 24,
+          "ReferenceFrameRate": 24,
+          "Profile": "Main 10",
+          "Type": "Video",
+          "AspectRatio": "16:9",
+          "Index": 0,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false,
+          "PixelFormat": "yuv420p10le",
+          "Level": 120,
+          "IsAnamorphic": false
+        },
+        {
+          "Codec": "opus",
+          "Language": "jpn",
+          "TimeBase": "1/1000",
+          "Title": "Japanese",
+          "VideoRange": "Unknown",
+          "VideoRangeType": "Unknown",
+          "AudioSpatialFormat": "None",
+          "LocalizedDefault": "Default",
+          "LocalizedExternal": "External",
+          "LocalizedLanguage": "Japanese",
+          "LocalizedOriginal": "Original",
+          "DisplayTitle": "Japanese - OPUS - Mono - Default",
+          "IsInterlaced": false,
+          "ChannelLayout": "mono",
+          "BitRate": 128000,
+          "Channels": 1,
+          "SampleRate": 48000,
+          "IsDefault": true,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "IsOriginal": false,
+          "Type": "Audio",
+          "Index": 1,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false
+        },
+        {
+          "Codec": "aac",
+          "Language": "eng",
+          "TimeBase": "1/1000",
+          "Title": "English",
+          "VideoRange": "Unknown",
+          "VideoRangeType": "Unknown",
+          "AudioSpatialFormat": "None",
+          "LocalizedDefault": "Default",
+          "LocalizedExternal": "External",
+          "LocalizedLanguage": "English",
+          "LocalizedOriginal": "Original",
+          "DisplayTitle": "English - AAC - Mono",
+          "IsInterlaced": false,
+          "ChannelLayout": "mono",
+          "BitRate": 192000,
+          "Channels": 1,
+          "SampleRate": 48000,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "IsOriginal": false,
+          "Profile": "LC",
+          "Type": "Audio",
+          "Index": 2,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false
+        },
+        {
+          "Codec": "ass",
+          "Language": "eng",
+          "TimeBase": "1/1000",
+          "Title": "Styled",
+          "VideoRange": "Unknown",
+          "VideoRangeType": "Unknown",
+          "AudioSpatialFormat": "None",
+          "LocalizedUndefined": "Undefined",
+          "LocalizedDefault": "Default",
+          "LocalizedForced": "Forced",
+          "LocalizedExternal": "External",
+          "LocalizedHearingImpaired": "Hearing Impaired",
+          "LocalizedLanguage": "English",
+          "DisplayTitle": "Styled - English - ASS",
+          "IsInterlaced": false,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "IsOriginal": false,
+          "Type": "Subtitle",
+          "Index": 3,
+          "IsExternal": false,
+          "IsTextSubtitleStream": true,
+          "SupportsExternalStream": true
+        }
+      ],
+      "MediaAttachments": [
+        {
+          "Codec": "ttf",
+          "CodecTag": "[0][0][0][0]",
+          "Index": 4,
+          "FileName": "DejaVuSans.ttf",
+          "MimeType": "application/x-truetype-font"
+        }
+      ],
+      "Formats": [],
+      "Bitrate": 5968498,
+      "RequiredHttpHeaders": {},
+      "TranscodingSubProtocol": "http",
+      "DefaultAudioStreamIndex": 1,
+      "HasSegments": false
+    }
+  ],
+  "ProductionLocations": [
+    "Netherlands"
+  ],
+  "Path": "/media/movies/Sintel (2010)/Sintel (2010).mkv",
+  "EnableMediaSourceDisplay": true,
+  "OfficialRating": "PG",
+  "ChannelId": null,
+  "Overview": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+  "Taglines": [],
+  "Genres": [
+    "Animation",
+    "Fantasy"
+  ],
+  "CommunityRating": 7.333,
+  "RunTimeTicks": 1200210000,
+  "PlayAccess": "Full",
+  "ProductionYear": 2010,
+  "RemoteTrailers": [
+    {
+      "Url": "https://www.youtube.com/watch?v=HOfdboHvshg",
+      "Name": "Trailer"
+    }
+  ],
+  "ProviderIds": {
+    "Tmdb": "45745",
+    "Imdb": "tt1727587"
+  },
+  "IsHD": true,
+  "IsFolder": false,
+  "ParentId": "ba9c5cad4ccd875366bf54fd50e04928",
+  "Type": "Movie",
+  "People": [
+    {
+      "Name": "Halina Reijn",
+      "Id": "6f1570cd0ecf9891a5fdbe78e084d736",
+      "Role": "Sintel (voice)",
+      "Type": "Actor",
+      "PrimaryImageTag": "8e07ce235528c45e9507cdc123f1e957",
+      "ImageBlurHashes": {
+        "Primary": {
+          "8e07ce235528c45e9507cdc123f1e957": "dFJHO19F5,~WmP%2%#NFu5?b^QNxTKIT^k%ME0bw-;xZ"
+        }
+      }
+    },
+    {
+      "Name": "Thom Hoffman",
+      "Id": "b2390b0e5e0e4f10f39ef73112abbf2c",
+      "Role": "Shaman (voice)",
+      "Type": "Actor",
+      "PrimaryImageTag": "6553819d7286e8a9730e9ac18dd4202f",
+      "ImageBlurHashes": {
+        "Primary": {
+          "6553819d7286e8a9730e9ac18dd4202f": "dgKv,Fs90|W.acxtxYRjF1jZxubII.NGxujFbbWXoJWB"
+        }
+      }
+    },
+    {
+      "Name": "Colin Levy",
+      "Id": "e8e29948be2067b3c86dd2079133d4ab",
+      "Role": "Director",
+      "Type": "Director",
+      "PrimaryImageTag": "93e4e6f3f29be8d72546de9188e523e7",
+      "ImageBlurHashes": {
+        "Primary": {
+          "93e4e6f3f29be8d72546de9188e523e7": "dGF={%~qof4n%MIUxut79FM{Rj%M?bRj%MxuofM{%M%M"
+        }
+      }
+    },
+    {
+      "Name": "Esther Wouda",
+      "Id": "48aac8983750eb69b6b35e6485207413",
+      "Role": "Writer",
+      "Type": "Writer",
+      "ImageBlurHashes": {
+        "Primary": {}
+      }
+    },
+    {
+      "Name": "Ton Roosendaal",
+      "Id": "49f34ba9aaa3cc6004fbee058aea50b7",
+      "Role": "Producer",
+      "Type": "Producer",
+      "PrimaryImageTag": "333858057a039e6d9eac2ee457854c59",
+      "ImageBlurHashes": {
+        "Primary": {
+          "333858057a039e6d9eac2ee457854c59": "dJINUFIp~q=|-4In$eWVOtt7XAj?=_jExB%2bcWXt7xa"
+        }
+      }
+    }
+  ],
+  "Studios": [
+    {
+      "Name": "Blender Foundation",
+      "Id": "66ac02ba6812c3e031d36b31750e19e3"
+    }
+  ],
+  "GenreItems": [
+    {
+      "Name": "Animation",
+      "Id": "074229225b7254292f131f9f49f8dcd6"
+    },
+    {
+      "Name": "Fantasy",
+      "Id": "a30dcc65be22eb3c21c03f7c1c7a57d1"
+    }
+  ],
+  "LocalTrailerCount": 0,
+  "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "45745",
+    "ItemId": "4d9bae7ba369f70422265cc2c7634e95"
+  },
+  "SpecialFeatureCount": 0,
+  "DisplayPreferencesId": "dbf7709c41faaa746463d67978eb863d",
+  "Tags": [
+    "pet",
+    "dragon",
+    "blender",
+    "short film"
+  ],
+  "PrimaryImageAspectRatio": 0.6666666666666666,
+  "MediaStreams": [
+    {
+      "Codec": "hevc",
+      "TimeBase": "1/1000",
+      "VideoRange": "SDR",
+      "VideoRangeType": "SDR",
+      "AudioSpatialFormat": "None",
+      "DisplayTitle": "1080p HEVC SDR",
+      "IsInterlaced": false,
+      "BitRate": 5648498,
+      "BitDepth": 10,
+      "RefFrames": 1,
+      "IsDefault": false,
+      "IsForced": false,
+      "IsHearingImpaired": false,
+      "IsOriginal": false,
+      "Height": 1080,
+      "Width": 1920,
+      "AverageFrameRate": 24,
+      "RealFrameRate": 24,
+      "ReferenceFrameRate": 24,
+      "Profile": "Main 10",
+      "Type": "Video",
+      "AspectRatio": "16:9",
+      "Index": 0,
+      "IsExternal": false,
+      "IsTextSubtitleStream": false,
+      "SupportsExternalStream": false,
+      "PixelFormat": "yuv420p10le",
+      "Level": 120,
+      "IsAnamorphic": false
+    },
+    {
+      "Codec": "opus",
+      "Language": "jpn",
+      "TimeBase": "1/1000",
+      "Title": "Japanese",
+      "VideoRange": "Unknown",
+      "VideoRangeType": "Unknown",
+      "AudioSpatialFormat": "None",
+      "LocalizedDefault": "Default",
+      "LocalizedExternal": "External",
+      "LocalizedLanguage": "Japanese",
+      "LocalizedOriginal": "Original",
+      "DisplayTitle": "Japanese - OPUS - Mono - Default",
+      "IsInterlaced": false,
+      "ChannelLayout": "mono",
+      "BitRate": 128000,
+      "Channels": 1,
+      "SampleRate": 48000,
+      "IsDefault": true,
+      "IsForced": false,
+      "IsHearingImpaired": false,
+      "IsOriginal": false,
+      "Type": "Audio",
+      "Index": 1,
+      "IsExternal": false,
+      "IsTextSubtitleStream": false,
+      "SupportsExternalStream": false
+    },
+    {
+      "Codec": "aac",
+      "Language": "eng",
+      "TimeBase": "1/1000",
+      "Title": "English",
+      "VideoRange": "Unknown",
+      "VideoRangeType": "Unknown",
+      "AudioSpatialFormat": "None",
+      "LocalizedDefault": "Default",
+      "LocalizedExternal": "External",
+      "LocalizedLanguage": "English",
+      "LocalizedOriginal": "Original",
+      "DisplayTitle": "English - AAC - Mono",
+      "IsInterlaced": false,
+      "ChannelLayout": "mono",
+      "BitRate": 192000,
+      "Channels": 1,
+      "SampleRate": 48000,
+      "IsDefault": false,
+      "IsForced": false,
+      "IsHearingImpaired": false,
+      "IsOriginal": false,
+      "Profile": "LC",
+      "Type": "Audio",
+      "Index": 2,
+      "IsExternal": false,
+      "IsTextSubtitleStream": false,
+      "SupportsExternalStream": false
+    },
+    {
+      "Codec": "ass",
+      "Language": "eng",
+      "TimeBase": "1/1000",
+      "Title": "Styled",
+      "VideoRange": "Unknown",
+      "VideoRangeType": "Unknown",
+      "AudioSpatialFormat": "None",
+      "LocalizedUndefined": "Undefined",
+      "LocalizedDefault": "Default",
+      "LocalizedForced": "Forced",
+      "LocalizedExternal": "External",
+      "LocalizedHearingImpaired": "Hearing Impaired",
+      "LocalizedLanguage": "English",
+      "DisplayTitle": "Styled - English - ASS",
+      "IsInterlaced": false,
+      "IsDefault": false,
+      "IsForced": false,
+      "IsHearingImpaired": false,
+      "IsOriginal": false,
+      "Type": "Subtitle",
+      "Index": 3,
+      "IsExternal": false,
+      "IsTextSubtitleStream": true,
+      "SupportsExternalStream": true
+    }
+  ],
+  "VideoType": "VideoFile",
+  "ImageTags": {
+    "Primary": "399ae5c924a309ba84dc837d518f9633",
+    "Logo": "d8d57d77b5d7bb79e4ea219bde350bf3"
+  },
+  "BackdropImageTags": [
+    "f47cd5c65d1c6652077913bce096b745"
+  ],
+  "ImageBlurHashes": {
+    "Backdrop": {
+      "f47cd5c65d1c6652077913bce096b745": "WFC$J+%15U-oXR9vi_NybuxaWXS40gIp-na#xu%1xae-WBNet6%1"
+    },
+    "Primary": {
+      "399ae5c924a309ba84dc837d518f9633": "dUE.63WXI:s,~BNHNGi_t8kXR+jEo3xuWBNGRlxts:Rk"
+    },
+    "Logo": {
+      "d8d57d77b5d7bb79e4ea219bde350bf3": "PEAd7f~q_3-;RjD%D%D%j[RjRjj[ayoft7t74nt7t7WBfQWBWBRj"
+    }
+  },
+  "Chapters": [
+    {
+      "StartPositionTicks": 0,
+      "Name": "Opening",
+      "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+      "StartPositionTicks": 300000000,
+      "Name": "The middle",
+      "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+      "StartPositionTicks": 900000000,
+      "Name": "Credits",
+      "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    }
+  ],
+  "Trickplay": {
+    "4d9bae7ba369f70422265cc2c7634e95": {
+      "320": {
+        "Width": 320,
+        "Height": 180,
+        "TileWidth": 10,
+        "TileHeight": 10,
+        "ThumbnailCount": 12,
+        "Interval": 10000,
+        "Bandwidth": 1218
+      }
+    }
+  },
+  "LocationType": "FileSystem",
+  "MediaType": "Video",
+  "LockedFields": [],
+  "LockData": false,
+  "Width": 1920,
+  "Height": 1080,
+  "OriginalLanguage": "en"
+}
