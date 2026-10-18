@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Copies the working tree to the test desktop (default: distro-matrix's kubuntu2604, whose
+# address `desktop/use` prints). Set JELLYMC_VM=tester@10.78.0.x to point elsewhere.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+VM=${JELLYMC_VM:?set JELLYMC_VM=tester@10.78.0.x (from distro-matrix desktop/use)}
+JUMP=${JELLYMC_JUMP:-root@100.105.58.62}
+# `.git` without a slash: in a worktree it is a file naming a laptop path.
+rsync -az --delete -e "ssh -J $JUMP" --exclude .git --exclude .build --exclude dist ./ "$VM:jellymc/"

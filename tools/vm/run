@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Runs a step on the test desktop, in its graphical session's environment.
+#
+#   tools/vm/run provision     # once per fresh VM
+#   tools/vm/run build         # swift build
+#   tools/vm/run test          # swift test (live tests too, against the VM's own server)
+#   tools/vm/run server        # the test server in Docker, with media pushed by `media`
+#   tools/vm/run app           # start the GTK app on the VM's desktop, detached
+#   tools/vm/run sh '<cmd>'    # anything
+set -euo pipefail
+VM=${JELLYMC_VM:?set JELLYMC_VM=tester@10.78.0.x}
+JUMP=${JELLYMC_JUMP:-root@100.105.58.62}
+step=${1:?step}
+shift || true
+
+remote='set -euo pipefail
+export PATH="$HOME/swift/usr/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/.local/lib/swift-compat${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# The desktop session, for anything that opens a window.
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+export WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
+export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+cd ~/jellymc
+'
+case "$step" in
+    provision) remote+='bash tools/vm/provision.sh' ;;
+    build) remote+='swift build -Xlinker --allow-shlib-undefined 2>&1 | grep -E "error|warning: unre|Compiling|Build complete" | grep -v "prohibited flag" | tail -40' ;;
+    test) remote+='JELLYMC_TEST_SERVER=http://localhost:8096 swift test -Xlinker --allow-shlib-undefined 2>&1 | grep -E "error:|✘|✔ Test run|Test run with|passed after|failed after" | tail -60' ;;
+    server) remote+='JELLYMC_TESTSERVER=$HOME/jellymc-testserver sg docker -c tools/testserver/up.sh' ;;
+    app) remote+='pkill -x jellymc || true; swift build -Xlinker --allow-shlib-undefined 2>&1 | grep -E "error:" || true; nohup setsid .build/debug/jellymc >/tmp/jellymc.log 2>&1 < /dev/null & sleep 3; tail -20 /tmp/jellymc.log' ;;
+    log) remote+='tail -${1:-80} /tmp/jellymc.log' ;;
+    sh) remote+="$*" ;;
+    *) echo "unknown step $step" >&2; exit 2 ;;
+esac
+ssh -J "$JUMP" "$VM" "bash -c $(printf '%q' "$remote")"
