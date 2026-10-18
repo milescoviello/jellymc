@@ -4,11 +4,13 @@
 
 **Flutter (Dart) for UI and all app logic. Playback lives in our own federated Flutter plugin, `jellymc_player`, with several native engines behind one Dart interface.**
 
-| Platform | Default engine | Secondary engine | Why we need the secondary |
-|---|---|---|---|
-| Windows, macOS, Linux | libmpv | libmpv rendering into its own native window (later) | HDR passthrough, which needs a native surface instead of a Flutter texture |
-| Android | libmpv | Media3/ExoPlayer, in a `SurfaceView` platform view | HDR10/Dolby Vision on device decoders, tunneled playback, battery life, Cast handoff |
-| iOS | libmpv (our own LGPL xcframework build) | AVPlayer, in an `AVPlayerLayer` platform view | Native PiP, AirPlay video, Dolby Vision on Apple hardware, and server HLS transcodes |
+| Platform | Engines | What each is for |
+|---|---|---|
+| Windows, macOS, Linux | **libmpv**; later, libmpv rendering into its own native window | mpv handles everything. The native window is for HDR passthrough, which needs a native surface instead of a Flutter texture. |
+| Android | **Media3/ExoPlayer** (in a `SurfaceView` platform view) + **libmpv** | Media3 is the default when it can direct-play: HDR10/Dolby Vision on device decoders, tunneling, battery life, Cast handoff. mpv covers styled ASS and the codecs and containers Media3 can't open. |
+| iOS | **libmpv** (our own LGPL xcframework build) + **AVPlayer** (in an `AVPlayerLayer` platform view) | mpv for breadth. AVPlayer for native PiP, AirPlay video, Dolby Vision on Apple hardware, and server HLS transcodes. Which one is the default is decided in spike S3. |
+
+Engines are chosen per item by a scoring rule, and the user can override (see [playback.md](playback.md#engine-selection)).
 
 For music, the queue/gapless/media-session layer is a separate audio pipeline (see [architecture.md](architecture.md#music-pipeline)). It isn't the video player in audio-only mode.
 
