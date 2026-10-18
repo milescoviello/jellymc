@@ -1,0 +1,13 @@
+#!/bin/sh
+# swift, with the two things this Gentoo box needs: the toolchain's libxml2.so.2 (Gentoo
+# ships .so.16), and --allow-shlib-undefined, because the toolchain's FoundationNetworking
+# wants libcurl's versioned symbols (CURL_OPENSSL_4) and Gentoo's libcurl has none. The
+# unversioned symbols bind fine at run time.
+#
+#   tools/swiftw build
+#   tools/swiftw run jellymc
+#   tools/swiftw test
+export LD_LIBRARY_PATH="$HOME/.local/lib/swift-compat${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+command=$1
+shift
+exec swift "$command" -Xlinker --allow-shlib-undefined "$@"

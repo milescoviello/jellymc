@@ -1,0 +1,3 @@
+import JellyCore
+
+JellymcApplication.run()
