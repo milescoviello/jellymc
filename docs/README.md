@@ -1,49 +1,64 @@
 # jellymc scope
 
-Scoping docs for a from-scratch, feature-rich Jellyfin client for **iOS, Android, Windows, macOS and Linux**. Written 2026-10-18 against Jellyfin server **12.2** (the current stable release).
+Scoping docs for **a personal, from-scratch, feature-rich Jellyfin client for iPhone/iPad and Linux**. It's for one user, built and sideloaded by that user, and never published to a store. Written 2026-10-18 against Jellyfin server **12.2**, the current stable release.
 
 ## The short version
 
-- **What:** one app that does video, music, and eventually Live TV, books and photos well, on phones, tablets and desktops. It should be the client people install on every device they own.
-- **Where we can win:** No Jellyfin client today is excellent on all five platforms *and* across media types. Video-first clients treat music as an afterthought, or don't support it at all (Streamyfin says it's unlikely to support music soon). The best music clients don't do video. Desktop is served by web wrappers. Our edge is real direct-play breadth (mpv-class codec and subtitle support) combined with native platform features (PiP, media sessions, CarPlay/Android Auto, offline) in a single codebase.
-- **Stack (recommended):** **Flutter** for UI and app logic, with a **pluggable native playback layer**: libmpv on every platform, plus Media3 on Android and AVPlayer on Apple where they work better (HDR, PiP, AirPlay, battery). See [tech-stack.md](tech-stack.md).
-- **Hardest part:** playback, by a wide margin. The plan front-loads playback spikes on all five platforms before any feature work (milestone M0).
-- **Size:** roughly **6–7 months to a public 1.0** (video + offline + music) for a two-person team, then SyncPlay, Live TV, TV/10-foot UI and books after 1.0. See [roadmap.md](roadmap.md).
+- **What:** one app that does video and music really well on an iPhone, an iPad, and a Linux desktop (KDE Plasma on Wayland). Live TV, books and photos come later, and only if they get used.
+- **Why personal changes things:** no App Store review, no licensing or codec-patent worries, no store pipelines, no translations, no other users to support. All of that time goes into features and playback quality instead.
+- **Stack:** **Flutter** for one codebase across iOS and Linux, with **libmpv** on both platforms plus **AVPlayer** on iOS for picture-in-picture, AirPlay and HDR/Dolby Vision. See [tech-stack.md](tech-stack.md).
+- **The constraint that shapes everything:** there's no Mac. An iOS app can only be compiled on macOS, so iOS builds run on a CI Mac and get sideloaded through SideStore. On-device debugging is limited to release builds and logs. So the plan keeps custom Swift code to a minimum and does day-to-day development on the Linux desktop build. See [dev-workflow.md](dev-workflow.md).
+- **Size:** about **19 focused full-time weeks to "1.0 for me"** (video + offline on iPhone + music). Evenings and weekends stretch that 3–4×. See [roadmap.md](roadmap.md).
 
 ## Documents
 
 | Doc | What it answers |
 |---|---|
-| [landscape.md](landscape.md) | What state is the server API in, who else is building clients, and what we learn from them? |
-| [tech-stack.md](tech-stack.md) | Which framework, players, and libraries, and why? What were the alternatives? |
-| [architecture.md](architecture.md) | How is the code organised: modules, data flow, offline/sync, the server-compatibility layer |
-| [playback.md](playback.md) | How playback works end to end: device profiles, engine selection, direct play vs transcode, subtitles, HDR, reporting |
-| [features.md](features.md) | The full feature catalogue, grouped by domain and tagged with a milestone |
-| [roadmap.md](roadmap.md) | Milestones, spikes, exit criteria, team assumptions, testing and release, risks, open decisions |
+| [landscape.md](landscape.md) | What state is the server API in, who else builds clients, and what we learn from them? |
+| [tech-stack.md](tech-stack.md) | Which framework, players and libraries for iOS + Linux without a Mac, and why |
+| [dev-workflow.md](dev-workflow.md) | Setting up Gentoo, the daily loop on Linux, building iOS in CI, sideloading, debugging an iPhone from Linux |
+| [architecture.md](architecture.md) | How the code is organised: modules, data flow, offline sync, downloads, music pipeline |
+| [playback.md](playback.md) | Playback end to end: engine choice, device profiles, direct play vs transcode, subtitles, HDR, reporting |
+| [features.md](features.md) | The full feature catalogue, tagged by milestone |
+| [roadmap.md](roadmap.md) | Milestones, spikes, testing, risks, and the few remaining decisions |
+
+## Assumptions
+
+These come from you, or from inspecting this machine on 2026-10-18. Correct any that are wrong.
+
+| Assumption | Effect if wrong |
+|---|---|
+| Targets: **iPhone, iPad, and this Linux machine** | Adding Android or other desktops is mostly packaging, since the stack supports them, but the playback work grows |
+| **No Mac available** | If you have one, the iOS dev loop gets much easier (hot reload on device, Xcode debugging), and Swift-heavy features get cheaper |
+| **Free Apple ID** for sideloading (apps re-signed every 7 days) | A paid account ($99/yr) gives 1-year signing, TestFlight installs, and lets you request the CarPlay entitlement |
+| **Your server runs 12.x** | 10.11 will probably work, since we only use the modern auth forms, but it won't be tested |
+| **One server, one user** | The data model allows several. Only the UI for switching is deferred. |
+| Linux machine: **Intel Arrow Lake iGPU + RTX 5090 Mobile, KDE Plasma 6.7 on Wayland, Gentoo** | Hardware video decoding and the HDR plan assume this GPU and compositor |
 
 ## Goals
 
-1. **Plays everything the server has, without transcoding where the device can handle it.** MKV, HEVC, AV1, 10-bit, HDR10/HLG/Dolby Vision, styled ASS subtitles, PGS, lossless and surround audio.
-2. **Feels native on each form factor.** Phone, tablet and desktop are all first-class: adaptive layouts, keyboard and mouse on desktop, gestures on touch screens. TV is designed for from the start and ships later.
-3. **Works offline.** Downloads in original or transcoded quality, with watch state that syncs back when the device reconnects.
-4. **Video and music are equal citizens.** Gapless playback, queues, lyrics, CarPlay/Android Auto: music is not bolted on.
-5. **Integrates with the operating system.** PiP, lock-screen and notification controls, MPRIS/SMTC/Now Playing, Chromecast, AirPlay, media keys.
-6. **Respects the server.** No accounts of our own, no telemetry by default, and server-side settings and permissions are the source of truth.
+1. **Plays everything in your library, without transcoding where the device can handle it.** MKV, HEVC, AV1, 10-bit, HDR10/HLG/Dolby Vision, styled ASS subtitles, PGS, lossless and surround audio.
+2. **Feels right on each device.** One-handed use on an iPhone. Split View, keyboard and trackpad on the iPad. Keyboard and mouse, with mpv-style shortcuts, on Linux.
+3. **The iPhone works offline.** Downloads in original or transcoded quality, for flights and commutes, with watch state that syncs back.
+4. **Music is a first-class citizen.** Gapless playback, a persistent queue, synced lyrics, lock-screen and KDE media controls.
+5. **Integrates with the OS.** On iOS: PiP, AirPlay, Now Playing on the lock screen and Dynamic Island, background audio. On Linux: MPRIS (KDE's media applet and media keys), notifications, screen-saver inhibit, HDR output on Plasma.
+6. **The server is the source of truth.** No accounts of our own and no telemetry. Settings roam through the server.
 
-## Non-goals (for 1.0)
+## Non-goals
 
-- Replacing the server admin web UI. A light admin surface comes later; full server configuration stays in jellyfin-web.
-- Emby/Plex support. The API layer is Jellyfin-specific on purpose.
-- A web build. Flutter web can't use libmpv, and jellyfin-web already exists.
-- Smart-TV platforms that Flutter can't target (Roku, webOS, Tizen).
-- Server plugins of our own. We use existing plugins (Intro Skipper, SSO, Seerr) and don't require any.
+- Android, Windows, macOS, TVs, the web. (The Flutter stack keeps Android and the other desktops open as an option.)
+- App Store or any public distribution, store assets, a privacy policy, translations, or support for other users.
+- Replacing jellyfin-web's admin dashboard. A light admin view comes later, since you are the admin.
+- Emby/Plex support.
+- Features that need restricted Apple entitlements or app extensions, unless you get a paid account: CarPlay, home-screen widgets, LAN discovery. See [dev-workflow.md](dev-workflow.md#free-apple-id-limits).
 
 ## Glossary
 
 - **Direct play:** the client plays the original file as-is.
-- **Direct stream:** the server remuxes or copies streams into a different container without re-encoding video.
-- **Transcode:** the server re-encodes. This costs server CPU/GPU and quality, so we try to avoid it.
-- **Device profile:** the capability description the client sends to the server, which the server uses to decide among the three modes above.
+- **Direct stream:** the server remuxes into another container (for example MKV → HLS fMP4) or transcodes only the audio. The video isn't re-encoded, so it's cheap for the server.
+- **Transcode:** the server re-encodes the video. This is expensive and lowers quality, so we avoid it.
+- **Device profile:** the capability description the client sends to the server, which the server uses to choose among the three modes above.
 - **Ticks:** Jellyfin's time unit. 1 tick = 100 ns, so 10,000,000 ticks = 1 s.
-- **Media segments:** server-side markers for intro, outro, recap, preview and commercial ranges. They power skip buttons.
+- **Media segments:** server-side ranges marking intros, outros, recaps, previews and commercials. They power the skip buttons.
 - **Trickplay:** thumbnail tiles shown while scrubbing.
+- **Sideloading:** installing an app you signed yourself, outside the App Store. Here that's done through SideStore with a free Apple ID.

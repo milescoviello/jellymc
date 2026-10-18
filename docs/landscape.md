@@ -25,7 +25,7 @@ The facts here are time-sensitive. Each was checked on 2026-10-18, and sources a
   - `VideoRangeType`, which distinguishes SDR, HDR10, HDR10+, HLG and several Dolby Vision variants (`DOVIWithHDR10`, `DOVIWithEL`, and others).
   - Backup routes (`/Backup*`), new in the 10.11/12 era, which are admin-only.
 
-**Decision:** support **10.11.x and 12.x**. Use only the `Authorization` header (`ApiKey` where a URL must carry the token) and only non-prefixed routes. CI runs the integration suite against both versions. Supporting 10.10 costs little extra and can be decided later.
+**Decision:** target **12.x**, the version your server runs. Use only the `Authorization` header (`ApiKey` where a URL must carry the token) and only non-prefixed routes. Those forms also work on 10.10 and 10.11, so an older server will probably work, but we only test against 12.x. If the client is ever shared, add 10.11 to the test matrix.
 
 ## Existing clients
 
@@ -46,15 +46,19 @@ Other active projects worth watching: Wholphin and JellyWatch (Android TV), Jell
 
 ## What this tells us
 
-1. **Flutter is the proven multi-platform route.** The two clients that ship on all five of our platforms, Moonfin and Fladder, are both Flutter. No React Native, Compose Multiplatform or Tauri Jellyfin client covers desktop *and* mobile with serious playback.
+1. **Flutter is the proven multi-platform route.** The two clients that ship on iOS, Android and all three desktops, Moonfin and Fladder, are both Flutter, and both cover iOS + Linux. No React Native, Compose Multiplatform or Tauri Jellyfin client covers desktop *and* mobile with serious playback.
 2. **Playback is where clients differ, and where they hurt.** Every serious client ended up with more than one engine: Swiftfin has VLCKit + AVKit, Findroid ExoPlayer + mpv, Moonfin mpv + AetherEngine. Plan for this from day one instead of discovering it in year two.
 3. **Apple is the hardest playback platform.** AVPlayer won't open MKV and has narrow codec support. MPVKit's own README says it is "only suitable for learning" and is infrequently maintained, and points to AetherEngine (about two months old) for production use. We need a plan for Apple playback that we control (see [tech-stack.md](tech-stack.md) and [playback.md](playback.md)).
 4. **Music + video in one app is rare, and done well it's rarer still.** Moonfin is trying. Everyone else picks one.
 5. **Downloads are table stakes, and transcoded downloads are still experimental** in most clients. That's an opportunity to differentiate.
 6. **SyncPlay and Chromecast** are on almost every roadmap and missing from most shipped apps.
-7. **The server moves under you.** 12.0 broke clients that used legacy auth. Pin the spec, test against several server versions, and keep version-conditional behaviour in one place.
-8. **Licensing shapes distribution.** GPL-3.0 apps have had trouble with the App Store, and MPL-2.0 (Swiftfin, Streamyfin, Finamp) is the common choice for clients that ship there. libmpv must be the LGPL build, linked dynamically.
+7. **The server moves under you.** 12.0 broke clients that used legacy auth. Pin the spec, test against the server version you actually run, and keep version-conditional behaviour in one place.
+8. **Licensing shapes distribution for public clients, but not for us.** Public clients choose MPL-2.0 and LGPL libmpv builds to survive App Store review. A sideloaded personal build has no such constraint: GPL builds of mpv/FFmpeg are fine, and so is borrowing code from GPL projects such as Fladder and Moonfin.
 9. **Every serious Flutter media client forks its media stack.** Fladder vendors media_kit. Moonfin forks media_kit_video (to fix Wayland frame presentation), the Windows libmpv package (for a newer libmpv), and background_downloader. Finamp forks just_audio and audio_service. Budget for owning these layers from day one, not for consuming them off the shelf.
+10. **Existing options on your two platforms**, as a yardstick for "is ours better yet?":
+    - **iOS:** Swiftfin (native, official), Streamyfin (mpv, downloads), Infuse (the polish benchmark), Finamp (music).
+    - **Linux:** Jellyfin Desktop (web UI + mpv), Delfin and tsukimi (GTK), Fladder and Moonfin (Flutter), Feishin and Supersonic (music).
+    - Nobody offers one app that does iPhone and Linux, video and music, all well.
 
 ## Sources
 
