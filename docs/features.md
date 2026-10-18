@@ -224,6 +224,14 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Diagnostics: log viewer, export, "send logs to server" | M1 | Both | `/ClientLog/Document`; essential on iOS without a debugger |
 | Data saver on cellular | M2 | iOS | |
 
-## Dropped (this applied to the public, five-platform scope only)
+## Dropped from the earlier public, five-platform scope
 
-Android, Windows and macOS builds; TV builds; App Store/Play/F-Droid/Flathub distribution; translations and RTL; a formal accessibility audit (good practice stays); SSO; parental controls and profile PINs; voice search; Emby support.
+These no longer apply:
+
+- Android, Windows and macOS builds, and TV builds.
+- App Store, Play, F-Droid and Flathub distribution.
+- Translations and RTL.
+- A formal accessibility audit (good practice stays).
+- SSO, parental controls and profile PINs.
+- Voice search.
+- Emby support.
