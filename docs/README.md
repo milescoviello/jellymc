@@ -6,8 +6,8 @@ Scoping docs for **a personal, from-scratch, feature-rich Jellyfin client for iP
 
 - **What:** one app that does video and music really well on an iPhone, an iPad, and a Linux desktop (KDE Plasma on Wayland). Live TV, books and photos come later, and only if they get used.
 - **Why personal changes things:** no App Store review, no licensing or codec-patent worries, no store pipelines, no translations, no other users to support. All of that time goes into features and playback quality instead.
-- **Stack:** **Flutter** for one codebase across iOS and Linux, with **libmpv** on both platforms plus **AVPlayer** on iOS for picture-in-picture, AirPlay and HDR/Dolby Vision. See [tech-stack.md](tech-stack.md).
-- **The constraint that shapes everything:** there's no Mac. An iOS app can only be compiled on macOS, so iOS builds run on a CI Mac and get sideloaded through SideStore. On-device debugging is limited to release builds and logs. So the plan keeps custom Swift code to a minimum and does day-to-day development on the Linux desktop build. See [dev-workflow.md](dev-workflow.md).
+- **Stack:** **native Swift on both platforms, sharing one core**, the way the Music app is built. iOS uses SwiftUI with AVPlayer (system PiP, AirPlay, Dolby Vision). Linux uses GTK 4/libadwaita through C interop, with libmpv for playback. See [tech-stack.md](tech-stack.md).
+- **No Mac, and that's fine:** GitHub Actions compiles the iOS app into an ad-hoc-signed IPA, and `xtool` installs it, exactly as for the Music app. The shared core builds and tests locally on Linux. See [dev-workflow.md](dev-workflow.md).
 - **Size:** about **19 focused full-time weeks to "1.0 for me"** (video + offline on iPhone + music). Evenings and weekends stretch that 3–4×. See [roadmap.md](roadmap.md).
 
 ## Documents
@@ -46,7 +46,7 @@ These come from you, or from inspecting this machine on 2026-10-18. Correct any 
 
 ## Non-goals
 
-- Android, Windows, macOS, TVs, the web. (The Flutter stack keeps Android and the other desktops open as an option.)
+- Android, Windows, macOS, TVs, the web.
 - App Store or any public distribution, store assets, a privacy policy, translations, or support for other users.
 - Replacing jellyfin-web's admin dashboard. A light admin view comes later, since you are the admin.
 - Emby/Plex support.
@@ -61,4 +61,4 @@ These come from you, or from inspecting this machine on 2026-10-18. Correct any 
 - **Ticks:** Jellyfin's time unit. 1 tick = 100 ns, so 10,000,000 ticks = 1 s.
 - **Media segments:** server-side ranges marking intros, outros, recaps, previews and commercials. They power the skip buttons.
 - **Trickplay:** thumbnail tiles shown while scrubbing.
-- **Sideloading:** installing an app you signed yourself, outside the App Store. Here that's done through SideStore with a free Apple ID.
+- **Sideloading:** installing an app you signed yourself, outside the App Store. Here that's `xtool install` with a free Apple ID, re-run weekly.

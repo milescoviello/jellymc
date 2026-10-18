@@ -152,7 +152,7 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Instant Mix from song, album, artist, genre or playlist | M3 | Both | `/…/InstantMix` |
 | Synced lyrics (line and word-level), tap to seek | M3 | Both | `/Audio/{id}/Lyrics` |
 | Playlists: create, edit, reorder | M3 | Both | `/Playlists/{id}/Items/{itemId}/Move/{newIndex}` |
-| Lock screen, Control Center, Dynamic Island, AirPods controls | M3 | iOS | `audio_service` |
+| Lock screen, Control Center, Dynamic Island, AirPods controls | M3 | iOS | `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` |
 | KDE media applet, media keys, KDE Connect controls | M3 | Linux | MPRIS |
 | Streaming quality per network | M3 | Both | `/Audio/{id}/universal` |
 | Sleep timer | M3 | Both | |

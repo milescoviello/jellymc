@@ -2,82 +2,51 @@
 
 ## Decision
 
-**Flutter (Dart) for UI and all app logic. Playback goes through our own `PlayerEngine` interface, with libmpv on both platforms and AVPlayer on iOS.**
+**Native Swift on both platforms, sharing one core. This is the same architecture as the Music app (`milescoviello/music`).**
 
-| Platform | Engines | What each is for |
+| Layer | iPhone / iPad | Linux (KDE Plasma, Wayland) |
 |---|---|---|
-| **Linux** (this machine) | **libmpv**, the system library, through media_kit's Linux bindings (vendored), rendered into a Flutter texture | Plays everything in-app. Hardware decoding through VA-API on the Intel Arrow Lake iGPU. HDR is tone-mapped to SDR. |
-| | **libmpv in HDR window mode**: the same library, but mpv opens its own Wayland window with `vo=gpu-next` | Real HDR output on Plasma's HDR mode. Our app keeps driving playback and reporting while mpv draws its own on-screen controls. |
-| **iPhone / iPad** | **libmpv**, using media_kit's prebuilt iOS libmpv, so no Swift is needed | The long tail: MKV with styled ASS, PGS, DTS/TrueHD decoding, anything AVPlayer can't open. |
-| | **AVPlayer**, through an existing Flutter plugin (spike S3 picks one; see below) | The default when it can play the item, either directly or through a cheap server remux: PiP, AirPlay, HDR/Dolby Vision on the iPhone's OLED display, best battery life. |
+| UI | SwiftUI: the system's scrolling, swipe-back, tab bar and sheets | GTK 4 + libadwaita, through C interop and the small declarative wrapper the Music app's Linux build already has (`Linux/Sources/JellyCore/GTK`) |
+| Core | `App/Core`: Jellyfin client, models, session, device profiles, playback negotiation and reporting, queues, outbox, caches. Foundation-only, except for a few named Apple-only files. | **The same files**: `Linux/Sources/JellyCore/Core` is a symlink to `App/Core`. Apple-only files are excluded, and each has a Linux file of the same name and shape under `Platform/`. |
+| Video | **AVPlayer** (`AVPlayerViewController`): PiP, AirPlay, Dolby Vision/HDR, Now Playing, all from the system. The server remuxes to HLS (or transcodes) whatever AVPlayer can't open. | **libmpv** through its render API into a `GtkGLArea` (OpenGL via EGL), with VA-API decoding on the Arrow Lake iGPU. Every container, codec and subtitle format, including ASS with fonts. |
+| Music | AVQueuePlayer (gapless, background, lock screen) | libmpv, audio only (gapless with `gapless-audio`) |
+| Secrets | Keychain | libsecret (Secret Service) |
+| Media controls | MPNowPlayingInfoCenter / MPRemoteCommandCenter | MPRIS on D-Bus (Plasma's media applet, media keys, KDE Connect) |
+| Network status | `NWPathMonitor` | GIO `GNetworkMonitor` |
+| Keep awake | idle timer | `org.freedesktop.ScreenSaver` inhibit |
 
-Engine choice is a simple per-item rule, and you can override it (see [playback.md](playback.md#engine-selection)).
+There are no third-party Swift packages on iOS. On Linux, everything comes from system libraries through `systemLibrary` targets: gtk4, libadwaita-1, libsecret-1, mpv, egl.
 
-## Why Flutter, for iOS + Linux without a Mac
+## Why
 
-- **It's the only practical single codebase covering both platforms.**
-  - SwiftUI doesn't run on Linux, and GTK/Qt don't produce good iOS apps.
-  - React Native has no Linux target.
-  - Compose Multiplatform runs on both, but desktop video on its JVM target is do-it-yourself.
-  - Tauri's iOS WebView can't play MKV, styled ASS, or DTS/TrueHD.
-  - Fladder and Moonfin already ship Flutter Jellyfin clients on exactly this pair of platforms.
-- **The no-Mac constraint favours Flutter more than any other option.**
-  - Nearly all the app is Dart, which runs, hot-reloads and debugs on the Linux desktop build.
-  - iOS-specific pieces come from plugins that already contain working iOS code: media_kit, just_audio, audio_service, background_downloader, flutter_secure_storage. So we compile them in CI rather than write and debug Swift blind.
-- **The Linux build doubles as the iOS UI dev loop.** iPad landscape layouts are close to desktop layouts, and phone layouts get exercised by resizing the window or with `device_preview` (see [dev-workflow.md](dev-workflow.md#daily-loop-on-linux)).
+- **It's the pattern you already ship.** The Music app is native SwiftUI with no Mac anywhere in the loop. GitHub Actions compiles it, `xtool` installs it, and its Linux build shares the same Core (238 tests passing on Linux). Following the same layout keeps jellymc familiar, and Linux pieces can be copied across: the GTK wrapper, the libsecret Keychain, MPRIS, the GIO network monitor.
+- **Native iOS feel.** The system provides scrolling, swipe-back and the tab bar. `AVPlayerViewController` gives PiP (including auto-PiP when leaving the app), AirPlay, Dolby Vision on the OLED display, and the lock screen, with no plugin risk.
+- **The core is tested locally.** Swift 6.3.1 (installed with swiftly) builds and tests the shared Core on Linux, so most bugs are caught before a CI run. CI only has to confirm that the iOS-specific Swift compiles.
+- **mpv on the desktop** handles everything in the library at full fidelity. That makes Linux the "plays everything directly" client, while the iPhone leans on the server for the long tail.
 
-### Alternatives considered
+## Tradeoffs we accept
 
-| Option | One codebase for iOS + Linux | Workable without a Mac | Playback ceiling | Verdict |
-|---|---|---|---|---|
-| **Flutter + existing plugins** | Yes | Yes: CI builds iOS, and Swift stays minimal | High (mpv + AVPlayer) | **Chosen** |
-| Two native apps: SwiftUI + GTK4 (Rust) or Qt | No (two UIs) | **No**: SwiftUI work needs Xcode constantly | Highest on each platform | Rejected: double the UI work, and the iOS half can't really be developed without a Mac |
-| Kotlin Multiplatform + Compose | Yes | Partly (same CI approach) | Media players on iOS and JVM desktop are DIY | Rejected |
-| React Native / Expo | No Linux | Yes (EAS cloud builds) | Good on iOS (Streamyfin uses mpv) | Rejected: no Linux |
-| Tauri 2 | Yes | Yes (cloud builds) | Weak on iOS: WebView codec limits | Rejected |
-| Use Swiftfin/Streamyfin on iOS + Jellyfin Desktop on Linux | n/a | Yes | Good | Not the brief, but it's the bar to beat |
+- **Two UIs.** The UI is written twice (SwiftUI and GTK); the core once. The UI layer is thin: screens over shared view state from Core.
+- **iOS direct-play breadth is AVPlayer's.** MKV, styled ASS and PGS on the iPhone go through a server remux (cheap) or a transcode or burn-in. That uses the server's RTX 4070 Ti for NVENC. An mpv engine for iOS (MPVKit) is a later, optional milestone.
+- **The iOS UI is verified only on the device**, as with the Music app. Keep logic out of views so it lives in Core and gets tested on Linux.
 
-### Stack risks and mitigations
+## Rejected
 
-| Risk | Mitigation |
+| Option | Why not |
 |---|---|
-| media_kit on iOS: performance, HDR handling, and the `-framework Mpv` conflicts Moonfin hit when mixing it with another engine | Spike S2. Fall back to an MPVKit build, or to AVPlayer-only on iOS with server remux/transcode for the long tail. |
-| The AVPlayer plugin's maturity: candidates are around 0.2.x | Spike S3 evaluates `better_native_video_player` (AVPlayerViewController with PiP and auto-PiP on background) and `video_player` + `video_player_pip`. Fallback: our own ~1–2k-line Swift engine, compiled in CI. |
-| Flutter + media_kit on Wayland: Moonfin had to patch `media_kit_video` because frames stopped presenting when idle | Spike S1 on Plasma 6.7. Borrow Moonfin's patch if needed; its GPL licence is fine for a personal build. |
-| Hybrid graphics (Intel iGPU + NVIDIA) | Run on the Intel iGPU, which is the default with no PRIME offload. Use VA-API decoding: Arrow Lake's media engine handles HEVC 10-bit, VP9 and AV1. NVIDIA isn't needed for playback. |
-| The media plugin ecosystem has small maintainer pools | Pin versions. Vendor or fork when patches are needed. App code only sees our own interfaces. |
+| Flutter (the previous plan) | One UI codebase, but a non-native iOS feel, plugin risk around media (media_kit, AVPlayer PiP plugins), and it ignores a native workflow you've already proven |
+| React Native / Expo | No Linux |
+| Tauri / Electron | WebView codec limits on iOS; a web UI where the Music app deliberately has none |
+| Qt/QML + MpvQt on Linux | Excellent on Plasma, but in C++/QML it can't share the Swift core |
 
-## Library choices
-
-"Precedent" marks libraries already used by another Jellyfin Flutter client.
-
-| Concern | Choice | Notes |
-|---|---|---|
-| API client | **Generated** with `swagger_dart_code_generator` + `chopper` | Precedent: Fladder and Finamp run it against the Jellyfin spec. The spec is vendored at `tools/openapi/jellyfin-12.2.json` and regenerated on purpose, never at build time. Wrapped in a hand-written `JellyfinClient` facade. |
-| HTTP | `chopper` on `package:http`; on iOS, swap in `cupertino_http` (NSURLSession) | NSURLSession brings HTTP/2, the system VPN/proxy, and iOS certificate trust (so a self-signed CA installed as a profile just works) |
-| State | **Riverpod** | Precedent: Fladder, Moonfin, Finamp |
-| Navigation | `go_router` | Deep links (`jellymc://item/{itemId}`) |
-| Local DB | **drift** (SQLite) | Precedent: Fladder, Moonfin. Holds the offline cache, the download index, and the sync queue. |
-| Models | `freezed` + `json_serializable` | |
-| Secure storage | `flutter_secure_storage` | iOS Keychain. On Linux, libsecret talks to the Secret Service, which gnome-keyring-daemon provides on this machine. |
-| Downloads | `background_downloader` | Precedent: Fladder, Moonfin. iOS background `URLSession`; on Linux, runs in-process. |
-| Music | `just_audio` (AVQueuePlayer on iOS; `just_audio_media_kit` on Linux) + `audio_service` (Now Playing and remote commands on iOS) + `audio_service_mpris` (Linux) | Finamp's setup. Expect to fork, as Finamp did. |
-| Images | Our own cache keyed on `(itemId, imageType, tag, width)` + `flutter_blurhash` | Jellyfin image tags are content hashes, so a tagged URL is immutable: cache it forever and evict by size |
-| AirPlay | Route-picker button (`AVRoutePickerView`) through a tiny plugin | Video AirPlay comes for free with the AVPlayer engine |
-| Keep screen awake | `wakelock_plus` | The idle timer on iOS; the D-Bus screen-saver inhibit on Linux |
-| Linux desktop | `window_manager` (fullscreen, always-on-top mini-player), `tray_manager` (StatusNotifierItem on KDE), `flutter_local_notifications` | |
-| Layout preview | `device_preview` (dev builds only) | Phone and iPad frames on the Linux desktop |
-| Testing | `flutter_test`, `mocktail`, golden tests, `integration_test` on Linux | See [roadmap.md](roadmap.md#testing) |
-| Repo tooling | Dart pub workspace (app + `jellyfin_api`) and a `justfile` | No melos needed at this size |
-
-## Playback engine notes
+## Engines
 
 | Engine | Where | Strengths | Weaknesses |
 |---|---|---|---|
-| **libmpv** | Linux, iOS | Widest container and codec support (FFmpeg); libass for full ASS styling; PGS/VobSub; gapless; libplacebo tone-mapping; HDR passthrough on Wayland when mpv owns the window | The Flutter texture path is SDR. No PiP on iOS: that would need a sample-buffer-layer bridge, which is Swift-heavy and deferred. |
-| **AVPlayer** | iOS | Native PiP (including auto-PiP when leaving the app), AirPlay, Dolby Vision and HDR10 on the iPhone display, Atmos (E-AC-3 JOC), best battery life, Now Playing integration | No MKV and no ASS/PGS rendering. Needs a server remux (cheap) or a transcode for anything else. |
-| AetherEngine / VLCKit | iOS | Fallback options if media_kit's iOS libmpv disappoints (Moonfin uses AetherEngine on Apple) | Both need Swift glue, compiled in CI |
+| **libmpv** (render API → `GtkGLArea`) | Linux | Widest format support; libass; PGS/VobSub; libplacebo tone-mapping; VA-API; gapless audio | HDR is tone-mapped in-window. Real HDR output needs mpv's own window (`vo=gpu-next`), which is a later item. |
+| **AVPlayer** | iOS | PiP, AirPlay, DV/HDR10, Atmos (E-AC-3 JOC) to AirPods, Now Playing, best battery life | No MKV, no ASS/PGS rendering; needs server HLS for the rest |
+| MPVKit (later, optional) | iOS | Direct play of anything | Swift glue plus a large binary; no PiP |
 
 ## Licensing
 
-There are no constraints for a personal, sideloaded build. GPL builds of mpv and FFmpeg are fine. Code can be borrowed from GPL projects (Fladder GPL-3.0, Moonfin GPL-2.0, Findroid GPL-3.0). Codec patents and Jellyfin branding don't matter. **If you ever publish the app**, choose a licence compatible with whatever you borrowed (GPL), and revisit App Store constraints then.
+There are no constraints for a personal, sideloaded build. Code can be borrowed freely from your own Music app and from GPL projects.
