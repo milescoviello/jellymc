@@ -8,7 +8,7 @@ enum Style {
         gtk_css_provider_load_from_string(provider, css)
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), OpaquePointer(provider), UInt32(GTK_STYLE_PROVIDER_PRIORITY_APPLICATION))
         // The library looks best dark, as every media app does.
-        adw_style_manager_set_color_scheme(adw_style_manager_get_default(), ADW_COLOR_SCHEME_PREFER_DARK)
+        adw_style_manager_set_color_scheme(adw_style_manager_get_default(), ADW_COLOR_SCHEME_FORCE_DARK)
     }
 
     static let css = """

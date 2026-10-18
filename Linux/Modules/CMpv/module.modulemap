@@ -2,5 +2,6 @@ module CMpv [system] {
     header "CMpv.h"
     link "mpv"
     link "EGL"
+    link "epoxy"
     export *
 }

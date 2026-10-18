@@ -133,6 +133,22 @@ struct PlaybackPlan: Sendable, Equatable {
     }
 
     /// The server's reasons, readable: "VideoCodecNotSupported" becomes "video codec".
+    /// Whether the server sends the file's own video, repackaged: true for a remux even
+    /// when the server marks the source `SupportsDirectStream: false`, which it does for
+    /// an MKV it remuxes to HLS (its session then reports `IsVideoDirect`). Only a reason
+    /// about the video itself, or a subtitle to burn in, means re-encoding.
+    var videoIsCopied: Bool {
+        guard method == .transcode else { return true }
+        let encodes = ["RefFramesNotSupported", "AnamorphicVideoNotSupported", "InterlacedVideoNotSupported", "UnknownVideoStreamInfo"]
+        return !transcodeReasons.contains { $0.hasPrefix("Video") || $0.hasPrefix("Subtitle") || encodes.contains($0) }
+    }
+
+    /// How the play method reads in the stats panel: a remux is not a transcode.
+    var methodTitle: String {
+        if method == .transcode, videoIsCopied { return "Remux" }
+        return method.title
+    }
+
     var reasonSummary: String {
         transcodeReasons.map { reason in
             var words = ""

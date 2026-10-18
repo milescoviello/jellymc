@@ -29,7 +29,7 @@ case "$step" in
     server) remote+='JELLYMC_TESTSERVER=$HOME/jellymc-testserver sg docker -c tools/testserver/up.sh' ;;
     app) remote+='pkill -x jellymc || true; swift build -Xlinker --allow-shlib-undefined 2>&1 | grep -E "error:" || true; nohup setsid .build/debug/jellymc >/tmp/jellymc.log 2>&1 < /dev/null & sleep 3; tail -20 /tmp/jellymc.log' ;;
     log) remote+='tail -${1:-80} /tmp/jellymc.log' ;;
-    sh) remote+="$*" ;;
+    sh) remote+="set +eo pipefail; $*" ;;
     *) echo "unknown step $step" >&2; exit 2 ;;
 esac
 ssh -J "$JUMP" "$VM" "bash -c $(printf '%q' "$remote")"

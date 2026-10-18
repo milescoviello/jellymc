@@ -43,22 +43,23 @@ final class HomePage {
         guard let client = shell.state.client else { return }
         let ids = homeRows.map(\.id)
         if ids != order {
+            // Removing a row from the box destroys its widgets — handles do not own them —
+            // so a new order gets new rows rather than the old ones re-added.
             rows.removeAll()
-            var kept: [String: CardRow] = [:]
+            built = [:]
             for row in homeRows {
                 var more: (@MainActor () -> Void)?
                 if let id = row.libraryId {
                     more = { [weak self] in self?.shell.openLibrary(id) }
                 }
                 let kind = row.kind
-                let card = built[row.id] ?? CardRow(
+                let card = CardRow(
                     title: row.title, style: row.style, more: more,
                     activate: { [weak self] item in self?.activate(item, from: kind) }
                 )
-                kept[row.id] = card
+                built[row.id] = card
                 rows.append(card.root)
             }
-            built = kept
             order = ids
         }
         for row in homeRows {

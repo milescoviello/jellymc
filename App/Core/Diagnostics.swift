@@ -23,7 +23,9 @@ actor Diagnostics {
         entries.append(entry)
         if entries.count > limit { entries.removeFirst(entries.count - limit) }
         #if DEBUG || os(Linux)
-        print("[\(category)] \(entry.message)")
+        // stderr, not print: stdout is block-buffered when it is a file, and a crash takes
+        // the buffer with it.
+        FileHandle.standardError.write(Data("[\(category)] \(entry.message)\n".utf8))
         #endif
     }
 

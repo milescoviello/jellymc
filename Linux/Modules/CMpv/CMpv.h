@@ -1,3 +1,4 @@
+#include <epoxy/gl.h>
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
 #include <EGL/egl.h>
@@ -41,16 +42,14 @@ static inline mpv_render_context *cmpv_render_context_create(mpv_handle *mpv, vo
     return ctx;
 }
 
-// GL_FRAMEBUFFER_BINDING: GtkGLArea renders into its own framebuffer, not 0.
-typedef void (*cmpv_gl_get_integerv)(unsigned int, int *);
-
+// GtkGLArea renders into its own framebuffer, not 0. Through libepoxy, which GTK itself
+// uses, so the call resolves for whichever API (GL or GLES) the area was given.
 static inline int cmpv_current_framebuffer(void) {
-    static cmpv_gl_get_integerv get = 0;
-    if (!get) get = (cmpv_gl_get_integerv)eglGetProcAddress("glGetIntegerv");
-    int fbo = 0;
-    if (get) get(0x8CA6, &fbo);
+    GLint fbo = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
     return fbo;
 }
+
 
 static inline int cmpv_render(mpv_render_context *ctx, int width, int height) {
     mpv_opengl_fbo target = { .fbo = cmpv_current_framebuffer(), .w = width, .h = height, .internal_format = 0 };

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Drives the test desktop's real screen through distro-matrix (no agent in the guest):
+#
+#   tools/vm/ui shot NAME          screenshot to $JELLYMC_SHOTS/NAME.png
+#   tools/vm/ui click X Y          a left click at that pixel of the 1280x800 screen
+#   tools/vm/ui keys esc tab ret   QEMU key names
+#   tools/vm/ui type 'text'
+#
+# JELLYMC_VMID defaults to 920, distro-matrix's kubuntu2604.
+set -euo pipefail
+VMID=${JELLYMC_VMID:-920}
+DM=${DISTRO_MATRIX:-$HOME/distro-matrix}
+SHOTS=${JELLYMC_SHOTS:-${TMPDIR:-/tmp}/jellymc-shots}
+step=${1:?step}
+shift
+case "$step" in
+    shot) mkdir -p "$SHOTS"; "$DM/desktop/vmctl" shot "$VMID" "$SHOTS/${1:?name}.png" >/dev/null; echo "$SHOTS/$1.png" ;;
+    click) ssh root@100.105.58.62 python3 /root/distro-matrix-desktop/click.py "$VMID" "${1:?x}" "${2:?y}" 1280 800 ;;
+    keys) "$DM/desktop/vmctl" keys "$VMID" "$@" >/dev/null ;;
+    type) "$DM/desktop/vmctl" type "$VMID" "$*" >/dev/null ;;
+    *) echo "unknown step $step" >&2; exit 2 ;;
+esac

@@ -238,7 +238,7 @@ final class PlayerPage {
     private func statsText(_ session: PlaybackSession) -> String {
         guard let plan = session.plan else { return "Starting…" }
         var lines = [
-            "Method     \(plan.method.title)",
+            "Method     \(plan.methodTitle)",
             "Container  \(plan.source.container ?? "?")",
         ]
         if let video = plan.source.videoStream {

@@ -17,7 +17,13 @@ enum MainLoop {
         guard !installed else { return }
         installed = true
         let channel = g_io_channel_unix_new(_dispatch_get_main_queue_handle_4CF())
-        g_io_add_watch(channel, G_IO_IN, { _, _, _ in
+        g_io_add_watch(channel, G_IO_IN, { channel, _, _ in
+            // The handle is an eventfd, and draining the queue does not reset it: read it
+            // first, or it stays readable, this watch fires on every iteration at default
+            // priority, and GTK's redraws (a lower priority) never run — a window that is
+            // configured and never drawn.
+            var count: UInt64 = 0
+            _ = read(g_io_channel_unix_get_fd(channel), &count, MemoryLayout<UInt64>.size)
             _dispatch_main_queue_callback_4CF(nil)
             return 1
         }, nil)

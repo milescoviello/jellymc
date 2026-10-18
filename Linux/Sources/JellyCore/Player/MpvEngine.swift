@@ -44,7 +44,13 @@ final class MpvEngine: PlayerEngine {
         view = Widget(area).hexpand().vexpand()
         gtk_gl_area_set_auto_render(area.cast(), 0)
 
-        guard let handle = mpv_create() else { return }
+        // GTK sets the locale from the environment; libmpv refuses to start unless numbers
+        // are formatted the C way ("Non-C locale detected"), so that one category goes back.
+        setlocale(LC_NUMERIC, "C")
+        guard let handle = mpv_create() else {
+            Task { @MainActor [weak self] in self?.onEvent?(.failed("mpv could not start")) }
+            return
+        }
         self.handle = handle
         for (name, value) in [
             ("vo", "libmpv"),
@@ -105,6 +111,8 @@ final class MpvEngine: PlayerEngine {
         }
         guard let handle, render == nil else { return }
         render = cmpv_render_context_create(handle, cmpv_wayland_display(view.widget))
+        let api = gtk_gl_area_get_api(area) == GDK_GL_API_GLES ? "GLES" : "GL"
+        Task { await Diagnostics.shared.record("mpv", "render context \(self.render == nil ? "failed" : "created") on \(api)") }
         if let render {
             cmpv_set_update_area(render, view.widget)
         } else {
@@ -120,10 +128,17 @@ final class MpvEngine: PlayerEngine {
         self.render = nil
     }
 
+    private var draws = 0
+
     private func draw() -> Bool {
         guard let render else { return false }
         let scale = gtk_widget_get_scale_factor(view.widget)
-        _ = cmpv_render(render, view.width * scale, view.height * scale)
+        let result = cmpv_render(render, view.width * scale, view.height * scale)
+        draws += 1
+        if draws == 1 || result < 0 {
+            let size = "\(view.width * scale)x\(view.height * scale)"
+            Task { await Diagnostics.shared.record("mpv", "frame \(self.draws) at \(size): \(result < 0 ? String(cString: mpv_error_string(result)) : "ok")") }
+        }
         return true
     }
 

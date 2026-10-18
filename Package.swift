@@ -30,7 +30,7 @@ let package = Package(
     targets: [
         .systemLibrary(name: "CGtk", path: "Linux/Modules/CGtk", pkgConfig: "gtk4 libadwaita-1"),
         .systemLibrary(name: "CSecret", path: "Linux/Modules/CSecret", pkgConfig: "libsecret-1"),
-        .systemLibrary(name: "CMpv", path: "Linux/Modules/CMpv", pkgConfig: "mpv egl gtk4"),
+        .systemLibrary(name: "CMpv", path: "Linux/Modules/CMpv", pkgConfig: "mpv egl epoxy gtk4"),
         .target(
             name: "JellyCore",
             dependencies: ["CGtk", "CSecret", "CMpv"],

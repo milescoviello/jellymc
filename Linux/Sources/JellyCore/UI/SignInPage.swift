@@ -36,6 +36,8 @@ final class SignInPage {
         }
         let clamp = Clamp(form, maximum: 440)
         clamp.valign(GTK_ALIGN_CENTER).vexpand()
+        let field = address
+        clamp.onMap { field.grabFocus() }
         root = ToolbarView(content: clamp).top(HeaderBar().showsTitle(false))
         root.keep(self)
 

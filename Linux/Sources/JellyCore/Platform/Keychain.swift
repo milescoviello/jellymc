@@ -31,11 +31,11 @@ enum Keychain {
 
     private static func write(_ data: Data, account: String, label: String) {
         let secret = String(decoding: data, as: UTF8.self)
-        let stored = withAttributes(account) { attributes in
+        let stored = withDeadline(false) {
+            let attributes = attributesTable(account)
+            defer { g_hash_table_unref(attributes) }
             var error: UnsafeMutablePointer<GError>?
-            let ok = secret_password_storev_sync(
-                csecret_jellymc_schema(), attributes, "default", label, secret, nil, &error
-            )
+            let ok = secret_password_storev_sync(csecret_jellymc_schema(), attributes, "default", label, secret, nil, &error)
             if let error { g_error_free(error) }
             return ok != 0
         }
@@ -47,7 +47,12 @@ enum Keychain {
     }
 
     private static func read(account: String) -> Data? {
-        let found: Data? = withAttributes(account) { attributes in
+        // The file exists only because the keyring failed before; asking it again would
+        // mean waiting out the same failure on every launch.
+        if let data = try? Data(contentsOf: fallbackFile(account)) { return data }
+        return withDeadline(nil) { () -> Data? in
+            let attributes = attributesTable(account)
+            defer { g_hash_table_unref(attributes) }
             var error: UnsafeMutablePointer<GError>?
             let password = secret_password_lookupv_sync(csecret_jellymc_schema(), attributes, nil, &error)
             if let error { g_error_free(error) }
@@ -55,27 +60,50 @@ enum Keychain {
             defer { secret_password_free(password) }
             return Data(String(cString: password).utf8)
         }
-        return found ?? (try? Data(contentsOf: fallbackFile(account)))
     }
 
     private static func delete(account: String) {
-        withAttributes(account) { attributes in
+        try? FileManager.default.removeItem(at: fallbackFile(account))
+        withDeadline(()) {
+            let attributes = attributesTable(account)
+            defer { g_hash_table_unref(attributes) }
             var error: UnsafeMutablePointer<GError>?
             secret_password_clearv_sync(csecret_jellymc_schema(), attributes, nil, &error)
             if let error { g_error_free(error) }
         }
-        try? FileManager.default.removeItem(at: fallbackFile(account))
     }
 
-    private static func withAttributes<T>(_ account: String, _ body: (OpaquePointer?) -> T) -> T {
-        let table = g_hash_table_new(g_str_hash, g_str_equal)
-        defer { g_hash_table_unref(table) }
-        return "account".withCString { key in
-            account.withCString { value in
-                g_hash_table_insert(table, UnsafeMutableRawPointer(mutating: key), UnsafeMutableRawPointer(mutating: value))
-                return body(table)
-            }
+    /// The item's attributes, owning their strings: a call that outlives its deadline
+    /// keeps using them.
+    private static func attributesTable(_ account: String) -> OpaquePointer? {
+        let table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free)
+        g_hash_table_insert(table, g_strdup("account"), g_strdup(account))
+        return table
+    }
+
+    private final class Outcome<Value: Sendable>: @unchecked Sendable {
+        var value: Value?
+        let done = DispatchSemaphore(value: 0)
+    }
+
+    /// Runs a keyring call on a thread of its own and waits five seconds for it.
+    ///
+    /// KDE's ksecretd answers libsecret's first-use prompt (the wallet wizard) with a reply
+    /// libsecret does not expect, and the synchronous call then never returns, cancellable
+    /// or not. Past the deadline the call is abandoned, its thread left to it, and the
+    /// caller goes on as if there were no keyring.
+    @discardableResult
+    private static func withDeadline<Value: Sendable>(_ fallback: Value, _ call: @escaping @Sendable () -> Value) -> Value {
+        let outcome = Outcome<Value>()
+        Thread {
+            outcome.value = call()
+            outcome.done.signal()
+        }.start()
+        guard outcome.done.wait(timeout: .now() + 5) == .success else {
+            Task { await Diagnostics.shared.record("keyring", "the Secret Service did not answer within 5 s") }
+            return fallback
         }
+        return outcome.value ?? fallback
     }
 
     // MARK: - Without a keyring

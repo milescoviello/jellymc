@@ -50,7 +50,8 @@ final class AppState {
 
     /// Signs back in with the stored token, at whichever address answers.
     func restore() async {
-        guard let stored = Keychain.loadSession(), let first = stored.addresses.first.flatMap(URL.init(string:)) else {
+        let loaded = await Task.detached { Keychain.loadSession() }.value
+        guard let stored = loaded, let first = stored.addresses.first.flatMap(URL.init(string:)) else {
             phase = .signedOut
             return
         }
@@ -87,7 +88,7 @@ final class AppState {
             } catch {}
             self.client = client
             self.session = stored
-            Keychain.save(stored)
+            Self.persist(stored)
             isOffline = false
             await Diagnostics.shared.record("session", "connected to \(info.serverName ?? "server") \(info.version ?? "") at \(address)")
             await client.registerCapabilities(playableMediaTypes: ["Video", "Audio"], commands: ["Play", "Playstate", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"])
@@ -125,7 +126,7 @@ final class AppState {
                 isAdministrator: result.user.policy?.isAdministrator,
                 token: result.accessToken
             )
-            Keychain.save(stored)
+            Self.persist(stored)
             session = stored
             client = probe.signedIn(token: result.accessToken, userId: result.user.id)
             isOffline = false
@@ -147,7 +148,7 @@ final class AppState {
             }
             if !stored.addresses.contains(url.absoluteString) { stored.addresses.append(url.absoluteString) }
             session = stored
-            Keychain.save(stored)
+            Self.persist(stored)
             return
         }
         throw JellyfinError(kind: .transport, message: "Nothing answered at that address.")
@@ -157,12 +158,12 @@ final class AppState {
         guard var stored = session, stored.addresses.count > 1 else { return }
         stored.addresses.removeAll { $0 == address }
         session = stored
-        Keychain.save(stored)
+        Self.persist(stored)
     }
 
     func signOut(tellServer: Bool = true) async {
         if tellServer { await client?.logout() }
-        Keychain.clear()
+        Task.detached { Keychain.clear() }
         ResponseCache.clear()
         session = nil
         client = nil
@@ -189,5 +190,13 @@ final class AppState {
         case (172, 16 ... 31): return true
         default: return false
         }
+    }
+}
+
+extension AppState {
+    /// The keyring can be slow, or wait on a prompt (a desktop's first-use wallet wizard),
+    /// so it is never asked from the main actor.
+    nonisolated static func persist(_ session: StoredSession) {
+        Task.detached(priority: .utility) { Keychain.save(session) }
     }
 }

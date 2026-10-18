@@ -79,7 +79,7 @@ final class ItemPage {
     private func render() {
         guard let item = model.item, let client = shell.state.client else { return }
         backdrop.load(Artwork.backdrop(item, client, width: 1920) ?? Artwork.primary(item, client, width: 1280))
-        if let url = Artwork.logo(item, client, width: 800) {
+        if let url = Artwork.logo(item, client, width: 420) {
             logo.load(url)
             logo.visible(true)
             titleLabel.visible(false)

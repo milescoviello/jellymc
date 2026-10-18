@@ -120,19 +120,22 @@ final class PlaybackSession {
     private func makePlan(start: Double, audioIndex: Int?, subtitleIndex: Int?, mediaSourceId: String?, forceTranscode: Bool = false) async throws -> PlaybackPlan {
         var preferences = self.preferences
         if forceTranscode { preferences.forceTranscode = true }
+        // The server applies the audio and subtitle indexes only to the media source the
+        // request names; without one it quietly plays its own defaults.
+        let source = mediaSourceId ?? item.mediaSources?.first?.id ?? item.id
         let request = PlaybackInfoRequest(
             userId: client.userId,
             maxStreamingBitrate: preferences.maxBitrate,
             startTimeTicks: Ticks.from(seconds: start),
             audioStreamIndex: audioIndex,
             subtitleStreamIndex: subtitleIndex ?? -1,
-            mediaSourceId: mediaSourceId,
+            mediaSourceId: source,
             deviceProfile: DeviceProfiles.profile(for: engine.kind, preferences: preferences),
             enableDirectPlay: !forceTranscode
         )
         let response = try await client.playbackInfo(itemId: item.id, request: request)
         return try PlaybackPlan.make(
-            itemId: item.id, response: response, mediaSourceId: mediaSourceId,
+            itemId: item.id, response: response, mediaSourceId: source,
             startSeconds: start, audioIndex: audioIndex, subtitleIndex: subtitleIndex, client: client
         )
     }
