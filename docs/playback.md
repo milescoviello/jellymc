@@ -1,6 +1,6 @@
 # Playback
 
-Playback is the product. This doc covers the path from "user taps Play" to "server knows where they stopped". Endpoint names were checked against the 12.2 OpenAPI spec.
+Playback is the product. This doc covers the path from "tap Play" to "the server knows where you stopped", with mpv on Linux and iOS and AVPlayer on iOS. Endpoint names were checked against the 12.2 OpenAPI spec.
 
 ## End-to-end flow
 
@@ -9,14 +9,14 @@ sequenceDiagram
   participant UI as Player UI
   participant O as Orchestrator
   participant S as Jellyfin server
-  participant E as Engine (mpv / Media3 / AVPlayer)
+  participant E as Engine (mpv / AVPlayer)
 
   UI->>O: play(item, start?, audioIdx?, subIdx?)
-  O->>O: EngineSelector: predict best engine from item.MediaStreams
+  O->>O: EngineRule: pick engine from item.MediaStreams + context
   O->>O: DeviceProfileBuilder(engine × probes × settings)
   O->>S: POST /Items/{id}/PlaybackInfo {DeviceProfile, MaxStreamingBitrate, StartTimeTicks, indices}
   S-->>O: MediaSources[] {SupportsDirectPlay/DirectStream/Transcoding, TranscodingUrl}, PlaySessionId
-  O->>O: choose source + method, build URL (+ApiKey), gather external subs
+  O->>O: choose source + method, build URL (+ApiKey), gather subs and fonts
   O->>E: open(url, start, tracks, subtitle sidecars, fonts)
   O->>S: POST /Sessions/Playing (PlayMethod, PlaySessionId, indices)
   loop every 10 s and on pause/seek/track change
@@ -32,7 +32,7 @@ sequenceDiagram
 ```dart
 abstract interface class PlayerEngine {
   EngineId get id;
-  EngineCapabilities get capabilities; // containers, codecs, subtitle formats, hdrOutput, pip, airplay, passthrough
+  EngineCapabilities get capabilities; // containers, codecs, subtitle formats, hdrOutput, pip, airplay
   Future<void> open(PlaybackSource source, {Duration start = Duration.zero});
   Future<void> play();
   Future<void> pause();
@@ -42,133 +42,136 @@ abstract interface class PlayerEngine {
   Future<void> selectSubtitle(TrackRef? track);
   Future<void> addExternalSubtitle(Uri uri, {String? language, String? title});
   Stream<PlayerEvent> get events; // position, buffering, tracks, videoSize, hdrState, error, ended
-  Widget buildView(); // Texture for mpv; platform view for Media3/AVPlayer
+  Widget buildView(); // Texture for in-app mpv; platform view for AVPlayer; placeholder for the mpv HDR window
   Future<void> dispose();
 }
 ```
 
-`EngineCapabilities` is static per engine and platform. `PlatformProbe` adds what this device can do at runtime:
+Engines:
 
-- **Decoders:** `MediaCodecList` on Android, `VTIsHardwareDecodeSupported` on Apple, the mpv hwdec probe on desktop.
-- **Display:** HDR support.
-- **Audio route:** channel count, passthrough encodings (Android `AudioCapabilities`; a user setting on desktop).
+- `MpvEngine` (Linux and iOS): media_kit's libmpv, vendored.
+  - Linux has an extra **HDR window mode**: no render API. mpv creates its own Wayland toplevel with `vo=gpu-next` and `target-colorspace-hint=yes`, using mpv's on-screen controller. Our app keeps the session, reporting, queue and up-next logic, and drives mpv through the same interface.
+- `AvPlayerEngine` (iOS): wraps the AVPlayer plugin chosen in spike S3.
+
+`PlatformProbe` adds runtime facts on top of each engine's static `EngineCapabilities`:
+
+- **Hardware decoders:** `VTIsHardwareDecodeSupported` on iOS, which matters for AV1 (A17 Pro/M-series and newer). VA-API profiles on Linux.
+- **Display:** HDR/EDR headroom on iOS. Whether Plasma HDR is on, on Linux.
+- **Audio route:** headphones, AirPods (spatial), AirPlay, HDMI.
 
 ## Engine selection
 
-For each engine available on this platform, predict the outcome *locally* from `item.MediaSources[].MediaStreams` and the selected tracks:
+**Linux:**
 
-```
-predict(engine) -> { method: DirectPlay | DirectStream | Transcode,
-                     hdrPreserved: bool, subtitleFidelity: full | basic | burnIn }
+1. If the source is HDR, the "HDR output" setting is on, and the Plasma output is in HDR mode, use **mpv HDR window mode**.
+2. Otherwise use **mpv in-app** (tone-mapped if the source is HDR).
 
-score = { DirectPlay: 100, DirectStream: 60, Transcode: 0 }[method]
-      + (source is HDR && display is HDR && hdrPreserved ? 30 : 0)
-      + { full: 20, basic: 10, burnIn: 0 }[subtitleFidelity]
-      + context bonuses (AirPlay route active → AVPlayer +100;
-                         iOS PiP-on-background enabled → AVPlayer +40, unless the mpv PiP spike succeeds;
-                         Cast session active → hand off to Cast instead)
-```
+**iPhone / iPad:**
 
-- The highest score wins.
-- Ties go to the platform default: **Android → Media3**, **iOS → decided by spike S3**, **desktop → mpv**.
-- A user override, global or per item ("always use mpv"), beats the score.
-- We then call `PlaybackInfo` **once**, with the winner's profile, and trust the server's verdict.
+1. If an AirPlay video route is active, use **AVPlayer**.
+2. If AVPlayer can play the item **without re-encoding the video and without burning in subtitles**, use **AVPlayer**. That covers:
+   - direct play of MP4/MOV/M4V
+   - direct stream: the server remuxes MKV to HLS fMP4, and may transcode only the audio, for example TrueHD → E-AC-3
 
-Examples:
+   Subtitles must be none or plain text (served as WebVTT through HLS). This is the iOS default because it gives PiP, AirPlay, Dolby Vision/HDR, AirPods spatial audio, and the best battery life.
+3. If the item has **styled ASS** (and "keep ASS styling" is on, the default), **PGS/VobSub**, or anything else AVPlayer can't take, use **mpv**, with direct play and full fidelity.
+   - PiP isn't available on mpv. The player shows a hint with a "play with AVPlayer instead" option, where the server burns in the subtitles.
+4. If neither can play it without a video transcode, **transcode through AVPlayer** (HLS).
 
-- **HEVC 10-bit MKV with styled ASS on Android.** Media3 direct-plays but with basic ASS (110). mpv direct-plays with full ASS (120). **mpv wins.**
-- **Dolby Vision P8.1 MP4 with SRT, on Android with an HDR display.** Media3 scores 100 + 30 + 20 = 150; mpv tone-maps, so 120. **Media3 wins.**
-- **MKV H.264 with PGS on iOS.** mpv: DirectPlay with full subtitles (120). AVPlayer: DirectStream (HLS remux) with PGS burned in, which is really a transcode (0). **mpv wins.**
+**Overrides:** global ("always mpv" or "always AVPlayer") and per series, remembered. Offline: transcoded downloads (MP4) go to AVPlayer; original MKV downloads go to mpv.
+
+**Examples:**
+
+- **HEVC 10-bit MKV with styled ASS (typical anime) on iPhone:** mpv, direct play.
+- **Dolby Vision P8.1 MKV with SRT on iPhone:** AVPlayer, through a server remux to HLS fMP4 with WebVTT. You get DV on the OLED display and PiP.
+- **4K HDR10 HEVC on Linux with Plasma HDR on:** mpv HDR window. With HDR off, mpv in-app, tone-mapped.
 
 ## Device profile builder
 
 Output: a `DeviceProfile` with `DirectPlayProfiles`, `TranscodingProfiles`, `CodecProfiles`, `SubtitleProfiles` and `ContainerProfiles`, plus `MaxStreamingBitrate`, `MaxStaticBitrate` and `MusicStreamingTranscodingBitrate`.
 
-- **DirectPlayProfiles:** per engine, the containers and codecs it can play, intersected with the probed hardware decoders. Software-decoded codecs (for example AV1 through dav1d on older phones) are allowed up to a resolution cap.
+| | mpv (Linux) | mpv (iOS) | AVPlayer (iOS) |
+|---|---|---|---|
+| Containers | Effectively everything FFmpeg reads: mkv, mp4, mov, webm, ts/m2ts, avi, … | same | mp4, m4v, mov; HLS (fMP4) |
+| Video | h264, hevc (8/10-bit), vp9, av1 via VA-API on Arrow Lake; mpeg2, vc1, mpeg4 in software | h264, hevc via VideoToolbox; av1 via hardware where available, else dav1d up to a resolution cap; the rest in software | h264, hevc; av1 only where `VTIsHardwareDecodeSupported`; DV profiles 5 and 8 |
+| Audio | everything (decoded); passthrough optional (HDMI) | everything (decoded) | aac, ac3, eac3 (+ Atmos JOC), alac, flac, mp3. TrueHD and DTS go to a server audio transcode. |
+| Subtitles | all, Embed/External | all, Embed/External | text → Hls (WebVTT); styled ASS/PGS/VobSub → Encode (burn-in) |
+
 - **CodecProfiles** carry conditions on `VideoProfile`, `VideoLevel`, `VideoBitDepth`, `VideoRangeType`, `RefFrames`, `Width`/`Height`, `VideoFramerate` and `AudioChannels`.
-  - **Declare HDR range types the engine can tone-map**, so the server doesn't spend GPU on server-side tone-mapping when the client could do it for free.
-- **TranscodingProfiles:**
-  - Video: HLS with fMP4 segments, HEVC if the device has a hardware HEVC decoder, else H.264. Audio: AAC, plus AC-3/E-AC-3 if passthrough is available.
-  - Music: a separate profile (Opus or AAC at the configured bitrate).
-- **SubtitleProfiles:** see the matrix below.
-- **Settings inputs:** max resolution; bitrate for Wi-Fi, cellular and remote; "allow HEVC/AV1"; force transcode; audio passthrough on/off; max audio channels.
-- **Auto bitrate for remote connections:** measure with `GET /Playback/BitrateTest?size=`, and use 80% of the result as `MaxStreamingBitrate`.
-- **Unit-tested:** the builder is pure Dart, with snapshot tests of the generated profile for every (platform, engine, probe fixture) combination.
+  - **Declare the HDR range types mpv can tone-map**, so the server never spends its GPU on tone-mapping that the client can do for free.
+- **TranscodingProfiles:** HLS fMP4, HEVC (all your Apple devices and the Linux iGPU decode it in hardware) with H.264 as fallback. Audio is AAC, or E-AC-3 when the route can use it. Music has its own profile (AAC or Opus at the configured bitrate).
+- **Settings inputs:** max resolution, bitrate for LAN, remote and cellular, force transcode, "keep ASS styling", max audio channels, Linux HDMI passthrough.
+- **Auto bitrate when remote:** measure with `GET /Playback/BitrateTest?size=` on connect and after network changes, and use 80% of the result.
+- **Unit-tested:** the builder is pure Dart, with snapshot tests per (engine, probe fixture), and runs on Linux CI.
 
 ## Choosing the source and building URLs
 
-- **Versions:** an item can have several `MediaSources`, for example 4K and 1080p. Remember the user's choice per series.
+- **Versions:** an item can have several `MediaSources`, for example 4K and 1080p. Remember the choice per series. On cellular, default to the smaller version.
 - **URLs by method:**
   - **Direct play:** `/Videos/{id}/stream?static=true&MediaSourceId=…&PlaySessionId=…&ApiKey=…`.
-  - **Direct stream / transcode:** the server's `TranscodingUrl`. Append `ApiKey` if it's missing. Don't hand-build HLS URLs; the dynamic HLS routes aren't in the published spec.
+  - **Direct stream / transcode:** the server's `TranscodingUrl`. Append `ApiKey` if it's missing. Never hand-build HLS URLs; those routes aren't in the published spec.
   - **Music:** `/Audio/{id}/universal`.
-- **Headers to engines:** mpv takes `http-header-fields`, and Media3 takes `DataSource` headers. AVPlayer header injection isn't public API, so query-string auth is the portable path.
-- **`RequiredHttpHeaders` on a MediaSource** must be forwarded to the engine.
-- **Live TV:** call `PlaybackInfo` with `AutoOpenLiveStream=true`. If the MediaSource says `RequiresClosing`, call `POST /LiveStreams/Close` with its `LiveStreamId` on stop.
+- **Headers:** mpv takes `http-header-fields`. AVPlayer gets auth through the query string. Forward a MediaSource's `RequiredHttpHeaders` to the engine.
+- **Live TV** (M5, only if you have tuners): call `PlaybackInfo` with `AutoOpenLiveStream=true`. If the MediaSource says `RequiresClosing`, call `POST /LiveStreams/Close` with its `LiveStreamId` on stop.
 
 ## Subtitles
 
-| Format | mpv | Media3 | AVPlayer |
-|---|---|---|---|
-| SRT / SubRip | Embed / External | Embed / External | **Hls** (server serves WebVTT) |
-| WebVTT | Embed / External | Embed / External | Hls |
-| ASS / SSA | **Embed / External, full libass styling** | External (basic styling); Encode for full fidelity | **Encode** (burn-in) |
-| PGS | Embed | Embed | Encode |
-| VobSub / DVB | Embed | Embed (verify per format) | Encode |
+| Format | mpv | AVPlayer |
+|---|---|---|
+| SRT / SubRip, WebVTT | Embed / External | Hls (WebVTT) |
+| ASS / SSA | **Embed / External, full libass styling** | Hls as plain text (styling lost; only when "keep ASS styling" is off), else Encode |
+| PGS, VobSub, DVB | Embed | Encode (burn-in) |
 
-- **Fonts for ASS:** embedded MKV attachments come with direct play. For external or HLS delivery, fetch attachments from `/Videos/{videoId}/{mediaSourceId}/Attachments/{index}`, plus the server-configured fallback fonts (`/FallbackFont/Fonts`), and point mpv's `sub-fonts-dir` at them.
-- **External subtitle streams:** `/Videos/{id}/{mediaSourceId}/Subtitles/{index}/Stream.{format}`, with a start-ticks variant for transcodes that start mid-file.
-- **Choosing a default track:**
-  1. The user's default language per audio language. Example: "English audio → no subs; Japanese audio → English subs".
-  2. Then forced tracks.
-  3. Then the server's `DefaultSubtitleStreamIndex`.
-- **Styling:** text size, colour, outline, background, position, and "override ASS styles" (mpv `sub-ass-override`). These roam through DisplayPreferences.
-- **Online subtitle search** (`/Items/{id}/RemoteSearch/Subtitles/{language}`) is exposed when the server has a subtitle provider plugin.
+- **Fonts for ASS:** direct play of an MKV brings its font attachments. For external or HLS delivery, fetch attachments from `/Videos/{videoId}/{mediaSourceId}/Attachments/{index}` and the server's fallback fonts (`/FallbackFont/Fonts`), then set mpv's `sub-fonts-dir`. Downloads keep the fonts too.
+- **External subtitle streams:** `/Videos/{id}/{mediaSourceId}/Subtitles/{index}/Stream.{format}`, with a start-ticks variant for mid-file transcodes.
+- **Default track rules** use your language preferences per audio language, for example "Japanese audio → English subs; English audio → none (forced only)". Then forced flags, then the server's `DefaultSubtitleStreamIndex`.
+- **Styling:** size, colour, outline, background, vertical position, and "override ASS styles" (mpv `sub-ass-override`). It roams between devices through DisplayPreferences. The AVPlayer engine applies what it can through text-style rules.
 
 ## HDR and Dolby Vision
 
-| Source | Desktop (mpv, texture) | Android, Media3 | Android, mpv | iOS/macOS, AVPlayer | iOS, mpv |
-|---|---|---|---|---|---|
-| HDR10 / HDR10+ | Tone-map with libplacebo (v1). Passthrough through a native window later | HDR output if display supports it | Tone-map | HDR via HLS fMP4 remux | Tone-map |
-| HLG | Tone-map | HDR | Tone-map | HDR | Tone-map |
-| DV profile 5 | Tone-map (libplacebo handles DV reshaping) | DV if the device has a DV decoder, else mpv | Tone-map | DV on supported hardware | Tone-map |
-| DV profile 7 (Blu-ray dual-layer) | Base layer → tone-map | HDR10 base layer. P7→P8.1 conversion is a later stretch goal | Tone-map | HDR10 base layer through remux | Tone-map |
-| DV profile 8.1 / 8.4 | HDR10/HLG base → tone-map | DV or HDR10 | Tone-map | DV | Tone-map |
+| Source | Linux, mpv in-app | Linux, mpv HDR window (Plasma HDR on) | iOS, AVPlayer | iOS, mpv |
+|---|---|---|---|---|
+| HDR10 / HDR10+ | Tone-map (libplacebo) | HDR passthrough | HDR (EDR) | Tone-map |
+| HLG | Tone-map | HDR | HDR | Tone-map |
+| DV profile 5 | Tone-map (libplacebo DV reshaping) | HDR via libplacebo | **Dolby Vision** (through an HLS fMP4 remux; verify in S3) | Tone-map |
+| DV profile 7 (Blu-ray dual-layer) | Base layer, tone-mapped | HDR10 base layer | HDR10 base layer through remux | Tone-map |
+| DV profile 8.1 / 8.4 | Tone-map | HDR | **Dolby Vision** | Tone-map |
 
-- **Use `VideoRangeType`** (`HDR10`, `HDR10Plus`, `HLG`, `DOVI`, `DOVIWithHDR10`, `DOVIWithEL`, …) from the media streams both for engine prediction and in `CodecProfiles` conditions.
-- **1.0 promise:** every HDR title plays with correct colours everywhere (tone-mapped or real HDR), without server-side tone-mapping.
-- **Post-1.0:** true HDR output on desktop.
+- **Use `VideoRangeType`** (`HDR10`, `HDR10Plus`, `HLG`, `DOVI`, `DOVIWithHDR10`, `DOVIWithEL`, …) from the media streams for engine choice and in `CodecProfiles` conditions.
+- **Promise:** every HDR title plays with correct colours on both platforms without server-side tone-mapping. It's true HDR on the iPhone through AVPlayer, and on Linux through the HDR window.
 
 ## Audio
 
-- **Passthrough:**
-  - Desktop mpv: `audio-spdif=ac3,eac3,dts,dts-hd,truehd` when the user enables a receiver. The profile then declares those codecs with up to 8 channels.
-  - Android: Media3 with the encodings reported by `AudioCapabilities` over HDMI or ARC.
-  - Apple: AVPlayer for E-AC-3 JOC (Atmos) to AirPlay/HDMI. Other formats are decoded to multichannel PCM.
-- **Downmix** to the route's channel count, so headphones mean stereo. A "night mode" (dynamic range compression, through mpv filters) comes later.
-- Playback speed from 0.5× to 3× with pitch correction, mainly for audiobooks and lectures.
+- **iOS:**
+  - AVPlayer passes E-AC-3 JOC (Atmos) to AirPods spatial audio and AirPlay.
+  - TrueHD and DTS sources go through a server audio-only transcode (cheap), or through mpv decoding to PCM when mpv is the engine.
+  - The audio session uses the `.playback` category with the `moviePlayback` mode.
+- **Linux:** decode to PipeWire and downmix to the sink's channel count. An HDMI passthrough option (`audio-spdif=ac3,eac3,dts,dts-hd,truehd`) is available for an AV receiver.
+- **Speed:** 0.5×–3× with pitch correction.
 
 ## Track switching and seeking
 
-- **Direct play:** switch tracks inside the engine. That's instant, and no server call is needed beyond a progress report.
-- **Direct stream / transcode:** call `PlaybackInfo` again with the new `AudioStreamIndex`/`SubtitleStreamIndex` at the current position, then swap the engine source. The old transcode ends with `Stopped` for the old `PlaySessionId`.
-- **Seeking:** in HLS transcodes, seeking beyond the transcoded range restarts the transcode server-side. Show buffering, and don't spam seeks; debounce scrubbing to the final position.
+- **Direct play:** switch in the engine. That's instant, and a progress report is the only server call.
+- **Direct stream / transcode:** call `PlaybackInfo` again with the new `AudioStreamIndex`/`SubtitleStreamIndex` at the current position, then swap the source. The old session ends with `Stopped` for the old `PlaySessionId`.
+- **Seeking:** in transcodes, seeking past the transcoded range restarts the encode. Debounce scrubbing to the final position and show buffering.
 
 ## Reporting
 
 - **`POST /Sessions/Playing`** on start, with `ItemId`, `MediaSourceId`, `PlaySessionId`, `PlayMethod`, `AudioStreamIndex`, `SubtitleStreamIndex`, `PositionTicks`, `CanSeek` and `NowPlayingQueue`.
-- **`POST /Sessions/Playing/Progress`** every 10 s while playing, and immediately on pause, resume, seek, track change, rate change and volume change. It includes `IsPaused`, `RepeatMode` and `PlaybackOrder`.
-- **`POST /Sessions/Playing/Stopped`** with the final position. The server decides "played" vs "resume point" based on its configured thresholds, so we don't duplicate that logic.
-- **`POST /Sessions/Playing/Ping`** with the `PlaySessionId` during long pauses of transcodes, so the server doesn't kill the encode.
+- **`POST /Sessions/Playing/Progress`** every 10 s, and immediately on pause, resume, seek, track change, rate change and volume change. It includes `IsPaused`, `RepeatMode` and `PlaybackOrder`.
+- **`POST /Sessions/Playing/Stopped`** with the final position. The server decides "played" vs "resume point" from its thresholds.
+  - **On iOS, also send it when the app is backgrounded or terminated during playback.** Otherwise a swiped-away app leaves a stale session.
+- **`POST /Sessions/Playing/Ping`** during long pauses of transcodes.
 - **Offline playback** writes progress to the sync queue (see [architecture.md](architecture.md#data-repositories-cache-sync)).
 
 ## Skip, chapters, trickplay, up next
 
-- **Media segments:** if `MediaSource.HasSegments`, fetch `GET /MediaSegments/{itemId}`. The types are Intro, Outro, Recap, Preview, Commercial and Unknown. A per-type setting chooses **Ask** (a Skip button visible during the segment), **Auto-skip**, or **Ignore**.
+- **Media segments:** if `MediaSource.HasSegments`, fetch `GET /MediaSegments/{itemId}`. The types are Intro, Outro, Recap, Preview, Commercial and Unknown.
+  - A per-type setting chooses **Ask** (a Skip button during the segment), **Auto-skip**, or **Ignore**.
   - Defaults: Intro/Recap/Preview = Ask, Commercial = Auto-skip, Outro = start "Up next".
-  - Segments come from server plugins such as Intro Skipper. We need nothing plugin-specific.
-- **Up next:** begins at the Outro segment, or at runtime minus 30 s if there's no Outro. A countdown card (10 s by default) shows the next item from `/Shows/NextUp` or from the queue. "Are you still watching?" appears after 3 consecutive autoplays without input (configurable).
-- **Chapters:** seekbar markers plus a chapter list with images (`/Items/{id}/Images/Chapter/{index}`), and next/previous chapter shortcuts.
+  - Segments come from server plugins such as Intro Skipper.
+- **Up next:** begins at the Outro segment, or at runtime minus 30 s if there's no Outro. A countdown card (10 s by default) shows the next item from `/Shows/NextUp` or from the queue. "Still watching?" appears after 3 autoplays without input.
+- **Chapters:** seekbar markers plus a chapter list with images (`/Items/{id}/Images/Chapter/{index}`), and next/previous chapter controls and keys.
 - **Trickplay:** `item.Trickplay[mediaSourceId]` maps widths to `{TileWidth, TileHeight, Interval, ThumbnailCount}`.
   - Pick the width nearest the display target.
   - The tile image index is `floor(t / Interval / (TileWidth × TileHeight))`.
@@ -176,22 +179,20 @@ Output: a `DeviceProfile` with `DirectPlayProfiles`, `TranscodingProfiles`, `Cod
 
 ## Fallback chain
 
-1. The engine fails to open or decode. If another engine predicts DirectPlay or DirectStream, retry once with it.
+1. The engine fails to open or decode. On iOS, retry once with the other engine if it can play without a video transcode.
 2. Still failing: call `PlaybackInfo` again with `EnableDirectPlay=false`, forcing a remux or transcode.
 3. Still failing: transcode to the most compatible profile (H.264 SDR + AAC stereo) at a lower bitrate.
-4. Then show a clear error, with the reason, the engine log excerpt, and "Send logs to server" (`/ClientLog/Document`).
+4. Then show an error with the reason, a log excerpt, and "Send logs to server".
 
-**Every step is visible in the playback info overlay** (stats for nerds): engine, play method, the server's `TranscodeReasons` (taken from the `TranscodingUrl`), codecs, resolution, HDR state, bitrate, buffer, and dropped frames. This is also the most useful bug-report artifact we can get.
+**The stats overlay** shows the engine, play method, the server's `TranscodeReasons` (from the `TranscodingUrl`), codecs, resolution, HDR state, bitrate, buffer, and dropped frames. It's the first stop when debugging, especially on the iPhone, where there's no debugger.
 
-## Conformance suite
+## Testing playback against your own library
 
-A fixture library runs against every engine on every platform. The expected play method and a pass/fail result for each cell are committed as a matrix (`tools/fixtures/matrix.md`), and CI flags regressions.
+A synthetic codec matrix would mostly test things you don't own. Test what's actually on your server instead.
 
-- **Containers:** MKV, MP4, MOV, WebM, MPEG-TS/M2TS, AVI.
-- **Video:** H.264 (High, High10, interlaced), HEVC Main/Main10, AV1 10-bit, VP9 profile 2, MPEG-2, VC-1.
-- **HDR:** HDR10, HDR10+, HLG, DV P5, P7 (FEL and MEL), P8.1, P8.4.
-- **Audio:** AAC LC/HE, MP3, Opus, Vorbis, FLAC 24/96, ALAC, AC-3 5.1, E-AC-3 + JOC, DTS, DTS-HD MA, TrueHD (+ Atmos), multichannel PCM.
-- **Subtitles:** SRT, WebVTT, styled ASS with attached fonts, PGS, VobSub, DVB, sidecar files, forced flags, multiple languages.
-- **Edge cases:** multiple versions, multi-part files (`/Videos/{id}/AdditionalParts`), anamorphic video, rotation metadata, variable frame rate, 100 Mbps UHD remux, files over 3 hours, missing duration, Live TV stream.
-
-Most fixtures can be generated with FFmpeg in `tools/fixtures/`. Dolby Vision and Atmos samples need redistributable sources, so collect them in M0.
+- **Library census** (`just census`, a Dart CLI in `tools/census/`):
+  1. Pages through `/Items?Recursive=true&IncludeItemTypes=Movie,Episode,Video,MusicVideo&Fields=MediaSources,MediaStreams`.
+  2. Buckets every media source by (container, video codec, profile and bit depth, `VideoRangeType`, audio codec and channels, subtitle codecs).
+  3. Writes `tools/census/report.md` with counts and one sample item per bucket.
+- **The playback checklist is generated from the census:** the buckets covering about 99% of items, plus every HDR/DV and every image-subtitle bucket. Each one is run on Linux (in-app, and the HDR window where relevant) and on the iPhone (the engine the rule picks, plus a forced other engine). The expected play method and pass/fail go into `tools/census/checklist.md`, which is re-run before every "release".
+- **CI smoke tests on Linux:** a handful of FFmpeg-generated clips in `tools/fixtures/` (H.264/AAC MP4, HEVC 10-bit MKV with ASS, AV1, PGS). The mpv engine must open each one, play 2 s, seek, and switch tracks.
