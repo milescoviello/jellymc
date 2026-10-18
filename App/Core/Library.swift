@@ -262,6 +262,20 @@ final class ItemModel {
                 if let seriesId = item.seriesId {
                     episodes = (try? await client.episodes(seriesId: seriesId, seasonId: id)) ?? []
                 }
+            case .person?, .musicArtist?:
+                var query = ItemQuery()
+                query.recursive = true
+                query.sort = .premiere
+                query.descending = true
+                query.limit = 300
+                if item.type == .person {
+                    query.personIds = [id]
+                    query.includeItemTypes = [.movie, .series]
+                } else {
+                    query.artistIds = [id]
+                    query.includeItemTypes = [.musicAlbum]
+                }
+                children = (try? await client.items(query).items) ?? []
             case .musicAlbum?, .playlist?, .boxSet?, .folder?, .collectionFolder?:
                 var query = ItemQuery()
                 query.parentId = id

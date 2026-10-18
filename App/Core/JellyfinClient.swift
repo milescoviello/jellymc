@@ -465,6 +465,8 @@ struct ItemQuery: Sendable, Equatable {
     var descending = false
     var filters: [Filter] = []
     var genres: [String] = []
+    var personIds: [String] = []
+    var artistIds: [String] = []
     var searchTerm: String?
     var startIndex = 0
     var limit = 100
@@ -490,6 +492,8 @@ struct ItemQuery: Sendable, Equatable {
         }
         if !filters.isEmpty { query["filters"] = filters.map(\.rawValue).joined(separator: ",") }
         if !genres.isEmpty { query["genres"] = genres.joined(separator: "|") }
+        if !personIds.isEmpty { query["personIds"] = personIds.joined(separator: ",") }
+        if !artistIds.isEmpty { query["albumArtistIds"] = artistIds.joined(separator: ",") }
         return query
     }
 }

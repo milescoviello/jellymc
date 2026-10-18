@@ -1,0 +1,156 @@
+import CGtk
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+/// Artwork from the server, decoded once and kept.
+///
+/// Jellyfin's image URLs carry the image's tag, a hash of its content, so a URL never
+/// changes meaning: what is on disk is good forever, and only space evicts it.
+@MainActor
+final class Images {
+    static let shared = Images()
+
+    private var memory: [URL: Texture] = [:]
+    private var order: [URL] = []
+    private var inFlight: [URL: [(Texture?) -> Void]] = [:]
+    private let limit = 400
+    private let directory: URL = {
+        let url = Paths.cache.appendingPathComponent("images", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }()
+
+    func cached(_ url: URL) -> Texture? { memory[url] }
+
+    /// Calls back on the main actor with the texture, or nil if there is none.
+    func load(_ url: URL, _ done: @escaping @MainActor (Texture?) -> Void) {
+        if let texture = memory[url] {
+            done(texture)
+            return
+        }
+        if inFlight[url] != nil {
+            inFlight[url]?.append(done)
+            return
+        }
+        inFlight[url] = [done]
+        let file = directory.appendingPathComponent(Self.key(url))
+        Task.detached(priority: .utility) {
+            var texture: Texture?
+            if let data = try? Data(contentsOf: file) {
+                texture = Texture(data: data)
+            }
+            if texture == nil, let (data, response) = try? await URLSession.shared.data(from: url),
+               (response as? HTTPURLResponse)?.statusCode == 200 {
+                texture = Texture(data: data)
+                if texture != nil { try? data.write(to: file, options: .atomic) }
+            }
+            let result = Unchecked(texture)
+            await MainActor.run { Images.shared.finish(url, result.value) }
+        }
+    }
+
+    private func finish(_ url: URL, _ texture: Texture?) {
+        if let texture {
+            memory[url] = texture
+            order.append(url)
+            if order.count > limit {
+                memory[order.removeFirst()] = nil
+            }
+        }
+        let waiting = inFlight.removeValue(forKey: url) ?? []
+        for done in waiting { done(texture) }
+    }
+
+    private static func key(_ url: URL) -> String {
+        // FNV-1a: stable across runs, unlike Swift's hashValue.
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in url.absoluteString.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100_0000_01b3
+        }
+        return String(hash, radix: 16)
+    }
+}
+
+extension Picture {
+    /// Shows `url`'s image once loaded, unless the picture has been given another since.
+    func load(_ url: URL?) {
+        let pointer = widget
+        g_object_set_data(pointer.gobject, "jellymc-url", nil)
+        guard let url else {
+            set(nil)
+            return
+        }
+        if let texture = Images.shared.cached(url) {
+            set(texture)
+            return
+        }
+        set(nil)
+        let token = Unmanaged.passRetained(url.absoluteString as NSString)
+        g_object_set_data_full(pointer.gobject, "jellymc-url", token.toOpaque()) { data in
+            guard let data else { return }
+            Unmanaged<NSString>.fromOpaque(data).release()
+        }
+        let weak = WeakObject(pointer)
+        Images.shared.load(url) { texture in
+            weak.withObject { object in
+                guard let data = g_object_get_data(object.assumingMemoryBound(to: GObject.self), "jellymc-url"),
+                      Unmanaged<NSString>.fromOpaque(data).takeUnretainedValue() as String == url.absoluteString
+                else { return }
+                gtk_picture_set_paintable(OpaquePointer(object), texture?.paintable)
+            }
+        }
+    }
+}
+
+/// The image a card shows for an item: its own, or its series' or album's when it has none.
+enum Artwork {
+    static func primary(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
+        if let tag = item.imageTags?["Primary"] {
+            return client.imageURL(itemId: item.id, tag: tag, maxWidth: width)
+        }
+        if let seriesId = item.seriesId, let tag = item.seriesPrimaryImageTag {
+            return client.imageURL(itemId: seriesId, tag: tag, maxWidth: width)
+        }
+        if let albumId = item.albumId, let tag = item.albumPrimaryImageTag {
+            return client.imageURL(itemId: albumId, tag: tag, maxWidth: width)
+        }
+        return nil
+    }
+
+    /// 16:9: an episode's still, or a film's thumb or backdrop.
+    static func landscape(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
+        if item.type == .episode, let tag = item.imageTags?["Primary"] {
+            return client.imageURL(itemId: item.id, tag: tag, maxWidth: width)
+        }
+        if let tag = item.imageTags?["Thumb"] {
+            return client.imageURL(itemId: item.id, type: "Thumb", tag: tag, maxWidth: width)
+        }
+        if let id = item.parentThumbItemId, let tag = item.parentThumbImageTag {
+            return client.imageURL(itemId: id, type: "Thumb", tag: tag, maxWidth: width)
+        }
+        return backdrop(item, client, width: width) ?? primary(item, client, width: width)
+    }
+
+    static func backdrop(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
+        if let tag = item.backdropImageTags?.first {
+            return client.imageURL(itemId: item.id, type: "Backdrop", tag: tag, maxWidth: width, index: 0)
+        }
+        if let id = item.parentBackdropItemId, let tag = item.parentBackdropImageTags?.first {
+            return client.imageURL(itemId: id, type: "Backdrop", tag: tag, maxWidth: width, index: 0)
+        }
+        return nil
+    }
+
+    static func logo(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
+        if let tag = item.imageTags?["Logo"] {
+            return client.imageURL(itemId: item.id, type: "Logo", tag: tag, maxWidth: width)
+        }
+        if let id = item.parentLogoItemId, let tag = item.parentLogoImageTag {
+            return client.imageURL(itemId: id, type: "Logo", tag: tag, maxWidth: width)
+        }
+        return nil
+    }
+}

@@ -302,6 +302,8 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
     var width: Int?
     var height: Int?
     var locationType: String?
+    /// A cast or crew member's part, when a person is shown as an item.
+    var role: String?
 
     var title: String { name ?? "Untitled" }
 
@@ -339,6 +341,8 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
             return albumArtist ?? artists?.first
         case .season?:
             return seriesName
+        case .person?:
+            return role
         default:
             return productionYear.map(String.init)
         }
