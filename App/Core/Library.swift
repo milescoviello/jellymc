@@ -35,6 +35,9 @@ final class HomeModel {
     private(set) var isLoading = false
     private(set) var error: String?
     @ObservationIgnored private var loaded = false
+    /// Loads overlap (the player closing, a change on the server); only the newest may
+    /// write, or a slow older one would put back what was there before the change.
+    @ObservationIgnored private var latestLoad = 0
 
     private struct Snapshot: Codable {
         var rows: [HomeRow]
@@ -49,11 +52,14 @@ final class HomeModel {
         }
         guard force || !loaded || rows.isEmpty else { return }
         loaded = true
+        latestLoad += 1
+        let load = latestLoad
         isLoading = true
-        defer { isLoading = false }
+        defer { if load == latestLoad { isLoading = false } }
         do {
             async let user = client.currentUser()
             let views = try await client.userViews().filter(Self.isShown)
+            guard load == latestLoad else { return }
             libraries = views
             async let resume = client.resume()
             async let nextUp = client.nextUp()
@@ -83,11 +89,12 @@ final class HomeModel {
                     style: .poster, items: items, libraryId: view.id
                 ))
             }
+            guard load == latestLoad else { return }
             self.rows = rows
             error = nil
             ResponseCache.store(Snapshot(rows: rows, libraries: views), key: "home-\(client.userId ?? "")")
         } catch {
-            self.error = error.localizedDescription
+            if load == latestLoad { self.error = error.localizedDescription }
         }
     }
 
