@@ -1062,3 +1062,20 @@ struct BlurHashTests {
         #expect(BlurHash.lightness("bad") == nil)
     }
 }
+
+@MainActor
+struct OfflineHomeTests {
+    @Test func downloadsMakeHomeWithNoServer() {
+        func record(_ id: String, position: Int64 = 0, done: Bool = true) -> DownloadRecord {
+            var item = BaseItem(id: id)
+            item.type = .movie
+            item.userData = UserItemData(playbackPositionTicks: position)
+            return DownloadRecord(item: item, mediaSourceId: "ms", quality: .original, state: done ? .done : .downloading, addedAt: Date())
+        }
+        let rows = HomeModel.offlineRows([record("a", position: 100), record("b"), record("c", done: false)])
+        #expect(rows.map(\.title) == ["Continue Watching", "Downloaded"])
+        #expect(rows[0].items.map(\.id) == ["a"])
+        #expect(rows[1].items.map(\.id) == ["b"])
+        #expect(HomeModel.offlineRows([]).isEmpty)
+    }
+}

@@ -128,6 +128,22 @@ final class HomeModel {
         loaded = false
     }
 
+    /// Home with no server: what is on the device, in Plex's rows. Places kept offline
+    /// count (the outbox's); a film is Continue Watching while part watched.
+    static func offlineRows(_ downloads: [DownloadRecord]) -> [HomeRow] {
+        let saved = downloads.filter(\.isDone).map { Outbox.shared.applying(to: $0.item) }
+        let started = saved.filter { $0.resumeSeconds > 0 && !$0.isPlayed }
+        var rows: [HomeRow] = []
+        if !started.isEmpty {
+            rows.append(HomeRow(id: "offline-continue", kind: .continueWatching, title: "Continue Watching", style: .landscape, items: started))
+        }
+        let rest = saved.filter { item in !started.contains { $0.id == item.id } }
+        if !rest.isEmpty {
+            rows.append(HomeRow(id: "offline-downloads", kind: .recentlyAdded, title: "Downloaded", style: .poster, items: rest))
+        }
+        return rows
+    }
+
     /// The server's own Home settings for each library, as Plex's Pin to Home: whether its
     /// Recently Added row shows on Home.
     private(set) var hiddenFromHome: Set<String> = []

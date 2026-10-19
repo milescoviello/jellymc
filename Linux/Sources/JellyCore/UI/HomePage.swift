@@ -27,12 +27,23 @@ final class HomePage {
         root.keep(self)
 
         let model = shell.state.home
+        let state = shell.state
         root.observe { [weak self] in
             guard let self else { return }
-            let rows = model.rows
+            var rows = model.rows
+            // With no server and nothing cached, Home is what was downloaded.
+            if rows.isEmpty, state.isOffline {
+                rows = HomeModel.offlineRows(state.downloads.all)
+            }
             if rows.isEmpty {
                 stack.visibleName = model.isLoading ? "loading" : (model.error.map { _ in "empty" } ?? (model.libraries.isEmpty ? "loading" : "empty"))
-                if let error = model.error { empty.title = "Couldn’t load"; empty.descriptionText = error }
+                if state.isOffline {
+                    empty.title = "Can’t Reach the Server"
+                    empty.descriptionText = "Downloads play without it. It will be tried again on its own."
+                } else if let error = model.error {
+                    empty.title = "Couldn’t Load"
+                    empty.descriptionText = error
+                }
             } else {
                 stack.visibleName = "rows"
                 self.show(rows)

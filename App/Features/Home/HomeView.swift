@@ -6,13 +6,17 @@ struct HomeView: View {
 
     var body: some View {
         let home = state.home
+        // With no server and nothing cached, Home is what was downloaded.
+        let rows = home.rows.isEmpty && state.isOffline ? HomeModel.offlineRows(state.downloads.all) : home.rows
         ScrollView {
-            HubList(rows: home.rows)
+            HubList(rows: rows)
         }
         .overlay {
-            if home.rows.isEmpty {
+            if rows.isEmpty {
                 if home.isLoading {
                     ProgressView()
+                } else if state.isOffline {
+                    ContentUnavailableView("Can’t Reach the Server", systemImage: "wifi.slash", description: Text("Downloads play without it. It will be tried again on its own."))
                 } else if let error = home.error {
                     ContentUnavailableView("Couldn’t Load", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else {
