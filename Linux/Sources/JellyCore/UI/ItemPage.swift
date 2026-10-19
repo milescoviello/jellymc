@@ -13,7 +13,9 @@ final class ItemPage {
     private let poster = FixedPicture(width: 220, height: 330)
     private let logo = Picture().fit(GTK_CONTENT_FIT_CONTAIN)
     private let parent = Button("", "flat", "heading")
-    private let titleLabel = Label("", "title-1").wrap()
+    // A wrapping label asks for its whole text on one line unless told a width: a long
+    // episode title ran off the window.
+    private let titleLabel = Label("", "title-1").wrap().maxWidthChars(34)
     private let episodeLine = Label("", "title-4").wrap()
     private let meta = Label("", "dim-label").wrap()
     private let ratings = Box.horizontal(spacing: 14)

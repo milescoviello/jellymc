@@ -142,6 +142,8 @@ final class MenuButton: Widget {
             let content = adw_button_content_new()!
             adw_button_content_set_label(content.cast(), label)
             adw_button_content_set_icon_name(content.cast(), icon)
+            // Ellipsized when there is not room for it all, rather than pushing past the edge.
+            adw_button_content_set_can_shrink(content.cast(), 1)
             gtk_button_set_child(widget.cast(), content)
         } else {
             gtk_button_set_icon_name(widget.cast(), icon)
