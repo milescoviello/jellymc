@@ -752,7 +752,7 @@ struct StillWatchingTests {
         var episode = BaseItem(id: "e")
         episode.type = .episode
         let engine = CountingEngine()
-        let third = PlaybackSession(item: episode, client: nowhere, engine: engine, preferences: PlaybackPreferences(), autoplayed: 3)
+        let third = PlaybackSession(item: episode, client: nowhere, engine: engine, preferences: PlaybackPreferences(), continuing: .init(autoplayed: 3))
         await third.start(at: 0, local: plan())
         #expect(third.isAskingStillWatching)
         // The pause comes with the first frame, not before it.
@@ -766,17 +766,77 @@ struct StillWatchingTests {
         #expect(engine.plays == 1)
         third.stop()
 
-        let second = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), autoplayed: 2)
+        let second = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), continuing: .init(autoplayed: 2))
         await second.start(at: 0, local: plan())
         #expect(!second.isAskingStillWatching)
         var handedOn: [Int] = []
-        second.onPlayNext = { _, count in handedOn.append(count) }
+        second.onPlayNext = { _, next in handedOn.append(next.autoplayed) }
         second.playNext(BaseItem(id: "next"), automatic: true)
         #expect(handedOn == [3])
-        let chosen = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), autoplayed: 2)
+        let chosen = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), continuing: .init(autoplayed: 2))
         await chosen.start(at: 0, local: plan())
-        chosen.onPlayNext = { _, count in handedOn.append(count) }
+        chosen.onPlayNext = { _, next in handedOn.append(next.autoplayed) }
         chosen.playNext(BaseItem(id: "next"))
         #expect(handedOn == [3, 0])
+    }
+}
+
+@MainActor
+struct QueueTests {
+    private final class SilentEngine: PlayerEngine {
+        let kind = PlayerKind.mpv
+        var onEvent: (@MainActor (PlayerEvent) -> Void)?
+        func load(_ plan: PlaybackPlan) {}
+        func play() {}
+        func pause() {}
+        func seek(to seconds: Double) {}
+        func setRate(_ rate: Double) {}
+        func selectAudio(_ streamIndex: Int, in plan: PlaybackPlan) -> Bool { true }
+        func selectSubtitle(_ streamIndex: Int?, in plan: PlaybackPlan) -> Bool { true }
+        func stop() {}
+    }
+
+    @Test func aQueueIsWhatComesNextAndShrinks() async throws {
+        let nowhere = JellyfinClient(
+            baseURL: URL(string: "http://127.0.0.1:9")!,
+            device: DeviceIdentity(deviceName: "Test", deviceId: "device-1", version: "0.1.0"),
+            token: "t", userId: "u"
+        )
+        let queue = [BaseItem(id: "b"), BaseItem(id: "c")]
+        let session = PlaybackSession(
+            item: BaseItem(id: "a"), client: nowhere, engine: SilentEngine(), preferences: PlaybackPreferences(),
+            continuing: .init(queue: queue)
+        )
+        let plan = PlaybackPlan(
+            itemId: "a", source: MediaSource(id: "ms"), playSessionId: nil, method: .directPlay,
+            url: URL(fileURLWithPath: "/nonexistent/a.mkv"), startSeconds: 0, audioIndex: nil, subtitleIndex: nil,
+            externalSubtitles: [], transcodeReasons: [], httpHeaders: [:]
+        )
+        await session.start(at: 0, local: plan)
+        for _ in 0 ..< 150 where session.next == nil {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(session.next?.id == "b")
+        var handed: [(String, [String])] = []
+        session.onPlayNext = { item, next in handed.append((item.id, next.queue.map(\.id))) }
+        session.playNext(try #require(session.next), automatic: true)
+        #expect(handed.first?.0 == "b")
+        #expect(handed.first?.1 == ["c"])
+    }
+
+    @Test @MainActor func shuffleAndPlayAllFollowPlex() {
+        let model = ItemModel(id: "c")
+        var films: [BaseItem] = (1 ... 4).map { index in
+            var film = BaseItem(id: "f\(index)")
+            film.type = .movie
+            return film
+        }
+        films[0].userData = UserItemData(played: true)
+        // The rest of the collection after the one Play starts.
+        #expect(Queues.after(films[1], in: films).map(\.id) == ["f3", "f4"])
+        #expect(Queues.after(BaseItem(id: "elsewhere"), in: films).isEmpty)
+        let shuffled = Queues.shuffle(films)
+        #expect(Set(shuffled.map(\.id)) == Set(films.map(\.id)))
+        _ = model
     }
 }

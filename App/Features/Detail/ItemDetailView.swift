@@ -170,6 +170,20 @@ struct ItemDetailView: View {
                     .accessibilityLabel("Play from Beginning")
                 }
             }
+            if model.canShuffle {
+                Button {
+                    Task {
+                        let order = await model.shuffled()
+                        guard let first = order.first else { return }
+                        router.play(first, from: 0, queue: Array(order.dropFirst()))
+                    }
+                } label: {
+                    Image(systemName: "shuffle")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityLabel("Shuffle")
+            }
             if let trailer = item.remoteTrailers?.first?.url.flatMap(URL.init(string:)) {
                 Link(destination: trailer) {
                     Image(systemName: "film")
@@ -222,7 +236,7 @@ struct ItemDetailView: View {
 
     private func start(_ playable: BaseItem, from start: Double? = nil) {
         guard playable.id == model.item?.id, let item = model.item, let source = selectedSource(item) else {
-            router.play(playable, from: start)
+            router.play(playable, from: start, queue: model.queueAfterPlayable)
             return
         }
         // Resolved here, so a changed audio track does not drop the default subtitles.

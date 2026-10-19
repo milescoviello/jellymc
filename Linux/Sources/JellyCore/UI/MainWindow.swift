@@ -92,17 +92,21 @@ final class MainWindow {
 
     // MARK: - Player
 
-    func play(_ item: BaseItem, from start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil, mediaSourceId: String? = nil) {
+    func play(
+        _ item: BaseItem, from start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil,
+        mediaSourceId: String? = nil, queue: [BaseItem] = []
+    ) {
         guard let client = state.client else { return }
+        let continuing = PlaybackSession.Continuation(queue: queue)
         if let player {
-            player.start(item, from: start, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: mediaSourceId)
+            player.start(item, from: start, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: mediaSourceId, continuing: continuing)
             return
         }
         let page = PlayerPage(window: self, client: client)
         player = page
         stack.add(page.root, name: "player")
         stack.visibleName = "player"
-        page.start(item, from: start, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: mediaSourceId)
+        page.start(item, from: start, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: mediaSourceId, continuing: continuing)
     }
 
     func closePlayer() {

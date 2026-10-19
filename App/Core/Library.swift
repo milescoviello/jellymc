@@ -329,6 +329,19 @@ enum Hubs {
     }
 }
 
+/// What plays after what: Plex's Shuffle, and a collection played through.
+enum Queues {
+    /// Everything after `item` in `list`: a collection's Play goes on to the next film.
+    static func after(_ item: BaseItem, in list: [BaseItem]) -> [BaseItem] {
+        guard let index = list.firstIndex(where: { $0.id == item.id }) else { return [] }
+        return Array(list[(index + 1)...])
+    }
+
+    static func shuffle(_ list: [BaseItem]) -> [BaseItem] {
+        list.shuffled()
+    }
+}
+
 /// A library's Recommended tab: Plex's rows for it.
 @MainActor
 @Observable
@@ -603,6 +616,38 @@ final class ItemModel {
             return films.first { !$0.isPlayed } ?? films.first
         }
         return item.type?.isVideo == true ? item : nil
+    }
+
+    /// Whether the page has a Shuffle button: a show, a season, a collection.
+    var canShuffle: Bool {
+        guard let item else { return false }
+        switch item.type {
+        case .series?, .season?: return true
+        case .boxSet?: return children.filter { $0.type?.isVideo == true }.count > 1
+        default: return false
+        }
+    }
+
+    /// Plex's Shuffle: every episode of the show or season, or every film in the
+    /// collection, in a random order. The first plays; the rest are the queue.
+    func shuffled() async -> [BaseItem] {
+        guard let client, let item else { return [] }
+        switch item.type {
+        case .series?:
+            return Queues.shuffle((try? await client.episodes(seriesId: item.id, seasonId: nil)) ?? [])
+        case .season?:
+            return Queues.shuffle(episodes)
+        case .boxSet?:
+            return Queues.shuffle(children.filter { $0.type?.isVideo == true })
+        default:
+            return []
+        }
+    }
+
+    /// What follows the play button: the rest of a collection.
+    var queueAfterPlayable: [BaseItem] {
+        guard let item, item.type == .boxSet, let playable else { return [] }
+        return Queues.after(playable, in: children.filter { $0.type?.isVideo == true })
     }
 
     func togglePlayed() async {

@@ -222,7 +222,7 @@ final class PlayerPage {
 
     func start(
         _ item: BaseItem, from start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil,
-        mediaSourceId: String? = nil, autoplayed: Int = 0
+        mediaSourceId: String? = nil, continuing: PlaybackSession.Continuation = .init()
     ) {
         session?.stop()
         let state = window.state
@@ -231,10 +231,10 @@ final class PlayerPage {
             preferences: window.playbackPreferences,
             segmentActions: state.preferences.segmentActions,
             autoplayNext: state.preferences.autoplayNext,
-            autoplayed: autoplayed
+            continuing: continuing
         )
         self.session = session
-        session.onPlayNext = { [weak self] next, autoplayed in self?.start(next, from: 0, autoplayed: autoplayed) }
+        session.onPlayNext = { [weak self] next, continuing in self?.start(next, from: 0, continuing: continuing) }
         session.onFinished = { [weak self] in self?.window.closePlayer() }
         connectMediaControls(session)
         root.observe { [weak self, weak session] in

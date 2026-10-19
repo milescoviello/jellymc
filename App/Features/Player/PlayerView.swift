@@ -58,7 +58,7 @@ struct PlayerView: View {
         .task {
             UIApplication.shared.isIdleTimerDisabled = true
             try? AVAudioSession.sharedInstance().setActive(true)
-            start(request.item, from: request.start, audio: request.audioIndex, subtitle: request.subtitleIndex, version: request.mediaSourceId)
+            start(request.item, from: request.start, audio: request.audioIndex, subtitle: request.subtitleIndex, version: request.mediaSourceId, continuing: .init(queue: request.queue))
         }
         .onDisappear {
             session?.stop()
@@ -67,7 +67,7 @@ struct PlayerView: View {
         }
     }
 
-    private func start(_ item: BaseItem, from start: Double?, audio: Int?, subtitle: Int?, version: String?, autoplayed: Int = 0) {
+    private func start(_ item: BaseItem, from start: Double?, audio: Int?, subtitle: Int?, version: String?, continuing: PlaybackSession.Continuation = .init()) {
         guard let client = state.client else { return }
         session?.stop()
         let session = PlaybackSession(
@@ -77,10 +77,10 @@ struct PlayerView: View {
             preferences: state.playbackPreferences(network: reachability.network),
             segmentActions: state.preferences.segmentActions,
             autoplayNext: state.preferences.autoplayNext,
-            autoplayed: autoplayed
+            continuing: continuing
         )
-        session.onPlayNext = { next, autoplayed in
-            self.start(next, from: 0, audio: nil, subtitle: nil, version: nil, autoplayed: autoplayed)
+        session.onPlayNext = { next, continuing in
+            self.start(next, from: 0, audio: nil, subtitle: nil, version: nil, continuing: continuing)
         }
         session.onFinished = { close() }
         self.session = session

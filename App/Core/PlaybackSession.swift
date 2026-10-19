@@ -66,14 +66,21 @@ final class PlaybackSession {
     private(set) var hasEnded = false
 
     /// Set by the screen: open this item as the next playback.
-    /// Set by the screen: play this next. The count is how many episodes in a row will have
-    /// started on their own, for the next session's "Still watching?".
-    @ObservationIgnored var onPlayNext: (@MainActor (BaseItem, Int) -> Void)?
+    /// What carries over from one session to the next: how many in a row started on their
+    /// own, for "Still watching?", and what is left of a queue (Shuffle, a collection).
+    struct Continuation: Sendable, Equatable {
+        var autoplayed = 0
+        var queue: [BaseItem] = []
+    }
+
+    /// Set by the screen: play this next, carrying this over.
+    @ObservationIgnored var onPlayNext: (@MainActor (BaseItem, Continuation) -> Void)?
     /// Plex asks after three episodes in a row that nobody started.
     static let stillWatchingAfter = 3
     /// Paused at the start, asking whether anyone is still watching.
     private(set) var isAskingStillWatching = false
     @ObservationIgnored private let autoplayed: Int
+    @ObservationIgnored private let queue: [BaseItem]
     @ObservationIgnored private var hasAskedStillWatching = false
     @ObservationIgnored private var pausesWhenPlaying = false
     /// Set by the screen: playback is over and the player should close.
@@ -101,9 +108,10 @@ final class PlaybackSession {
         preferences: PlaybackPreferences,
         segmentActions: [MediaSegment.Kind: SegmentAction] = [:],
         autoplayNext: Bool = true,
-        autoplayed: Int = 0
+        continuing: Continuation = Continuation()
     ) {
-        self.autoplayed = autoplayed
+        autoplayed = continuing.autoplayed
+        queue = continuing.queue
         self.item = item
         self.client = client
         self.engine = engine
@@ -200,7 +208,9 @@ final class PlaybackSession {
         if let segments = try? await client.mediaSegments(itemId: item.id) {
             self.segments = segments.sorted { $0.startTicks < $1.startTicks }
         }
-        if item.type == .episode, let seriesId = item.seriesId,
+        if let queued = queue.first {
+            next = queued
+        } else if item.type == .episode, let seriesId = item.seriesId,
            let episodes = try? await client.episodes(seriesId: seriesId, seasonId: nil),
            let index = episodes.firstIndex(where: { $0.id == item.id }), index + 1 < episodes.count {
             next = episodes[index + 1]
@@ -312,7 +322,9 @@ final class PlaybackSession {
         countdownTask?.cancel()
         countdown = nil
         stop()
-        onPlayNext?(item, automatic ? autoplayed + 1 : 0)
+        // Off the queue when it came from it; a chosen episode leaves the queue behind.
+        let rest = queue.first?.id == item.id ? Array(queue.dropFirst()) : []
+        onPlayNext?(item, Continuation(autoplayed: automatic ? autoplayed + 1 : 0, queue: rest))
     }
 
     /// The answer to "Still watching?": go on.

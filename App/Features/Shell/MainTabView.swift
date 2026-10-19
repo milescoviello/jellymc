@@ -8,6 +8,8 @@ struct PlayRequest: Identifiable {
     var audioIndex: Int?
     var subtitleIndex: Int?
     var mediaSourceId: String?
+    /// What plays after it: Shuffle's order, the rest of a collection.
+    var queue: [BaseItem] = []
 }
 
 /// Starts playback from anywhere below the tabs: views ask it, the tab view presents.
@@ -16,8 +18,8 @@ struct PlayRequest: Identifiable {
 final class PlayerRouter {
     var request: PlayRequest?
 
-    func play(_ item: BaseItem, from start: Double? = nil, audio: Int? = nil, subtitle: Int? = nil, version: String? = nil) {
-        request = PlayRequest(item: item, start: start, audioIndex: audio, subtitleIndex: subtitle, mediaSourceId: version)
+    func play(_ item: BaseItem, from start: Double? = nil, audio: Int? = nil, subtitle: Int? = nil, version: String? = nil, queue: [BaseItem] = []) {
+        request = PlayRequest(item: item, start: start, audioIndex: audio, subtitleIndex: subtitle, mediaSourceId: version, queue: queue)
     }
 }
 

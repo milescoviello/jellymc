@@ -161,13 +161,25 @@ final class ItemPage {
             let resume = playable.resumeSeconds
             let label = Presentation.playLabel(for: playable, on: item)
             actions.append(Button(label, icon: "media-playback-start-symbolic", "suggested-action", "pill") { [weak self] in
-                self?.play(playable)
+                self?.play(playable, queue: self?.model.queueAfterPlayable ?? [])
             })
             if resume > 0 {
                 actions.append(Button(icon: "media-skip-backward-symbolic", "circular") { [weak self] in
                     self?.play(playable, from: 0)
                 }.tooltip("Play from Beginning"))
             }
+        }
+        if model.canShuffle {
+            actions.append(Button(icon: "media-playlist-shuffle-symbolic", "circular") { [weak self] in
+                guard let self else { return }
+                let model = self.model
+                let window = self.shell.window
+                Task {
+                    let order = await model.shuffled()
+                    guard let first = order.first else { return }
+                    window.play(first, from: 0, queue: Array(order.dropFirst()))
+                }
+            }.tooltip("Shuffle"))
         }
         if let trailer = item.remoteTrailers?.first?.url, let url = URL(string: trailer) {
             actions.append(Button(icon: "video-x-generic-symbolic", "circular") {
@@ -409,14 +421,15 @@ final class ItemPage {
         shell.open(show)
     }
 
-    private func play(_ playable: BaseItem, from start: Double? = nil) {
+    private func play(_ playable: BaseItem, from start: Double? = nil, queue: [BaseItem] = []) {
         let isThis = playable.id == model.item?.id
         let subtitle: Int?? = isThis ? subtitleChoice : nil
         shell.window.play(
             playable, from: start,
             audioIndex: isThis ? audioChoice : nil,
             subtitleIndex: subtitle ?? nil,
-            mediaSourceId: isThis ? versionChoice : nil
+            mediaSourceId: isThis ? versionChoice : nil,
+            queue: queue
         )
     }
 }
