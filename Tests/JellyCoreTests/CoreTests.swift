@@ -1203,3 +1203,15 @@ extension AppLockTests {
         #expect(lock.isLocked)
     }
 }
+
+extension AppLockTests {
+    @Test func theLockButtonLocksOnlyWithAPIN() {
+        let fixture = Fixture()
+        let lock = fixture.lock()
+        lock.lockNow()
+        #expect(!lock.isLocked)
+        lock.setPIN("2580")
+        lock.lockNow()
+        #expect(lock.isLocked)
+    }
+}

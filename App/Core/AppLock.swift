@@ -104,6 +104,11 @@ final class AppLock {
         settings.blockedUntil = nil
     }
 
+    /// The lock button: up now, until the PIN.
+    func lockNow() {
+        if isEnabled { isLocked = true }
+    }
+
     func setDelay(_ delay: Delay) {
         settings.delay = delay
     }

@@ -195,6 +195,7 @@ private struct PINSection: View {
         Section {
             Toggle("Require PIN", isOn: Binding(get: { lock.isEnabled }, set: { sheet = $0 ? .new : .turnOff }))
             if lock.isEnabled {
+                Button("Lock Now") { lock.lockNow() }
                 Button("Change PIN") { sheet = .change }
                 Picker("Ask Again", selection: Binding(get: { lock.settings.delay }, set: { lock.setDelay($0) })) {
                     ForEach(AppLock.Delay.allCases, id: \.self) { Text($0.title).tag($0) }

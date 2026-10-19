@@ -25,6 +25,18 @@ struct HomeView: View {
             }
         }
         .navigationTitle("Home")
+        .toolbar {
+            if state.lock.isEnabled {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        state.lock.lockNow()
+                    } label: {
+                        Image(systemName: "lock")
+                    }
+                    .accessibilityLabel("Lock")
+                }
+            }
+        }
         .pullToRefresh {
             if let client = state.client { await home.load(client, force: true) }
         }

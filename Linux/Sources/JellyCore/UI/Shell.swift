@@ -21,8 +21,12 @@ final class Shell {
         places.css("navigation-sidebar")
 
         let title = WindowTitle("jellymc", subtitle: window.state.serverName)
+        // Shown while there is a PIN to lock with.
+        let lock = Button(icon: "system-lock-screen-symbolic", "flat") { [weak window] in
+            window?.state.lock.lockNow()
+        }.tooltip("Lock (Ctrl+L)")
         let sidebar = ToolbarView(content: ScrolledWindow(places))
-            .top(HeaderBar().title(title))
+            .top(HeaderBar().title(title).end(lock))
         let banner = Banner("Server unreachable — showing what was saved", button: "Retry") {
             Task { await window.state.reconnect() }
         }
@@ -34,6 +38,10 @@ final class Shell {
         root = split
         root.keep(self)
 
+        lock.observe { [weak self, weak lock] in
+            guard let self else { return }
+            lock?.visible(self.state.lock.isEnabled)
+        }
         root.observe { [weak self] in
             guard let self else { return }
             title.subtitle = self.state.serverName
@@ -47,7 +55,8 @@ final class Shell {
         installShortcuts()
     }
 
-    /// Ctrl+F or / for Search, Ctrl+R to refresh, Ctrl+, for Settings, Ctrl+Q to quit.
+    /// Ctrl+F or / for Search, Ctrl+R to refresh, Ctrl+, for Settings, Ctrl+L to lock with
+    /// the PIN, Ctrl+Q to quit.
     /// On the window, bubbling: with nothing focused keys go to the window, and with a text
     /// field focused it gets them first; the player's own come before all of these.
     private func installShortcuts() {
@@ -66,6 +75,8 @@ final class Shell {
                 self.refreshVisible()
             case (GDK_KEY_comma, true):
                 self.select("settings")
+            case (GDK_KEY_l, true) where self.state.lock.isEnabled:
+                self.state.lock.lockNow()
             case (GDK_KEY_q, true):
                 if let application = Desktop.application { g_application_quit(application.cast()) }
             default:
