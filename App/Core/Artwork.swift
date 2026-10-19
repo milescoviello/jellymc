@@ -55,3 +55,37 @@ enum Artwork {
         return nil
     }
 }
+
+/// What a BlurHash says before the image comes: its average colour.
+enum BlurHash {
+    private static let alphabet = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~")
+
+    /// The average colour's lightness, 0 (black) to 1 (white); nil for a hash that is not
+    /// one. Characters 2 to 5 are the average as sRGB, base 83.
+    static func lightness(_ hash: String) -> Double? {
+        let characters = Array(hash)
+        guard characters.count >= 6 else { return nil }
+        var value = 0
+        for character in characters[2 ..< 6] {
+            guard let digit = alphabet.firstIndex(of: character) else { return nil }
+            value = value * 83 + digit
+        }
+        let red = Double((value >> 16) & 255), green = Double((value >> 8) & 255), blue = Double(value & 255)
+        return (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
+    }
+}
+
+extension Artwork {
+    /// The logo, unless it would vanish on the backdrop: a dark logo over the page's dark
+    /// shade reads as nothing, and Plex shows the title then. With transparency the
+    /// average is diluted toward black, so only a really dark one is left out.
+    static func readableLogo(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
+        guard let url = logo(item, client, width: width) else { return nil }
+        let hashes = item.imageBlurHashes?["Logo"] ?? [:]
+        let tag = item.imageTags?["Logo"] ?? item.parentLogoImageTag
+        if let tag, let hash = hashes[tag], let lightness = BlurHash.lightness(hash), lightness < 0.12 {
+            return nil
+        }
+        return url
+    }
+}

@@ -181,7 +181,7 @@ final class JellyfinClient: Sendable {
     // MARK: - Browsing
 
     static let listFields = "PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
-    static let detailFields = "Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations"
+    static let detailFields = "Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
     static let imageTypes = "Primary,Backdrop,Thumb,Logo"
 
     func userViews() async throws -> [BaseItem] {

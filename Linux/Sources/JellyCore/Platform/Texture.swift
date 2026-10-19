@@ -42,6 +42,26 @@ final class Texture: @unchecked Sendable {
     var width: Int { Int(gdk_texture_get_width(pointer)) }
     var height: Int { Int(gdk_texture_get_height(pointer)) }
 
+    /// How light the drawn part is, 0 to 1: the average of the pixels that are mostly
+    /// opaque, sampled. A logo's empty space does not count. Nil when nothing is drawn.
+    func lightness() -> Double? {
+        let (bytes, stride) = pixels()
+        var total = 0.0, count = 0
+        let step = max(1, min(width, height) / 64)
+        for y in Swift.stride(from: 0, to: height, by: step) {
+            for x in Swift.stride(from: 0, to: width, by: step) {
+                let index = y * stride + x * 4
+                let alpha = Double(bytes[index + 3])
+                guard alpha > 160 else { continue }
+                // Premultiplied BGRA: undo the alpha for the colour.
+                let blue = Double(bytes[index]) / alpha, green = Double(bytes[index + 1]) / alpha, red = Double(bytes[index + 2]) / alpha
+                total += 0.2126 * red + 0.7152 * green + 0.0722 * blue
+                count += 1
+            }
+        }
+        return count == 0 ? nil : total / Double(count)
+    }
+
     /// The same object as a `GdkPaintable`, for `gtk_picture_set_paintable`.
     var paintable: OpaquePointer { pointer }
 

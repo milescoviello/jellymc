@@ -114,13 +114,8 @@ struct ItemDetailView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    if !isEpisode, item.type != .season, let logo = client.flatMap({ Artwork.logo(item, $0, width: 600) }) {
-                        AsyncImage(url: logo) { image in
-                            image.resizable().scaledToFit()
-                        } placeholder: {
-                            Text(item.title).font(.title.bold())
-                        }
-                        .frame(maxWidth: 260, maxHeight: 90, alignment: .leading)
+                    if !isEpisode, item.type != .season, let logo = client.flatMap({ Artwork.readableLogo(item, $0, width: 600) }) {
+                        LogoView(url: logo, title: item.title)
                     } else {
                         Text(item.title)
                             .font(.title.bold())
@@ -447,5 +442,51 @@ private struct EpisodeRow: View {
             }
         }
         .contentShape(Rectangle())
+    }
+}
+
+/// The title's logo, or the title itself when the logo is dark: on the page's dark shade a
+/// dark logo reads as nothing, and Plex shows the title then.
+private struct LogoView: View {
+    let url: URL
+    let title: String
+    @State private var image: UIImage?
+    @State private var tooDark = false
+
+    var body: some View {
+        Group {
+            if let image, !tooDark {
+                Image(uiImage: image).resizable().scaledToFit()
+                    .frame(maxWidth: 260, maxHeight: 90, alignment: .leading)
+            } else {
+                Text(title).font(.title.bold()).lineLimit(3)
+            }
+        }
+        .task(id: url) {
+            guard let (data, _) = try? await URLSession.shared.data(from: url), let loaded = UIImage(data: data) else { return }
+            tooDark = (Self.lightness(loaded) ?? 1) < 0.25
+            image = loaded
+        }
+    }
+
+    /// The average lightness of the drawn (mostly opaque) pixels, on a small copy.
+    private static func lightness(_ image: UIImage) -> Double? {
+        guard let cgImage = image.cgImage else { return nil }
+        let side = 32
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        guard let context = CGContext(
+            data: &pixels, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: side, height: side))
+        var total = 0.0, count = 0
+        for index in stride(from: 0, to: pixels.count, by: 4) {
+            let alpha = Double(pixels[index + 3])
+            guard alpha > 160 else { continue }
+            let red = Double(pixels[index]) / alpha, green = Double(pixels[index + 1]) / alpha, blue = Double(pixels[index + 2]) / alpha
+            total += 0.2126 * red + 0.7152 * green + 0.0722 * blue
+            count += 1
+        }
+        return count == 0 ? nil : total / Double(count)
     }
 }

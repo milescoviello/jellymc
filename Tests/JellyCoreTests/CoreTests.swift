@@ -1051,3 +1051,14 @@ struct RoamingSettingsTests {
         #expect(desktop.localPlayback.maxBitrate == 120_000_000)
     }
 }
+
+struct BlurHashTests {
+    @Test func readsTheAverageColour() throws {
+        // Real hashes: a light logo, and one made for this test with a near-black average.
+        let light = try #require(BlurHash.lightness("OJC=,ya|IsoKIrj@az0lfQ$}j@NJazWD9fj@WDaz$}oKNJ"))
+        #expect(light > 0.2)
+        let dark = try #require(BlurHash.lightness("L00000fQfQfQfQfQfQfQfQfQfQfQ"))
+        #expect(dark < 0.05)
+        #expect(BlurHash.lightness("bad") == nil)
+    }
+}

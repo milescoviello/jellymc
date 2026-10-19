@@ -120,11 +120,17 @@ final class ItemPage {
         } else {
             parent.visible(false)
         }
-        let logoURL = isEpisode || item.type == .season ? nil : Artwork.logo(item, client, width: 420)
+        let logoURL = isEpisode || item.type == .season ? nil : Artwork.readableLogo(item, client, width: 420)
         if let logoURL {
             logo.load(logoURL)
             logo.visible(true)
             titleLabel.visible(false)
+            // A dark logo on the dark shade reads as nothing; Plex shows the title then.
+            Images.shared.load(logoURL) { [weak self] texture in
+                guard let self, let lightness = texture?.lightness(), lightness < 0.25 else { return }
+                self.logo.visible(false)
+                self.titleLabel.visible(true)
+            }
         } else {
             logo.visible(false)
             titleLabel.visible(true)
