@@ -11,6 +11,10 @@ struct ItemDetailView: View {
     /// -1 for off; nil for the preferences' choice.
     @State private var subtitleChoice: Int?
     @State private var versionChoice: String?
+    /// The other apps that can be told to play, as last fetched.
+    @State private var remoteSessions: [RemoteSession] = []
+    /// A word on what just happened, at the foot of the page for a moment.
+    @State private var notice: String?
 
     init(item: BaseItem) {
         _model = State(initialValue: ItemModel(id: item.id, placeholder: item))
@@ -70,8 +74,23 @@ struct ItemDetailView: View {
             audioChoice = nil
             subtitleChoice = nil
         }
+        .overlay(alignment: .bottom) {
+            if let notice {
+                Text(notice)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.thinMaterial, in: Capsule())
+                    .padding(.bottom, 16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .task {
             if let client = state.client { await model.load(client) }
+        }
+        .task {
+            // Ready for Play On; opening its menu asks again.
+            if let client = state.client { remoteSessions = (try? await client.remoteSessions()) ?? [] }
         }
         .onChange(of: state.dataGeneration) {
             // Back from the player, or changed on another device: progress and watched marks.
@@ -235,6 +254,24 @@ struct ItemDetailView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(item.isFavorite ? "Remove from Favourites" : "Add to Favourites")
+        if let playable = model.playable {
+            // Plex's cast: another app signed in to the server plays it instead.
+            Menu {
+                Group {
+                    if remoteSessions.isEmpty {
+                        Text("No other device is open")
+                    }
+                    ForEach(remoteSessions) { session in
+                        Button(session.title) { play(playable, on: session) }
+                    }
+                }
+                // The list shown is the one fetched before; opening it fetches it for next time.
+                .onAppear(perform: refreshRemoteSessions)
+            } label: {
+                ActionLabel(title: "Play On", systemImage: "tv")
+            }
+            .buttonStyle(.plain)
+        }
         if item.type?.isVideo == true {
             DownloadButton(item: item)
         }
@@ -259,6 +296,38 @@ struct ItemDetailView: View {
         let initial = state.preferences.initialTracks(for: source)
         let subtitle = subtitleChoice.map { $0 < 0 ? nil : $0 } ?? initial.subtitle
         router.play(playable, from: start, audio: audioChoice ?? initial.audio, subtitle: subtitle, version: versionChoice)
+    }
+
+    private func refreshRemoteSessions() {
+        guard let client = state.client else { return }
+        Task { remoteSessions = (try? await client.remoteSessions()) ?? [] }
+    }
+
+    /// Sends it to another app, with the tracks chosen here, from where it was left.
+    private func play(_ playable: BaseItem, on session: RemoteSession) {
+        guard let client = state.client else { return }
+        let isThis = playable.id == model.item?.id
+        Task {
+            do {
+                try await client.play(
+                    playable.id, on: session.id, start: playable.resumeSeconds,
+                    mediaSourceId: isThis ? versionChoice : nil,
+                    audioIndex: isThis ? audioChoice : nil,
+                    subtitleIndex: isThis ? subtitleChoice.flatMap { $0 < 0 ? nil : $0 } : nil
+                )
+                show("Playing on \(session.deviceName ?? "the other device")")
+            } catch {
+                show("Couldn’t play there: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func show(_ text: String) {
+        withAnimation { notice = text }
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation { if notice == text { notice = nil } }
+        }
     }
 
     private func selectedSource(_ item: BaseItem) -> MediaSource? {
