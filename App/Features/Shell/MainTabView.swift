@@ -43,6 +43,14 @@ struct MainTabView: View {
     @Environment(Reachability.self) private var reachability
     @State private var router = PlayerRouter()
     @State private var selection = Tabs.home
+    @State private var remoteMessage: RemoteMessage?
+
+    /// Text another device sent, through the server.
+    struct RemoteMessage: Identifiable {
+        let id = UUID()
+        var header: String
+        var text: String
+    }
 
     enum Tabs: Hashable { case home, libraries, downloads, search, settings }
 
@@ -70,6 +78,25 @@ struct MainTabView: View {
             PlayerView(request: request)
                 .environment(state)
                 .environment(reachability)
+        }
+        .alert(
+            remoteMessage.map { $0.header.isEmpty ? "Message" : $0.header } ?? "",
+            isPresented: Binding(get: { remoteMessage != nil }, set: { if !$0 { remoteMessage = nil } }),
+            presenting: remoteMessage
+        ) { _ in
+            Button("OK") {}
+        } message: { message in
+            Text(message.text)
+        }
+        .onAppear {
+            // Another device plays something here: the same player a tap opens.
+            let router = router
+            state.onRemotePlay = { item, request in
+                router.play(item, from: request.start, audio: request.audioStreamIndex, subtitle: request.subtitleStreamIndex, version: request.mediaSourceId)
+            }
+            state.onRemoteMessage = { header, text in
+                remoteMessage = RemoteMessage(header: header, text: text)
+            }
         }
         .overlay(alignment: .top) {
             if state.isOffline {
