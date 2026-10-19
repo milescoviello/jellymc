@@ -79,6 +79,9 @@ final class PlaybackSession {
     @ObservationIgnored private var dismissedSkip: Set<Int64> = []
     @ObservationIgnored private var countdownDismissed = false
     @ObservationIgnored private var started = false
+    /// Playing a downloaded file: its progress also goes to the outbox, for when the
+    /// server could not be told.
+    @ObservationIgnored private var isLocal = false
 
     init(
         item: BaseItem,
@@ -104,8 +107,19 @@ final class PlaybackSession {
     // MARK: - Starting
 
     /// Asks the server how to play the item, opens it, and starts reporting.
-    func start(at start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil, mediaSourceId: String? = nil) async {
-        let startSeconds = start ?? item.resumeSeconds
+    func start(at start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil, mediaSourceId: String? = nil, local: PlaybackPlan? = nil) async {
+        // A position saved offline and not yet sent is newer than the server's.
+        let startSeconds = start ?? Outbox.shared.position(for: item.id) ?? item.resumeSeconds
+        if var local {
+            isLocal = true
+            local.startSeconds = startSeconds
+            local.audioIndex = audioIndex ?? local.audioIndex
+            local.subtitleIndex = subtitleIndex
+            open(local)
+            await Diagnostics.shared.record("playback", "\(item.title): downloaded file via \(engine.kind.rawValue)")
+            Task { await loadSegmentsAndNext() }
+            return
+        }
         do {
             let plan = try await makePlan(start: startSeconds, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: mediaSourceId)
             open(plan)
@@ -270,6 +284,11 @@ final class PlaybackSession {
             let client = client
             Task { await client.reportStopped(report) }
         }
+        if isLocal {
+            Outbox.shared.add(itemId: item.id, position: position, duration: duration)
+            let client = client
+            Task { await Outbox.shared.flush(client) }
+        }
     }
 
     // MARK: - Engine events
@@ -375,6 +394,8 @@ final class PlaybackSession {
 
     private func reportNow() {
         guard started, let plan else { return }
+        // Kept as it goes, so a crash or a pulled plug still leaves the place.
+        if isLocal { Outbox.shared.add(itemId: item.id, position: position, duration: duration) }
         let report = PlaybackReport(plan: plan, position: position, isPaused: isPaused)
         let client = client
         Task { await client.reportProgress(report) }

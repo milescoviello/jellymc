@@ -74,6 +74,8 @@ let package = Package(
                 "Artwork.swift",
                 "Captions.swift",
                 "Presentation.swift",
+                "Downloads.swift",
+                "Downloader.swift",
                 "AppState.swift",
                 "DeviceInfo.swift",
                 "Keychain.swift",

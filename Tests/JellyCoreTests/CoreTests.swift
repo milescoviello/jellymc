@@ -348,3 +348,107 @@ struct CaptionsTests {
         #expect(subtitle.webVTTURL.absoluteString == "http://jelly.lan:8096/Videos/x/y/Subtitles/0/0/Stream.vtt?ApiKey=k")
     }
 }
+
+struct DownloadPlannerTests {
+    private func item(container: String, video: String, audio: String, subtitles: [(String, Bool)] = []) -> BaseItem {
+        var source = MediaSource(id: "ms")
+        source.container = container
+        source.bitrate = 8_000_000
+        var videoStream = MediaStream(type: .video, index: 0)
+        videoStream.codec = video
+        var audioStream = MediaStream(type: .audio, index: 1)
+        audioStream.codec = audio
+        var streams: [MediaStream] = [videoStream, audioStream]
+        for (offset, subtitle) in subtitles.enumerated() {
+            var stream = MediaStream(type: .subtitle, index: 2 + offset)
+            stream.codec = subtitle.0
+            stream.isTextSubtitleStream = subtitle.1
+            streams.append(stream)
+        }
+        source.mediaStreams = streams
+        var item = BaseItem(id: "film")
+        item.mediaSources = [source]
+        return item
+    }
+
+    @Test func keepsWhatThePlayerCanOpenAndConvertsTheRest() {
+        #expect(DownloadPlanner.quality(for: item(container: "mov,mp4,m4a", video: "h264", audio: "aac"), player: .avPlayer) == .original)
+        #expect(DownloadPlanner.quality(for: item(container: "mkv", video: "hevc", audio: "opus"), player: .avPlayer) == .converted(bitrate: 8_000_000))
+        #expect(DownloadPlanner.quality(for: item(container: "mkv", video: "hevc", audio: "truehd"), player: .mpv) == .original)
+    }
+
+    @Test func asksForTheRightFiles() throws {
+        let film = item(container: "mkv", video: "hevc", audio: "opus", subtitles: [("subrip", true), ("pgssub", false)])
+        let record = DownloadRecord(item: film, mediaSourceId: "ms", quality: .converted(bitrate: 6_000_000), state: .queued, addedAt: Date())
+        let url = try #require(DownloadPlanner.url(for: record, client: client)).absoluteString
+        #expect(url.contains("/Videos/film/stream.mp4?"))
+        #expect(url.contains("videoCodec=hevc"))
+        #expect(url.contains("videoBitRate=6000000"))
+        #expect(url.contains("ApiKey=secret-token"))
+        var original = record
+        original.quality = .original
+        #expect(DownloadPlanner.url(for: original, client: client)?.absoluteString.contains("/Items/film/Download?ApiKey=") == true)
+        // Text subtitles come along as WebVTT; image ones cannot.
+        let subtitles = DownloadPlanner.subtitleURLs(for: record, client: client)
+        #expect(subtitles.map(\.0.index) == [2])
+        #expect(subtitles.first?.1.absoluteString.contains("/Subtitles/2/0/Stream.vtt") == true)
+    }
+}
+
+@MainActor
+struct OutboxTests {
+    private func outbox() -> Outbox {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("outbox-\(UUID().uuidString).json")
+        return Outbox(file: file)
+    }
+
+    @Test func theLatestPlaceWinsAndOverridesTheServers() {
+        let outbox = outbox()
+        var film = BaseItem(id: "film")
+        film.runTimeTicks = Ticks.from(seconds: 1000)
+        film.userData = UserItemData(playbackPositionTicks: Ticks.from(seconds: 100), isFavorite: true)
+        outbox.add(itemId: "film", position: 200, duration: 1000)
+        outbox.add(itemId: "film", position: 300, duration: 1000)
+        #expect(outbox.entries.count == 1)
+        #expect(outbox.position(for: "film") == 300)
+        let shown = outbox.applying(to: film)
+        #expect(shown.resumeSeconds == 300)
+        #expect(shown.isFavorite)
+        #expect(!shown.isPlayed)
+        #expect(outbox.applying(to: BaseItem(id: "other")) == BaseItem(id: "other"))
+    }
+
+    @Test func nearlyTheEndCountsAsWatched() {
+        let outbox = outbox()
+        outbox.add(itemId: "film", position: 950, duration: 1000)
+        let shown = outbox.applying(to: BaseItem(id: "film"))
+        #expect(shown.isPlayed)
+        #expect(shown.resumeSeconds == 0)
+    }
+
+    @Test func keepsWhatItHasAcrossLaunches() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("outbox-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        Outbox(file: file).add(itemId: "film", position: 42, duration: 1000)
+        #expect(Outbox(file: file).position(for: "film") == 42)
+    }
+}
+
+struct DownloadRecordTests {
+    @Test func saysWhatItIs() {
+        var episode = BaseItem(id: "e1")
+        episode.type = .episode
+        episode.name = "Pilot"
+        episode.seriesName = "Pioneer One"
+        episode.parentIndexNumber = 1
+        episode.indexNumber = 2
+        var record = DownloadRecord(item: episode, mediaSourceId: "ms", quality: .converted(bitrate: 8_000_000), state: .downloading, progress: 0.42, addedAt: Date())
+        #expect(record.title.hasPrefix("Pioneer One · "))
+        #expect(record.title.hasSuffix("Pilot"))
+        #expect(record.status == "Downloading · 42%")
+        record.state = .done
+        #expect(record.status == "Converted, 8 Mbps")
+        record.state = .failed("No space")
+        #expect(record.status == "Failed: No space")
+    }
+}

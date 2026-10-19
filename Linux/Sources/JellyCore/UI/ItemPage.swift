@@ -132,6 +132,17 @@ final class ItemPage {
         }
         favourite.tooltip(item.isFavorite ? "Remove from Favourites" : "Add to Favourites")
         actions.append(favourite)
+        if item.type?.isVideo == true, item.mediaSources != nil {
+            actions.append(downloadButton(for: item))
+        }
+        if item.type == .series || item.type == .season, !model.episodes.isEmpty {
+            let episodes = model.episodes
+            let downloads = shell.state.downloads
+            actions.append(Button("Download Season", icon: "folder-download-symbolic", "pill", "flat") {
+                Task { await downloads.download(episodes, for: .mpv) }
+                Desktop.main?.toast("Downloading \(episodes.count) episode\(episodes.count == 1 ? "" : "s")")
+            })
+        }
         if let trailer = item.remoteTrailers?.first?.url, let url = URL(string: trailer) {
             actions.append(Button("Trailer", icon: "video-x-generic-symbolic", "pill", "flat") {
                 gtk_show_uri(Desktop.window?.cast(), url.absoluteString, guint32(GDK_CURRENT_TIME))
@@ -179,6 +190,33 @@ final class ItemPage {
                 }]])
             })
         }
+    }
+
+    /// Download, its progress, or Remove: one button that says where the file is.
+    private func downloadButton(for item: BaseItem) -> Widget {
+        let downloads = shell.state.downloads
+        switch downloads.record(for: item.id)?.state {
+        case .done?:
+            let button = Button("Downloaded", icon: "emblem-ok-symbolic", "pill", "flat") {
+                Dialogs.alert("Remove the download?", body: item.title, responses: [("cancel", "Cancel", ADW_RESPONSE_DEFAULT), ("remove", "Remove", ADW_RESPONSE_DESTRUCTIVE)]) { response in
+                    if response == "remove" { downloads.remove(item.id) }
+                }
+            }
+            return button.tooltip("Saved on this computer. Click to remove.")
+        case .queued?, .downloading?:
+            let percent = Int((downloads.record(for: item.id)?.progress ?? 0) * 100)
+            return Button("\(percent)%", icon: "process-stop-symbolic", "pill", "flat") { downloads.remove(item.id) }
+                .tooltip("Downloading. Click to cancel.")
+        case .failed?:
+            return Button("Retry Download", icon: "view-refresh-symbolic", "pill", "flat") { downloads.retry(item.id) }
+        case nil:
+            return Button("Download", icon: "folder-download-symbolic", "pill", "flat") { [weak self] in self?.download(item) }
+        }
+    }
+
+    private func download(_ item: BaseItem) {
+        let downloads = shell.state.downloads
+        Task { await downloads.download(item, for: .mpv) }
     }
 
     private func renderSeasons() {

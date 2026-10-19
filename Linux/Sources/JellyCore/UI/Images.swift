@@ -35,13 +35,14 @@ final class Images {
             return
         }
         inFlight[url] = [done]
-        let file = directory.appendingPathComponent(Self.key(url))
+        // A picture saved with a download is read where it is.
+        let file = url.isFileURL ? url : directory.appendingPathComponent(Self.key(url))
         Task.detached(priority: .utility) {
             var texture: Texture?
             if let data = try? Data(contentsOf: file) {
                 texture = Texture(data: data)
             }
-            if texture == nil, let (data, response) = try? await URLSession.shared.data(from: url),
+            if texture == nil, !url.isFileURL, let (data, response) = try? await URLSession.shared.data(from: url),
                (response as? HTTPURLResponse)?.statusCode == 200 {
                 texture = Texture(data: data)
                 if texture != nil { try? data.write(to: file, options: .atomic) }

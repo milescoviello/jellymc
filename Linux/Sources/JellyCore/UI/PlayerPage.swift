@@ -180,8 +180,10 @@ final class PlayerPage {
         } else {
             tracks = (audioIndex, subtitleIndex)
         }
+        // A downloaded copy plays from disk, online or not.
+        let local = state.downloads.localPlan(for: item.id, start: start ?? item.resumeSeconds)
         Task {
-            await session.start(at: start, audioIndex: tracks.audio, subtitleIndex: tracks.subtitle, mediaSourceId: mediaSourceId)
+            await session.start(at: start, audioIndex: tracks.audio, subtitleIndex: tracks.subtitle, mediaSourceId: mediaSourceId, local: local)
         }
         root.grabFocus()
         reveal()

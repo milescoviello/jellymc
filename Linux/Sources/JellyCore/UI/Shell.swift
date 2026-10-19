@@ -48,7 +48,7 @@ final class Shell {
     // MARK: - Places
 
     private func buildPlaces(_ libraries: [BaseItem]) {
-        let ids = ["home", "search"] + libraries.map(\.id) + ["settings"]
+        let ids = ["home", "search"] + libraries.map(\.id) + ["downloads", "settings"]
         guard ids != placeIds else { return }
         placeIds = ids
         places.removeAll()
@@ -63,6 +63,7 @@ final class Shell {
         for library in libraries {
             row(library.title, Self.icon(for: library.collectionType), library.id)
         }
+        row("Downloads", "folder-download-symbolic", "downloads")
         row("Settings", "emblem-system-symbolic", "settings")
     }
 
@@ -87,6 +88,8 @@ final class Shell {
             page = NavigationPage(home.root, title: "Home", tag: "home")
         case "search":
             page = NavigationPage(SearchPage(shell: self).root, title: "Search", tag: "search")
+        case "downloads":
+            page = NavigationPage(DownloadsPage(shell: self).root, title: "Downloads", tag: "downloads")
         case "settings":
             page = NavigationPage(SettingsPage(shell: self).root, title: "Settings", tag: "settings")
         default:

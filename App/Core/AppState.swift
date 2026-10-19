@@ -37,6 +37,7 @@ final class AppState {
     let device: DeviceIdentity
     let home = HomeModel()
     let search = SearchModel()
+    let downloads = DownloadStore()
 
     init() {
         preferences = Preferences.load()
@@ -90,6 +91,8 @@ final class AppState {
             self.session = stored
             Self.persist(stored)
             isOffline = false
+            downloads.connect(client)
+            await Outbox.shared.flush(client)
             await Diagnostics.shared.record("session", "connected to \(info.serverName ?? "server") \(info.version ?? "") at \(address)")
             await client.registerCapabilities(playableMediaTypes: ["Video"], commands: ["Play", "Playstate", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"])
             return
@@ -130,6 +133,7 @@ final class AppState {
             session = stored
             client = probe.signedIn(token: result.accessToken, userId: result.user.id)
             isOffline = false
+            downloads.connect(client)
             phase = .signedIn
             await Diagnostics.shared.record("session", "signed in to \(info.serverName ?? "server") \(info.version ?? "") as \(username)")
             return

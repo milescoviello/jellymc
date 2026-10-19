@@ -236,11 +236,11 @@ final class ItemModel {
     func load(_ client: JellyfinClient) async {
         self.client = client
         if item?.mediaSources == nil, let cached = ResponseCache.load(BaseItem.self, key: "item-\(id)") {
-            item = cached
+            item = Outbox.shared.applying(to: cached)
         }
         do {
             let item = try await client.item(id)
-            self.item = item
+            self.item = Outbox.shared.applying(to: item)
             ResponseCache.store(item, key: "item-\(id)")
             error = nil
             switch item.type {
@@ -286,7 +286,7 @@ final class ItemModel {
 
     private func loadEpisodes() async {
         guard let client, let seasonId = selectedSeasonId else { return }
-        episodes = (try? await client.episodes(seriesId: id, seasonId: seasonId)) ?? []
+        episodes = ((try? await client.episodes(seriesId: id, seasonId: seasonId)) ?? []).map(Outbox.shared.applying)
     }
 
     /// What the big play button plays: the film, or for a series the next episode.
