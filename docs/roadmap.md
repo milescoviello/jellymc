@@ -2,6 +2,17 @@
 
 Milestones are cumulative. Each one leaves both apps usable. iOS builds come from CI and are installed with `xtool`, the same as the Music app.
 
+## Where it stands (2026-10-19)
+
+M0, M1 and M2 are built, and the layout follows Plex's (the app replaces Plex here: Home, a library's Recommended/Library/Collections/Categories, pre-play pages, cards that open rather than play). Remote control and live updates from M4 are in too. The Linux app is checked screen by screen on a test desktop, against the local test server and a real one; the iPhone app compiles in CI on every push and has not yet been run on the phone, so its screens are unverified.
+
+Left before calling it 1.0:
+
+- **The iPhone app on the device:** a first run, and the fixes it turns up.
+- **Video on a real GPU on Linux:** the test desktop renders in software (mpv falls back to 8-bit framebuffers and its fast profile there); the laptop's GPU path is untested.
+- **iPad layouts** (M3): the iPhone layout scaled up today.
+- From M4: hand-off, SyncPlay, admin views. From M5: an mpv engine on iOS, an HDR window on Linux.
+
 | Milestone | Outcome |
 |---|---|
 | **M0** Foundations | Repo layout, `Package.swift` (Linux app + macOS tests), the Xcode project, the CI workflow producing `latest`, a local test server, a Core client that logs in |
