@@ -52,13 +52,16 @@ final class HomeModel {
         isLoading = true
         defer { isLoading = false }
         do {
+            async let user = client.currentUser()
             let views = try await client.userViews().filter(Self.isShown)
             libraries = views
             async let resume = client.resume()
             async let nextUp = client.nextUp()
+            // The server's own Home settings: a library can be kept out of "Latest".
+            let excluded = Set((try? await user)?.configuration?.latestItemsExcludes ?? [])
             var latest: [(BaseItem, [BaseItem])] = []
             await withTaskGroup(of: (Int, BaseItem, [BaseItem]).self) { group in
-                for (index, view) in views.enumerated() where Self.showsLatest(view) {
+                for (index, view) in views.enumerated() where Self.showsLatest(view) && !excluded.contains(view.id) {
                     group.addTask { (index, view, (try? await client.latest(parentId: view.id)) ?? []) }
                 }
                 var results: [(Int, BaseItem, [BaseItem])] = []

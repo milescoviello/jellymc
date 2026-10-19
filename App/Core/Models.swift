@@ -24,12 +24,24 @@ struct UserPolicy: Codable, Sendable, Equatable {
     var enableContentDownloading: Bool?
 }
 
+/// The user's own settings on the server, from its web client's Home screen settings.
+struct UserConfiguration: Codable, Sendable, Equatable {
+    /// Libraries left out of the home screen's "Latest" rows.
+    var latestItemsExcludes: [String]?
+    /// Libraries hidden altogether; `/UserViews` already leaves them out.
+    var myMediaExcludes: [String]?
+    /// The user's order for libraries; `/UserViews` already returns them in it.
+    var orderedViews: [String]?
+    var enableNextEpisodeAutoPlay: Bool?
+}
+
 struct User: Codable, Sendable, Equatable, Identifiable {
     var id: String
     var name: String?
     var serverId: String?
     var primaryImageTag: String?
     var policy: UserPolicy?
+    var configuration: UserConfiguration?
 }
 
 /// `POST /Users/AuthenticateByName`.
