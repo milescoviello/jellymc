@@ -58,11 +58,27 @@ struct LibraryView: View {
                 BrowseGridView(model: LibraryModel(library: library))
             } else {
                 VStack(spacing: 0) {
-                    Picker("View", selection: $tab) {
-                        ForEach(tabs) { Text($0.rawValue).tag($0) }
+                    // Plex's pills, sideways when they do not fit: a segmented control cut
+                    // "Recommended" short on a phone.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(tabs) { option in
+                                Button {
+                                    tab = option
+                                } label: {
+                                    Text(option.rawValue)
+                                        .font(.subheadline.weight(.semibold))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 7)
+                                        .foregroundStyle(tab == option ? Color.black : Color.primary)
+                                        .background(tab == option ? Color.plexGold : Color.secondary.opacity(0.2), in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityAddTraits(tab == option ? .isSelected : [])
+                            }
+                        }
+                        .padding(.horizontal)
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
                     .padding(.bottom, 8)
                     switch tab {
                     case .recommended: RecommendedView(library: library)
