@@ -40,7 +40,7 @@ final class LibraryPage {
         grid.scroller.onNearEnd { Task { await model.loadMore() } }
         root.observe {
             grid.set(model.items)
-            count.text = model.total.map { "\($0) items" } ?? ""
+            count.text = model.total.map { "\($0) item\($0 == 1 ? "" : "s")" } ?? ""
             if model.items.isEmpty {
                 stack.visibleName = model.isLoading || model.total == nil ? "loading" : "empty"
                 if let error = model.error { empty.title = "Couldn’t load"; empty.descriptionText = error }
