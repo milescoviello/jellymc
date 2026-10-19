@@ -86,8 +86,12 @@ struct LiveServerTests {
         try await client.sendNoContent("POST", "Sessions/Playing/Stopped", body: report)
         let after = try await client.item(item.id)
         #expect(after.userData?.playbackPositionTicks == 300_000_000)
-        _ = try await client.setPlayed(false, itemId: item.id)
-        try await client.setPosition(0, played: false, lastPlayed: Date(), itemId: item.id)
+        // Put back what was there, so a run does not lose the place of someone testing by hand.
+        let before = item.userData
+        try await client.setPosition(
+            before?.playbackPositionTicks.map(Ticks.seconds) ?? 0, played: before?.played ?? false,
+            lastPlayed: before?.lastPlayedDate ?? Date(), itemId: item.id
+        )
     }
 
     @Test func homeRowsAndSegments() async throws {
