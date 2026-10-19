@@ -275,8 +275,9 @@ final class MpvEngine: PlayerEngine {
     // MARK: - Events
 
     private func drainEvents() {
-        guard let handle else { return }
-        while true {
+        // A handler can end it all: the end of a film closes the page, which shuts mpv
+        // down. So the handle is read again for each event, never kept across one.
+        while let handle {
             guard let event = mpv_wait_event(handle, 0) else { return }
             let id = event.pointee.event_id
             if id == MPV_EVENT_NONE { return }
