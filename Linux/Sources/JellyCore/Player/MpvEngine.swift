@@ -131,6 +131,16 @@ final class MpvEngine: PlayerEngine {
             return
         }
         guard let handle, render == nil else { return }
+        // Mesa's software rasterizer (a VM, a machine without GPU drivers) draws mpv's
+        // float intermediate framebuffers black about half the time, OSD and all else fine,
+        // and takes a quarter of a second a frame at full quality. 8-bit framebuffers and
+        // the fast profile: the picture, at a few times the speed. Real GPUs keep it all.
+        let glRenderer = cmpv_gl_renderer().map { String(cString: $0) } ?? ""
+        if ["llvmpipe", "softpipe", "swrast", "SVGA3D"].contains(where: glRenderer.contains) {
+            setProperty("fbo-format", "rgba8")
+            command(["apply-profile", "fast"])
+            Task { await Diagnostics.shared.record("mpv", "software renderer (\(glRenderer)): 8-bit framebuffers, fast profile") }
+        }
         render = cmpv_render_context_create(handle, cmpv_wayland_display(view.widget))
         let api = gtk_gl_area_get_api(area) == GDK_GL_API_GLES ? "GLES" : "GL"
         Task { await Diagnostics.shared.record("mpv", "render context \(self.render == nil ? "failed" : "created") on \(api)") }

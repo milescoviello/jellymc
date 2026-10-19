@@ -72,6 +72,11 @@ static inline gboolean cmpv_render_idle(gpointer area) {
 static inline void cmpv_on_update(void *area) {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE, cmpv_render_idle, g_object_ref(area), g_object_unref);
 }
+// The context's renderer, current in the calling thread: "llvmpipe (LLVM 21...)" for
+// Mesa's software rasterizer.
+static inline const char *cmpv_gl_renderer(void) {
+    return (const char *)glGetString(GL_RENDERER);
+}
 
 static inline void cmpv_set_update_area(mpv_render_context *ctx, GtkWidget *area) {
     mpv_render_context_set_update_callback(ctx, area ? cmpv_on_update : NULL, area);
