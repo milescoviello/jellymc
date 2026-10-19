@@ -9,8 +9,8 @@ A free Apple developer certificate signs an app for seven days, and every push t
 to `MM` or `main` publishes a new build to the repo's rolling `latest` release. This watches for the phone
 on USB and, every time it is plugged in, installs `latest` — whatever the phone already
 has, so plugging in is always a fresh signature and the newest build. While the phone
-stays plugged in it also installs any build published since, and retries a failed
-install every ten minutes.
+stays plugged in it also installs any build published since, signs it again once the
+last install is three days old, and retries a failed install every ten minutes.
 
 Runs in the desktop session (KDE autostart), so it can notify and use the logged-in
 `gh` and `xtool`. State is in ~/.local/state/jellymc-phone-refresh/state.json, the log
@@ -46,6 +46,9 @@ POLL_SECONDS = 15
 RELEASE_CHECK_SECONDS = 15 * 60
 # After a failed install, before trying again while still plugged in.
 RETRY_SECONDS = 10 * 60
+# Left plugged in, signed again this long after the last install: a free certificate's
+# seven days never run out on a phone that is never unplugged.
+RESIGN_SECONDS = 3 * 24 * 3600
 # After plugging in, before the first install: the Music app's watcher goes first.
 PLUG_GRACE_SECONDS = 60
 
@@ -238,6 +241,9 @@ def main() -> None:
             reason = "retrying the last failed install"
         elif not failed:
             reason = newer_build(state, udid, release)
+            installed_at = state.get("installed", {}).get(udid, {}).get("at", 0)
+            if not reason and now - installed_at > RESIGN_SECONDS:
+                reason = f"signed {int((now - installed_at) / 86400)} days ago"
         else:
             reason = None
         if reason:
