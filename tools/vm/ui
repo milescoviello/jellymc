@@ -14,7 +14,8 @@ SHOTS=${JELLYMC_SHOTS:-${TMPDIR:-/tmp}/jellymc-shots}
 step=${1:?step}
 shift
 case "$step" in
-    shot) mkdir -p "$SHOTS"; "$DM/desktop/vmctl" shot "$VMID" "$SHOTS/${1:?name}.png" >/dev/null; echo "$SHOTS/$1.png" ;;
+    # A key first: the VM blanks its display when idle, and shift changes nothing.
+    shot) mkdir -p "$SHOTS"; "$DM/desktop/vmctl" keys "$VMID" shift >/dev/null; sleep 1; "$DM/desktop/vmctl" shot "$VMID" "$SHOTS/${1:?name}.png" >/dev/null; echo "$SHOTS/$1.png" ;;
     click) ssh root@100.105.58.62 python3 /root/distro-matrix-desktop/click.py "$VMID" "${1:?x}" "${2:?y}" 1280 800 ;;
     keys) "$DM/desktop/vmctl" keys "$VMID" "$@" >/dev/null ;;
     type) "$DM/desktop/vmctl" type "$VMID" "$*" >/dev/null ;;
