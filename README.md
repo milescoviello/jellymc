@@ -33,6 +33,8 @@ gh release download latest -p Jellymc.ipa -D dist --clobber
 xtool install dist/Jellymc.ipa
 ```
 
+Or let plugging the phone in do it: `tools/phone/install.sh` starts a watcher (and adds it to KDE autostart) that installs the newest build every time the iPhone is plugged in, and any newer one while it stays plugged in, as the Music app's does.
+
 ## Developing
 
 See [docs/dev-workflow.md](docs/dev-workflow.md): `tools/swiftw build|test` on Linux, a throwaway Jellyfin test server with generated media (`tools/testserver`), and `tools/vm` for driving a test desktop VM. The scoping documents that started the project are in [docs/](docs/README.md).
