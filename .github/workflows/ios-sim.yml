@@ -1,0 +1,82 @@
+name: iPhone simulator screenshots
+
+# Run by hand (`gh workflow run ios-sim.yml -f script=tour`): the app in a simulator,
+# against a server on tape (tools/sim/tape.py), driven by a script from tools/sim/scripts,
+# its screenshots attached to the run. There is no Mac here to look at the phone app on,
+# and this is how it gets looked at between installs.
+
+on:
+    workflow_dispatch:
+        inputs:
+            script:
+                description: A script in tools/sim/scripts
+                default: tour
+            device:
+                description: The simulator's device type
+                default: iPhone 17 Pro
+
+jobs:
+    shots:
+        runs-on: macos-26
+        timeout-minutes: 30
+
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: AXe, for taps and typing
+              run: brew install cameroncooke/axe/axe
+
+            - name: Build for the simulator
+              run: |
+                  xcodebuild \
+                    -project Jellymc.xcodeproj \
+                    -scheme Jellymc \
+                    -configuration Debug \
+                    -sdk iphonesimulator \
+                    -destination 'generic/platform=iOS Simulator' \
+                    -derivedDataPath "$RUNNER_TEMP/build" \
+                    CODE_SIGNING_ALLOWED=NO \
+                    build | tail -5
+
+            - name: The server on tape
+              run: |
+                  nohup python3 tools/sim/tape.py serve --dir tools/sim/tape --port 8096 --log "$RUNNER_TEMP/tape.log" > "$RUNNER_TEMP/tape.out" 2>&1 &
+                  for _ in $(seq 20); do curl -sf localhost:8096/System/Info/Public >/dev/null && break; sleep 0.5; done
+                  curl -s localhost:8096/System/Info/Public | head -c 200; echo
+
+            - name: A phone
+              id: phone
+              env:
+                  DEVICE: ${{ inputs.device }}
+              run: |
+                  RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; print(r[-1]["identifier"])')
+                  TYPE=$(xcrun simctl list devicetypes -j | python3 -c 'import json,os,sys; t=json.load(sys.stdin)["devicetypes"]; want=os.environ["DEVICE"]; m=[x for x in t if x["name"]==want] or [x for x in t if x["name"].startswith("iPhone")]; print(m[-1]["identifier"])')
+                  UDID=$(xcrun simctl create shots "$TYPE" "$RUNTIME")
+                  xcrun simctl boot "$UDID"
+                  xcrun simctl bootstatus "$UDID" -b
+                  xcrun simctl ui "$UDID" appearance dark
+                  xcrun simctl install "$UDID" "$RUNNER_TEMP/build/Build/Products/Debug-iphonesimulator/Jellymc.app"
+                  echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+                  echo "$TYPE on $RUNTIME: $UDID"
+
+            - name: Drive
+              env:
+                  UDID: ${{ steps.phone.outputs.udid }}
+                  OUT: ${{ runner.temp }}/shots
+              run: tools/sim/drive.sh "${{ inputs.script }}"
+
+            - name: What the app logged
+              if: always()
+              env:
+                  UDID: ${{ steps.phone.outputs.udid }}
+              run: |
+                  mkdir -p "$RUNNER_TEMP/shots"
+                  cp "$RUNNER_TEMP/tape.log" "$RUNNER_TEMP/shots/tape-misses.log" 2>/dev/null || true
+                  xcrun simctl spawn "$UDID" log show --last 10m --style compact --predicate 'process == "Jellymc"' > "$RUNNER_TEMP/shots/app.log" 2>&1 || true
+                  tail -40 "$RUNNER_TEMP/shots/app.log" || true
+
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: sim-shots
+                  path: ${{ runner.temp }}/shots

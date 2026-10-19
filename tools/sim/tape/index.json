@@ -1,0 +1,3887 @@
+[
+{
+"body": "0445662ecf90e918.json",
+"method": "GET",
+"path": "/system/info/public",
+"query": [],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "2361e12e4654ccc4.json",
+"method": "POST",
+"path": "/users/authenticatebyname",
+"query": [],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "da39a3ee5e6b4b0d.bin",
+"method": "POST",
+"path": "/sessions/capabilities/full",
+"query": [],
+"status": 204,
+"type": ""
+},
+{
+"body": "f94810eaeef9ccc3.json",
+"method": "GET",
+"path": "/displaypreferences/jellymc",
+"query": [
+[
+"client",
+"jellymc"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "37515c0bc43c2f85.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Playlist"
+],
+[
+"limit",
+"200"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "6a9ece2fa0a2ae6f.json",
+"method": "GET",
+"path": "/userviews",
+"query": [
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "e675676c2322ca1f.json",
+"method": "GET",
+"path": "/shows/nextup",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableResumable",
+"false"
+],
+[
+"enableRewatching",
+"false"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/useritems/resume",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"mediaTypes",
+"Video"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"filters",
+"IsFavorite"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie,Series"
+],
+[
+"limit",
+"30"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DateCreated,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "a8c8b1edd128420c.bin",
+"method": "GET",
+"path": "/items/03f4e4525acec900c957ad24c7bd06a1/images/primary",
+"query": [
+[
+"maxWidth",
+"544"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"a62335b9ee7c177a6ccc44f6a38cdf3c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "5953326f287d30ff.bin",
+"method": "GET",
+"path": "/items/4216013f95730304f9d9979a8c67a36f/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"ff477ca8159ff3cf6de2401957c465de"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "c17fec6dd3572b24.bin",
+"method": "GET",
+"path": "/items/4def373444fc7a79b4592aed4ffe492e/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"fa9f930491bcf53b618ff6471ec80c39"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "b876a543c9c2ab85.bin",
+"method": "GET",
+"path": "/items/8ffe079b6485a70d505455d45088e63b/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"6b06264946d349f7317ba1c90ed6ffc4"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "220e1dd43bfa75d6.bin",
+"method": "GET",
+"path": "/items/afe7b71fe34789de4a322ca295817d1f/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"966e762b130a5f64dc6956e8ccca9cc1"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "5334f48a1aa150cc.bin",
+"method": "GET",
+"path": "/items/4d9bae7ba369f70422265cc2c7634e95/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"758f347b445b9483eccbc186fded7f9c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "14d021453b3b979e.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"maxPremiereDate",
+"2026-10-19T18:20:45Z"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "87dfbc07d6301d7c.bin",
+"method": "GET",
+"path": "/items/78fab157b844b3844b47310c4c251bd2/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"9c1f3e1e65433cf11d337f50b111c151"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "cd18d5d3d72f4681.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"genres",
+"Animation"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "17cf3e36fec0063b.bin",
+"method": "GET",
+"path": "/items/78fab157b844b3844b47310c4c251bd2/images/backdrop/0",
+"query": [
+[
+"maxWidth",
+"1920"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"2b233ed3b29b3c120ac66ff3c46cc7ee"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "fae23351a6ca34c0.json",
+"method": "GET",
+"path": "/items/78fab157b844b3844b47310c4c251bd2",
+"query": [
+[
+"fields",
+"Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "518f77551e74fcb7.bin",
+"method": "GET",
+"path": "/items/78fab157b844b3844b47310c4c251bd2/images/logo",
+"query": [
+[
+"maxWidth",
+"420"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"1b327989e6268b47fc1065a68d1115d2"
+]
+],
+"status": 200,
+"type": "image/png"
+},
+{
+"body": "b4a8f87f8e865966.bin",
+"method": "GET",
+"path": "/items/78fab157b844b3844b47310c4c251bd2/images/primary",
+"query": [
+[
+"maxWidth",
+"440"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"9c1f3e1e65433cf11d337f50b111c151"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "443e22e3c0db1595.bin",
+"method": "GET",
+"path": "/items/49f34ba9aaa3cc6004fbee058aea50b7/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"1f94acc44d7d38ef6e7c9a6ebe683dff"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "739048a183866a68.bin",
+"method": "GET",
+"path": "/items/e9948ab58a0ea664d4377689d82eac2d/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"4bf05b8c2c2583e624d4d783d38d769f"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "da091caad50883b6.bin",
+"method": "GET",
+"path": "/items/8bbcea2e5bc9f851deef22c4eec8f4dc/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"fd70ce562edd65de7fb70a30d2bfd931"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "ff2e80dd1e7deec0.json",
+"method": "GET",
+"path": "/items/78fab157b844b3844b47310c4c251bd2/similar",
+"query": [
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"limit",
+"16"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"100"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DatePlayed,SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "e675676c2322ca1f.json",
+"method": "GET",
+"path": "/shows/nextup",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableResumable",
+"false"
+],
+[
+"enableRewatching",
+"false"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"60"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DateCreated,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "79cb17a1a6cdf03b.json",
+"method": "GET",
+"path": "/items/latest",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "fba02bcbeccd4244.json",
+"method": "GET",
+"path": "/genres",
+"query": [
+[
+"enableImages",
+"false"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/useritems/resume",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"mediaTypes",
+"Video"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "72ef9bd47f9276fc.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Episode"
+],
+[
+"limit",
+"20"
+],
+[
+"maxPremiereDate",
+"2026-10-19T18:22:14Z"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "dd5b0c70e3788469.json",
+"method": "GET",
+"path": "/items/filters",
+"query": [
+[
+"includeItemTypes",
+"Series"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"genres",
+"Sci-Fi & Fantasy"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"genres",
+"Drama"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"a656b907eb3a73532e40e44b968d0225"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "d3ffb812c129592f.bin",
+"method": "GET",
+"path": "/items/c274309726fde25cd970af408e6b4e01/images/primary",
+"query": [
+[
+"maxWidth",
+"544"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"d269f0caeb3b084c1bdff742965dbc2c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "bc4fa9cc51228906.bin",
+"method": "GET",
+"path": "/items/9fa15c031164950ba990333134d4c7f9/images/primary",
+"query": [
+[
+"maxWidth",
+"544"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"7e15bb28f4d0312dc923d9c2c23d4960"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "93f292a8a6c3dac2.bin",
+"method": "GET",
+"path": "/items/4def373444fc7a79b4592aed4ffe492e/images/backdrop/0",
+"query": [
+[
+"maxWidth",
+"1920"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"08663649d698b3dcca223c867b7f503e"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "ba3ce97e8a3a0704.bin",
+"method": "GET",
+"path": "/items/03f4e4525acec900c957ad24c7bd06a1/images/primary",
+"query": [
+[
+"maxWidth",
+"600"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"a62335b9ee7c177a6ccc44f6a38cdf3c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "065ef659a379bf15.json",
+"method": "GET",
+"path": "/items/03f4e4525acec900c957ad24c7bd06a1",
+"query": [
+[
+"fields",
+"Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "f479ff4296786450.bin",
+"method": "GET",
+"path": "/items/f8e493a567614b8aab042b20d756dc65/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"5d95ad17382bc0ef8a51dbb688c15f31"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "204ec8edb86be0d4.bin",
+"method": "GET",
+"path": "/items/5a6aa9387851bbb474847f74a1e0a46f/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"27b664d74d5addc15851ab88038aefe4"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "5908bc048171f0ff.bin",
+"method": "GET",
+"path": "/items/0dc85861e3bb3165fefb9af1b8090892/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"ddcff5d97fcaedb6290debd98d2fd9c6"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "2a63e0755ed4d42b.json",
+"method": "GET",
+"path": "/items/4def373444fc7a79b4592aed4ffe492e",
+"query": [
+[
+"fields",
+"Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items/4def373444fc7a79b4592aed4ffe492e/similar",
+"query": [
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"limit",
+"16"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "18dbc6d833976a3a.bin",
+"method": "GET",
+"path": "/items/4def373444fc7a79b4592aed4ffe492e/images/primary",
+"query": [
+[
+"maxWidth",
+"440"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"fa9f930491bcf53b618ff6471ec80c39"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "e675676c2322ca1f.json",
+"method": "GET",
+"path": "/shows/nextup",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableResumable",
+"false"
+],
+[
+"enableRewatching",
+"false"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"1"
+],
+[
+"seriesId",
+"4def373444fc7a79b4592aed4ffe492e"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "d11c8c48b258812d.json",
+"method": "GET",
+"path": "/shows/4def373444fc7a79b4592aed4ffe492e/seasons",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "d5ad952b2f5d8b41.json",
+"method": "GET",
+"path": "/items/de166c0828adceb5f858344b83b72f0b",
+"query": [
+[
+"fields",
+"Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "79404abae4e8e45d.json",
+"method": "GET",
+"path": "/shows/4def373444fc7a79b4592aed4ffe492e/episodes",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount,MediaSources"
+],
+[
+"seasonId",
+"de166c0828adceb5f858344b83b72f0b"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "5185214106faf470.bin",
+"method": "GET",
+"path": "/items/c274309726fde25cd970af408e6b4e01/images/primary",
+"query": [
+[
+"maxWidth",
+"480"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"d269f0caeb3b084c1bdff742965dbc2c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "0cc153399da0d4ac.bin",
+"method": "GET",
+"path": "/items/03f4e4525acec900c957ad24c7bd06a1/images/primary",
+"query": [
+[
+"maxWidth",
+"480"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"a62335b9ee7c177a6ccc44f6a38cdf3c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "fa0b83ef03a0583e.bin",
+"method": "GET",
+"path": "/items/9fa15c031164950ba990333134d4c7f9/images/primary",
+"query": [
+[
+"maxWidth",
+"480"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"7e15bb28f4d0312dc923d9c2c23d4960"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "9c21625be9f22bc1.bin",
+"method": "GET",
+"path": "/items/f8e493a567614b8aab042b20d756dc65/images/primary",
+"query": [
+[
+"maxWidth",
+"1280"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"5d95ad17382bc0ef8a51dbb688c15f31"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "58000a1f2b97916f.json",
+"method": "GET",
+"path": "/items/f8e493a567614b8aab042b20d756dc65",
+"query": [
+[
+"fields",
+"Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "4f2bc095b9483643.bin",
+"method": "GET",
+"path": "/items/f8e493a567614b8aab042b20d756dc65/images/primary",
+"query": [
+[
+"maxWidth",
+"440"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"5d95ad17382bc0ef8a51dbb688c15f31"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie,Series"
+],
+[
+"limit",
+"300"
+],
+[
+"personIds",
+"f8e493a567614b8aab042b20d756dc65"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/useritems/resume",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"mediaTypes",
+"Video"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "1de8408fcdc86337.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "1de8408fcdc86337.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"60"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DateCreated,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/shows/nextup",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableResumable",
+"false"
+],
+[
+"enableRewatching",
+"false"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "0f929801279b4912.json",
+"method": "GET",
+"path": "/items/latest",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "1de8408fcdc86337.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "1de8408fcdc86337.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"100"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DatePlayed,SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Episode"
+],
+[
+"limit",
+"20"
+],
+[
+"maxPremiereDate",
+"2026-10-19T18:24:16Z"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "89fa7247699dfd86.json",
+"method": "GET",
+"path": "/items/filters",
+"query": [
+[
+"includeItemTypes",
+"Series"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/genres",
+"query": [
+[
+"enableImages",
+"false"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"parentId",
+"0c41907140d802bb58430fed7e2cd79e"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "35ab4daf69f6df62.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "35ab4daf69f6df62.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"maxPremiereDate",
+"2026-10-19T18:24:21Z"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "e820045cb1928b73.json",
+"method": "GET",
+"path": "/items/latest",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"filters",
+"IsPlayed"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DatePlayed,SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/useritems/resume",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"mediaTypes",
+"Video"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "35ab4daf69f6df62.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "97d170e1550eee4a.json",
+"method": "GET",
+"path": "/movies/recommendations",
+"query": [
+[
+"categoryLimit",
+"3"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"itemLimit",
+"12"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "1017d7d80d5ecee7.json",
+"method": "GET",
+"path": "/genres",
+"query": [
+[
+"enableImages",
+"false"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"filters",
+"IsPlayed"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DatePlayed,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "32a80798f740daaf.json",
+"method": "GET",
+"path": "/items/filters",
+"query": [
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"parentId",
+"384bb658bdd82344138c376d0e4945c0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "6995fca7f06314e0.json",
+"method": "GET",
+"path": "/items/filters",
+"query": [
+[
+"includeItemTypes",
+"BoxSet"
+],
+[
+"parentId",
+"9d7ad6afe9afa2dab1a2f6e00ad28fa6"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "cd848b3b780ad906.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"BoxSet"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"9d7ad6afe9afa2dab1a2f6e00ad28fa6"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "3d77114092f4db01.json",
+"method": "GET",
+"path": "/items/filters",
+"query": [
+[
+"includeItemTypes",
+"Playlist"
+],
+[
+"parentId",
+"2ddd733bc6fe05ad6126af5c8bea63bb"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "37515c0bc43c2f85.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Playlist"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"2ddd733bc6fe05ad6126af5c8bea63bb"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "488354231ab79e28.bin",
+"method": "GET",
+"path": "/items/94c74858b5721ca28d7b7de7bd9f6ceb/images/primary",
+"query": [
+[
+"maxWidth",
+"312"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"86c886b43f5f9b0fe7e75a6fc781ca36"
+]
+],
+"status": 200,
+"type": "image/png"
+},
+{
+"body": "44edd9bed949e56a.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Series"
+],
+[
+"limit",
+"24"
+],
+[
+"recursive",
+"true"
+],
+[
+"searchTerm",
+"pio"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"24"
+],
+[
+"recursive",
+"true"
+],
+[
+"searchTerm",
+"pio"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Person"
+],
+[
+"limit",
+"24"
+],
+[
+"recursive",
+"true"
+],
+[
+"searchTerm",
+"pio"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Episode"
+],
+[
+"limit",
+"24"
+],
+[
+"recursive",
+"true"
+],
+[
+"searchTerm",
+"pio"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"BoxSet"
+],
+[
+"limit",
+"24"
+],
+[
+"recursive",
+"true"
+],
+[
+"searchTerm",
+"pio"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "55d2b63e2cb8ef32.json",
+"method": "GET",
+"path": "/items/latest",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "14d021453b3b979e.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"maxPremiereDate",
+"2026-10-19T18:25:05Z"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "b99d270da75059e5.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"filters",
+"IsPlayed"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DatePlayed,SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "629923d71495f364.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"filters",
+"IsPlayed"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"DatePlayed,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "cd18d5d3d72f4681.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "3c20d82d51fb13d2.json",
+"method": "GET",
+"path": "/genres",
+"query": [
+[
+"enableImages",
+"false"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "279f0b924f5338c7.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "36b390cf75da4750.json",
+"method": "GET",
+"path": "/useritems/resume",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"limit",
+"24"
+],
+[
+"mediaTypes",
+"Video"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "cd848b3b780ad906.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"BoxSet"
+],
+[
+"limit",
+"120"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"SortName"
+],
+[
+"sortOrder",
+"Ascending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "279f0b924f5338c7.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"genres",
+"Animation"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"20"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"CommunityRating,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "7e2b749265dadde6.json",
+"method": "GET",
+"path": "/movies/recommendations",
+"query": [
+[
+"categoryLimit",
+"3"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"itemLimit",
+"12"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "231fb797ff7f3324.json",
+"method": "GET",
+"path": "/items/filters",
+"query": [
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "14d021453b3b979e.json",
+"method": "GET",
+"path": "/items",
+"query": [
+[
+"enableImageTypes",
+"Primary,Backdrop,Thumb,Logo"
+],
+[
+"enableTotalRecordCount",
+"true"
+],
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"imageTypeLimit",
+"1"
+],
+[
+"includeItemTypes",
+"Movie"
+],
+[
+"limit",
+"120"
+],
+[
+"parentId",
+"f137a2dd21bbc1b99aa5c0f6bf02a805"
+],
+[
+"recursive",
+"true"
+],
+[
+"sortBy",
+"PremiereDate,SortName"
+],
+[
+"sortOrder",
+"Descending"
+],
+[
+"startIndex",
+"0"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "733b7bb669f37ba0.bin",
+"method": "GET",
+"path": "/items/4d9bae7ba369f70422265cc2c7634e95/images/primary",
+"query": [
+[
+"maxWidth",
+"440"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"758f347b445b9483eccbc186fded7f9c"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "bd8c38b9da064fe2.bin",
+"method": "GET",
+"path": "/items/4d9bae7ba369f70422265cc2c7634e95/images/backdrop/0",
+"query": [
+[
+"maxWidth",
+"1920"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"4580b09f4f26d7c5469496243fa3e72d"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "6f0e71c549ef4a43.bin",
+"method": "GET",
+"path": "/items/4d9bae7ba369f70422265cc2c7634e95/images/logo",
+"query": [
+[
+"maxWidth",
+"420"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"e724ed4ccad05c75662dc8d39defba82"
+]
+],
+"status": 200,
+"type": "image/png"
+},
+{
+"body": "97d170e1550eee4a.json",
+"method": "GET",
+"path": "/sessions",
+"query": [
+[
+"activeWithinSeconds",
+"600"
+],
+[
+"controllableByUserId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "2bace78d2f83b34e.json",
+"method": "GET",
+"path": "/items/4d9bae7ba369f70422265cc2c7634e95",
+"query": [
+[
+"fields",
+"Overview,Genres,People,Studios,Taglines,MediaSources,MediaStreams,Chapters,Trickplay,RemoteTrailers,PrimaryImageAspectRatio,ChildCount,RecursiveItemCount,ProductionLocations,ImageBlurHashes"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "b98fa64f0eb97889.bin",
+"method": "GET",
+"path": "/items/b2390b0e5e0e4f10f39ef73112abbf2c/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"24c3478fa8d9f69bdb099e7e00dc3a33"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "65eb3a95bed02872.bin",
+"method": "GET",
+"path": "/items/6f1570cd0ecf9891a5fdbe78e084d736/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"f382e7fa4dcdaa4fe961d8b224a78d64"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "6ffb1b29ff282b6c.bin",
+"method": "GET",
+"path": "/items/e8e29948be2067b3c86dd2079133d4ab/images/primary",
+"query": [
+[
+"maxWidth",
+"224"
+],
+[
+"quality",
+"90"
+],
+[
+"tag",
+"85f3a37437d4eaf7e0fc542be09b2c75"
+]
+],
+"status": 200,
+"type": "image/jpeg"
+},
+{
+"body": "6972dc707133ddce.json",
+"method": "GET",
+"path": "/items/4d9bae7ba369f70422265cc2c7634e95/similar",
+"query": [
+[
+"fields",
+"PrimaryImageAspectRatio,Overview,ChildCount,RecursiveItemCount"
+],
+[
+"limit",
+"16"
+],
+[
+"userId",
+"8cbc90e542df478d90e25cedc8dd5fee"
+]
+],
+"status": 200,
+"type": "application/json; charset=utf-8"
+},
+{
+"body": "ad3d63e518f4cb01.json",
+"method": "GET",
+"path": "/users/me",
+"query": [],
+"status": 200,
+"type": "application/json; charset=utf-8"
+}
+]
