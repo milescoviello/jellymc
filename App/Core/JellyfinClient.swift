@@ -272,13 +272,25 @@ final class JellyfinClient: Sendable {
         return page.items
     }
 
-    func search(_ term: String, limit: Int = 60) async throws -> [BaseItem] {
-        var query = ItemQuery()
-        query.searchTerm = term
-        query.recursive = true
-        query.limit = limit
-        query.includeItemTypes = [.movie, .series, .episode, .boxSet, .person]
-        return try await items(query).items
+    /// Every kind at once, each with its own limit: in one request a common word filled
+    /// all of it with episodes, and no film or show came back.
+    func search(_ term: String, limitEach: Int = 24) async throws -> [BaseItem] {
+        let kinds: [ItemKind] = [.movie, .series, .episode, .boxSet, .person]
+        return try await withThrowingTaskGroup(of: (Int, [BaseItem]).self) { group in
+            for (index, kind) in kinds.enumerated() {
+                group.addTask {
+                    var query = ItemQuery()
+                    query.searchTerm = term
+                    query.recursive = true
+                    query.limit = limitEach
+                    query.includeItemTypes = [kind]
+                    return (index, try await self.items(query).items)
+                }
+            }
+            var found: [(Int, [BaseItem])] = []
+            for try await result in group { found.append(result) }
+            return found.sorted { $0.0 < $1.0 }.flatMap(\.1)
+        }
     }
 
     // MARK: - User data
