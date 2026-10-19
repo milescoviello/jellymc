@@ -26,6 +26,8 @@ final class PlayerPage {
     private let volume = Scale(min: 0, max: 130, step: 5, value: 100)
     private let muteButton = Button(icon: "audio-volume-high-symbolic", "flat", "circular")
     private let poster = FixedPicture(width: 40, height: 60)
+    /// Kept across episodes: a timer set on one carries on into the next.
+    private let sleepTimer = SleepTimer()
     private let skipButton = Button("Skip", "osd-pill")
     private let upNext = Box.vertical(spacing: 10).css("up-next")
     private let stillWatching = Box.vertical(spacing: 14).css("error-box")
@@ -43,6 +45,8 @@ final class PlayerPage {
     /// The bars stay while the pointer is on them: reading the seek preview, aiming at a
     /// button.
     private var pointerOnBars = false
+    /// A menu from the bars is open: they stay until it closes.
+    private var menuOpen = false
     private var showsStats = false
     private var lastPointer: (Double, Double) = (0, 0)
     /// The session's idle inhibitor: no screen saver while a video is open.
@@ -208,6 +212,10 @@ final class PlayerPage {
         cancel.onClicked { [weak self] in self?.session?.cancelCountdown() }
         seek.onUserChange { [weak self] value in self?.scrub(to: value) }
 
+        Menu.onOpen = { [weak self] open in
+            self?.menuOpen = open
+            if !open { self?.reveal() }
+        }
         installPointer(overlay)
         installSeekPreview()
         installKeys()
@@ -236,6 +244,13 @@ final class PlayerPage {
         self.session = session
         session.onPlayNext = { [weak self] next, continuing in self?.start(next, from: 0, continuing: continuing) }
         session.onFinished = { [weak self] in self?.window.closePlayer() }
+        let sleepTimer = self.sleepTimer
+        session.stopsAtEnd = { sleepTimer.itemEnded() }
+        session.willStopAtEnd = { sleepTimer.choice == .endOfItem }
+        sleepTimer.onFire = { [weak self] in
+            self?.session?.setPaused(true)
+            Desktop.main?.toast("Paused by the sleep timer")
+        }
         connectMediaControls(session)
         root.observe { [weak self, weak session] in
             guard let self, let session, session === self.session else { return }
@@ -266,6 +281,7 @@ final class PlayerPage {
             self.keyController = nil
         }
         setCursor(visible: true)
+        Menu.onOpen = nil
         MediaControls.shared.clear()
         if inhibitor != 0, let application = Desktop.application {
             gtk_application_uninhibit(application.cast(), inhibitor)
@@ -397,10 +413,44 @@ final class PlayerPage {
         return Menu([items])
     }
 
+    /// Plex's playback settings: quality, speed, the delays, the sleep timer.
     private func speedMenu() -> Menu {
-        Menu([[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map { rate in
-            .action(rate == 1 ? "Normal" : String(format: "%.2g×", rate)) { [weak self] in self?.session?.setRate(rate) }
-        }])
+        guard let session else { return Menu([]) }
+        let quality: Menu.Item = .choice(
+            "Quality",
+            options: PlaybackPreferences.bitrateChoices.map { (String($0.bits), $0.title) },
+            selected: String(session.maxBitrate)
+        ) { id in if let bits = Int(id) { session.setMaxBitrate(bits) } }
+        let speeds: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+        let speed: Menu.Item = .choice(
+            "Speed",
+            options: speeds.map { (String($0), $0 == 1 ? "Normal" : String(format: "%.2g×", $0)) },
+            selected: String(engine.rate)
+        ) { [weak self] id in
+            guard let rate = Double(id) else { return }
+            self?.engine.setRate(rate)
+        }
+        func delays(_ title: String, _ current: Double, _ set: @escaping @MainActor (Double) -> Void) -> Menu.Item {
+            let steps: [Double] = [-2, -1, -0.5, -0.25, -0.1, 0, 0.1, 0.25, 0.5, 1, 2]
+            return .choice(
+                title,
+                options: steps.map { (String($0), $0 == 0 ? "None" : String(format: "%+.2g s", $0)) },
+                selected: String(steps.min { abs($0 - current) < abs($1 - current) } ?? 0)
+            ) { id in if let seconds = Double(id) { set(seconds) } }
+        }
+        let audioDelay = delays("Audio Delay", engine.audioDelay) { [weak self] in self?.engine.setAudioDelay($0) }
+        let subtitleDelay = delays("Subtitle Delay", engine.subtitleDelay) { [weak self] in self?.engine.setSubtitleDelay($0) }
+        let timer: Menu.Item = .choice(
+            "Sleep Timer",
+            options: SleepTimer.Choice.allCases.map { ($0.rawValue, $0.title) },
+            selected: sleepTimer.choice.rawValue
+        ) { [weak self] id in
+            guard let self, let choice = SleepTimer.Choice(rawValue: id) else { return }
+            self.sleepTimer.set(choice)
+            if choice != .off { Desktop.main?.toast("Sleep timer: \(choice.title)") }
+        }
+        // A choice is its own submenu of options.
+        return Menu([[quality, speed], [audioDelay, subtitleDelay], [timer]])
     }
 
     // MARK: - Pointer and keys
@@ -575,7 +625,7 @@ final class PlayerPage {
         hideTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled, let self, let session = self.session, !session.isPaused, session.error == nil,
-                  !self.scrubbing, !self.pointerOnBars else { return }
+                  !self.scrubbing, !self.pointerOnBars, !self.menuOpen else { return }
             self.top.isRevealed = false
             self.bottom.isRevealed = false
             self.seekPreview.hide()

@@ -853,3 +853,26 @@ struct PlaylistTests {
         #expect(Presentation.playLabel(for: BaseItem(id: "f"), on: playlist) == "Play")
     }
 }
+
+@MainActor
+struct SleepTimerTests {
+    @Test func timesOutAndStopsAtTheEnd() async throws {
+        let timer = SleepTimer()
+        var fired = 0
+        timer.onFire = { fired += 1 }
+        let now = Date(timeIntervalSince1970: 1000)
+        timer.set(.thirty, now: now)
+        #expect(timer.deadline == now.addingTimeInterval(1800))
+        #expect(!timer.itemEnded())
+        timer.set(.endOfItem)
+        #expect(timer.deadline == nil)
+        #expect(timer.itemEnded())
+        #expect(fired == 1)
+        #expect(timer.choice == .off)
+        #expect(!timer.itemEnded())
+        timer.set(.fifteen)
+        timer.set(.off)
+        #expect(timer.deadline == nil)
+        #expect(fired == 1)
+    }
+}

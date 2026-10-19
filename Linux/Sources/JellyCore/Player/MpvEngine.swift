@@ -34,6 +34,10 @@ final class MpvEngine: PlayerEngine {
     private var pendingLoad: [String]?
 
     private(set) var volume: Double = 100
+    private(set) var rate: Double = 1
+    /// Seconds; positive delays the sound or the subtitles.
+    private(set) var audioDelay: Double = 0
+    private(set) var subtitleDelay: Double = 0
     private(set) var isMuted = false
 
     /// Holds the engine weakly for mpv's wakeups, which may arrive after it has gone.
@@ -192,7 +196,20 @@ final class MpvEngine: PlayerEngine {
         command(["seek", String(format: "%.3f", seconds), "absolute"])
     }
 
-    func setRate(_ rate: Double) { setProperty("speed", String(rate)) }
+    func setRate(_ rate: Double) {
+        self.rate = rate
+        setProperty("speed", String(rate))
+    }
+
+    func setAudioDelay(_ seconds: Double) {
+        audioDelay = seconds
+        setProperty("audio-delay", String(seconds))
+    }
+
+    func setSubtitleDelay(_ seconds: Double) {
+        subtitleDelay = seconds
+        setProperty("sub-delay", String(seconds))
+    }
 
     func setVolume(_ volume: Double) {
         self.volume = max(0, min(130, volume))

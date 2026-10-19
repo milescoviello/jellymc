@@ -26,6 +26,9 @@ struct Menu {
     }
 
     /// Opens the menu pointing at a point in `widget`, or at all of it.
+    /// Told when the menu opens and closes: the player keeps its bars up while one is open.
+    @MainActor static var onOpen: (@MainActor (Bool) -> Void)?
+
     func popup(at widget: Widget, x: Double? = nil, y: Double? = nil) {
         guard !sections.isEmpty else { return }
         let group = g_simple_action_group_new()!
@@ -46,9 +49,11 @@ struct Menu {
         }
         // Unparented once closed, on the next turn: GTK is still finishing the close.
         Signal.connect(popover, "closed") {
+            Menu.onOpen?(false)
             let pointer = Unchecked(popover)
             Task { @MainActor in gtk_widget_unparent(pointer.value) }
         }
+        Menu.onOpen?(true)
         gtk_popover_popup(popover.cast())
     }
 

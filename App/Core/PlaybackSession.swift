@@ -85,10 +85,17 @@ final class PlaybackSession {
     @ObservationIgnored private var pausesWhenPlaying = false
     /// Set by the screen: playback is over and the player should close.
     @ObservationIgnored var onFinished: (@MainActor () -> Void)?
+    /// Asked at the end of an item: true stops there (the sleep timer), instead of going
+    /// on to the next.
+    @ObservationIgnored var stopsAtEnd: (@MainActor () -> Bool)?
+    /// Whether the end will stop: no countdown to the next, then.
+    @ObservationIgnored var willStopAtEnd: (@MainActor () -> Bool)?
 
     @ObservationIgnored private let client: JellyfinClient
     @ObservationIgnored private let engine: PlayerEngine
-    @ObservationIgnored private let preferences: PlaybackPreferences
+    @ObservationIgnored private var preferences: PlaybackPreferences
+    /// The bitrate picked in the player, for this sitting only: Plex's Quality menu.
+    private(set) var maxBitrate: Int
     @ObservationIgnored private let segmentActions: [MediaSegment.Kind: SegmentAction]
     @ObservationIgnored private let autoplayNext: Bool
     @ObservationIgnored private var reportTimer: Task<Void, Never>?
@@ -116,6 +123,7 @@ final class PlaybackSession {
         self.client = client
         self.engine = engine
         self.preferences = preferences
+        maxBitrate = preferences.maxBitrate
         self.segmentActions = segmentActions
         self.autoplayNext = autoplayNext
         duration = item.runtime ?? 0
@@ -305,10 +313,20 @@ final class PlaybackSession {
             do {
                 let plan = try await makePlan(start: at, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: old.source.id, forceTranscode: forceTranscode)
                 open(plan)
+                await Diagnostics.shared.record("playback", "\(item.title): now \(plan.method.rawValue) at \(maxBitrate / 1_000_000) Mbps max\(plan.transcodeReasons.isEmpty ? "" : " (\(plan.reasonSummary))")")
             } catch {
                 self.error = error.localizedDescription
             }
         }
+    }
+
+    /// Plex's Quality: at most this many bits a second, from where it is now. The highest
+    /// choice is the file as it is.
+    func setMaxBitrate(_ bits: Int) {
+        guard bits != maxBitrate, let plan else { return }
+        maxBitrate = bits
+        preferences.maxBitrate = bits
+        reload(audioIndex: plan.audioIndex, subtitleIndex: plan.subtitleIndex)
     }
 
     /// After the engine fails: try once more with the server converting the stream.
@@ -382,7 +400,10 @@ final class PlaybackSession {
             isBuffering = buffering
         case .ended:
             hasEnded = true
-            if let next, autoplayNext, !countdownDismissed {
+            if stopsAtEnd?() == true {
+                stop()
+                onFinished?()
+            } else if let next, autoplayNext, !countdownDismissed {
                 playNext(next, automatic: true)
             } else {
                 stop()
@@ -434,7 +455,8 @@ final class PlaybackSession {
     }
 
     private func updateCountdown() {
-        guard autoplayNext, !countdownDismissed, countdownTask == nil, let start = countdownStart, position >= start, let next else { return }
+        guard autoplayNext, !countdownDismissed, countdownTask == nil, let start = countdownStart, position >= start, let next,
+              willStopAtEnd?() != true else { return }
         countdown = 10
         countdownTask = Task { [weak self] in
             for remaining in stride(from: 9, through: 0, by: -1) {

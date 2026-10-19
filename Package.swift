@@ -80,6 +80,7 @@ let package = Package(
                 "Downloader.swift",
                 "MP4.swift",
                 "Realtime.swift",
+                "SleepTimer.swift",
                 "AppState.swift",
                 "DeviceInfo.swift",
                 "Keychain.swift",
