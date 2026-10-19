@@ -73,6 +73,8 @@ struct SettingsView: View {
 
             HomeLibrariesSection()
 
+            PINSection()
+
             Section {
                 ForEach([MediaSegment.Kind.intro, .recap, .preview, .outro, .commercial], id: \.self) { kind in
                     Picker(kind == .outro ? "Credits" : kind.rawValue, selection: Binding(
@@ -179,6 +181,32 @@ private struct HomeLibrariesSection: View {
                 if let client = state.client { await home.loadHomeSettings(client) }
                 loaded = true
             }
+        }
+    }
+}
+
+/// The PIN asked for when the app opens.
+private struct PINSection: View {
+    @Environment(AppState.self) private var state
+    @State private var sheet: SetPINView.Mode?
+
+    var body: some View {
+        let lock = state.lock
+        Section {
+            Toggle("Require PIN", isOn: Binding(get: { lock.isEnabled }, set: { sheet = $0 ? .new : .turnOff }))
+            if lock.isEnabled {
+                Button("Change PIN") { sheet = .change }
+                Picker("Ask Again", selection: Binding(get: { lock.settings.delay }, set: { lock.setDelay($0) })) {
+                    ForEach(AppLock.Delay.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+            }
+        } header: {
+            Text("PIN")
+        } footer: {
+            Text("Asked for when jellymc opens, and when you come back to it, so whoever picks up your phone can’t look through it. Forgot it? The lock screen takes your Jellyfin password instead.")
+        }
+        .sheet(item: $sheet) { mode in
+            SetPINView(mode: mode)
         }
     }
 }

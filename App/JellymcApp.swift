@@ -38,29 +38,46 @@ struct JellymcApp: App {
                     await state.restore()
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    // Coming back is the most likely moment for the network to have changed
-                    // under the app: home Wi-Fi to cellular, a VPN coming up.
-                    if phase == .active, state.phase == .signedIn {
-                        Task { await state.reconnect() }
+                    switch phase {
+                    case .active:
+                        state.lock.becameActive()
+                        // Coming back is the most likely moment for the network to have
+                        // changed under the app: home Wi-Fi to cellular, a VPN coming up.
+                        if state.phase == .signedIn {
+                            Task { await state.reconnect() }
+                        }
+                    case .inactive:
+                        state.lock.becameInactive(hiding: PlaybackSession.current == nil)
+                    case .background:
+                        state.lock.enteredBackground(hiding: PlaybackSession.current == nil)
+                    @unknown default:
+                        break
                     }
                 }
         }
     }
 }
 
-/// Signing in, or the app.
+/// Signing in, or the app, with the PIN over it.
 struct RootView: View {
     @Environment(AppState.self) private var state
+    @State private var lockWindow = LockWindow()
 
     var body: some View {
-        switch state.phase {
-        case .starting:
-            ProgressView()
-                .controlSize(.large)
-        case .signedOut:
-            SignInView()
-        case .signedIn:
-            MainTabView()
+        Group {
+            switch state.phase {
+            case .starting:
+                ProgressView()
+                    .controlSize(.large)
+            case .signedOut:
+                SignInView()
+            case .signedIn:
+                MainTabView()
+            }
+        }
+        // Signed out there is nothing to hide, and the PIN keeps for the next sign-in.
+        .onChange(of: state.lock.isShown && state.phase != .signedOut, initial: true) { _, shown in
+            lockWindow.update(shown: shown, state: state)
         }
     }
 }

@@ -27,6 +27,22 @@ enum Keychain {
         delete(account: account)
     }
 
+    // MARK: - The app's PIN
+
+    private static let pinAccount = "app-pin"
+
+    static func savePIN(_ pin: String?) {
+        guard let pin else {
+            delete(account: pinAccount)
+            return
+        }
+        write(Data(pin.utf8), account: pinAccount, label: "jellymc: app PIN")
+    }
+
+    static func loadPIN() -> String? {
+        read(account: pinAccount).map { String(decoding: $0, as: UTF8.self) }
+    }
+
     // MARK: - Plumbing
 
     private static func write(_ data: Data, account: String, label: String) {
@@ -81,6 +97,8 @@ enum Keychain {
         return table
     }
 
+    nonisolated(unsafe) private static var unresponsive = false
+
     private final class Outcome<Value: Sendable>: @unchecked Sendable {
         var value: Value?
         let done = DispatchSemaphore(value: 0)
@@ -94,12 +112,16 @@ enum Keychain {
     /// caller goes on as if there were no keyring.
     @discardableResult
     private static func withDeadline<Value: Sendable>(_ fallback: Value, _ call: @escaping @Sendable () -> Value) -> Value {
+        // One that has missed a deadline is not asked again this run: each call would wait
+        // out the same five seconds.
+        if unresponsive { return fallback }
         let outcome = Outcome<Value>()
         Thread {
             outcome.value = call()
             outcome.done.signal()
         }.start()
         guard outcome.done.wait(timeout: .now() + 5) == .success else {
+            unresponsive = true
             Task { await Diagnostics.shared.record("keyring", "the Secret Service did not answer within 5 s") }
             return fallback
         }

@@ -44,4 +44,41 @@ enum Keychain {
         ]
         SecItemDelete(query as CFDictionary)
     }
+
+    // MARK: - The app's PIN
+
+    private static let pinAccount = "app-pin"
+
+    /// This device only: not in a backup, and not carried to a new phone.
+    static func savePIN(_ pin: String?) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: pinAccount,
+        ]
+        guard let pin else {
+            SecItemDelete(query as CFDictionary)
+            return
+        }
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(pin.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        if SecItemUpdate(query as CFDictionary, attributes as CFDictionary) == errSecItemNotFound {
+            SecItemAdd(query.merging(attributes) { $1 } as CFDictionary, nil)
+        }
+    }
+
+    static func loadPIN() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: pinAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
 }

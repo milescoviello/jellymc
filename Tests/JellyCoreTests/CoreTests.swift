@@ -1087,3 +1087,102 @@ struct RemoteSessionTests {
         #expect(sessions.first?.title == "Living Room TV · Jellyfin Android TV")
     }
 }
+
+@MainActor
+struct AppLockTests {
+    /// A PIN kept in memory and a settings file of its own, and a clock the test moves.
+    @MainActor
+    final class Fixture {
+        var pin: String?
+        var clock = Date(timeIntervalSince1970: 1_000_000)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("app-lock-\(UUID().uuidString).json")
+
+        func lock() -> AppLock {
+            let lock = AppLock(storage: .init(loadPIN: { self.pin }, savePIN: { self.pin = $0 }, file: file))
+            lock.now = { self.clock }
+            return lock
+        }
+    }
+
+    @Test func locksOnOpenOnlyWithAPIN() {
+        let fixture = Fixture()
+        #expect(fixture.lock().isLocked == false)
+        fixture.lock().setPIN("2580")
+        #expect(fixture.pin == "2580")
+        let opened = fixture.lock()
+        #expect(opened.isEnabled && opened.isLocked)
+        #expect(opened.attempt("2580") == .unlocked)
+        #expect(opened.isLocked == false)
+    }
+
+    @Test func onlyFourDigitsMakeAPIN() {
+        let fixture = Fixture()
+        let lock = fixture.lock()
+        for bad in ["123", "12345", "12a4", "١٢٣٤"] { lock.setPIN(bad) }
+        #expect(fixture.pin == nil && !lock.isEnabled)
+    }
+
+    @Test func wrongPINsWaitLongerEachTimeAndQuittingDoesNotReset() {
+        let fixture = Fixture()
+        fixture.lock().setPIN("2580")
+        let lock = fixture.lock()
+        for left in (1 ..< AppLock.freeTries).reversed() {
+            #expect(lock.attempt("0000") == .wrong(triesLeft: left))
+        }
+        #expect(lock.attempt("0000") == .wait(until: fixture.clock.addingTimeInterval(30)))
+        // Even the right one waits, and so does a fresh launch.
+        #expect(lock.attempt("2580") == .wait(until: fixture.clock.addingTimeInterval(30)))
+        #expect(fixture.lock().waitUntil == fixture.clock.addingTimeInterval(30))
+        fixture.clock.addTimeInterval(31)
+        #expect(lock.attempt("1111") == .wait(until: fixture.clock.addingTimeInterval(60)))
+        fixture.clock.addTimeInterval(61)
+        #expect(lock.attempt("2580") == .unlocked)
+        #expect(lock.settings.failures == 0)
+    }
+
+    @Test func comingBackLocksAfterTheDelay() {
+        let fixture = Fixture()
+        let lock = fixture.lock()
+        lock.setPIN("2580")
+        lock.setDelay(.oneMinute)
+        lock.becameInactive()
+        #expect(lock.isCovered && !lock.isLocked)
+        lock.enteredBackground()
+        fixture.clock.addTimeInterval(30)
+        lock.becameActive()
+        #expect(!lock.isShown)
+        lock.enteredBackground()
+        fixture.clock.addTimeInterval(60)
+        lock.becameActive()
+        #expect(lock.isLocked && !lock.isCovered)
+        // A moment away that never reached the background (a call, Control Center).
+        _ = lock.attempt("2580")
+        lock.setDelay(.immediately)
+        lock.becameInactive()
+        lock.becameActive()
+        #expect(!lock.isShown)
+    }
+
+    @Test func turningItOffForgetsThePIN() {
+        let fixture = Fixture()
+        let lock = fixture.lock()
+        lock.setPIN("2580")
+        #expect(lock.check("2580") == .unlocked)
+        lock.turnOff()
+        #expect(fixture.pin == nil && !fixture.lock().isLocked)
+    }
+}
+
+extension AppLockTests {
+    @Test func aPlayingVideoIsNotCoveredButStillLocksOnReturn() {
+        let fixture = Fixture()
+        let lock = fixture.lock()
+        lock.setPIN("2580")
+        lock.setDelay(.immediately)
+        lock.becameInactive(hiding: false)
+        lock.enteredBackground(hiding: false)
+        #expect(!lock.isShown)
+        lock.becameActive()
+        #expect(lock.isLocked)
+    }
+}

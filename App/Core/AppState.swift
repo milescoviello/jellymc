@@ -47,6 +47,8 @@ final class AppState {
     let search = SearchModel()
     let downloads = DownloadStore()
     let realtime = Realtime()
+    /// The PIN asked for when the app opens.
+    let lock = AppLock()
     /// Goes up when what pages show may have changed: the player here closed, or the
     /// server says something changed. Pages showing progress or watched marks reload.
     private(set) var dataGeneration = 0
@@ -185,6 +187,26 @@ final class AppState {
             return
         }
         throw lastError
+    }
+
+    /// A forgotten PIN: the account's Jellyfin password, checked by the server, turns the
+    /// lock off. Nothing is signed out. Signing in again from this device replaces its
+    /// token on the server, so the new one is kept and everything moves to it.
+    func unlockWithPassword(_ password: String) async throws {
+        guard var stored = session, let client else { throw JellyfinError(kind: .http(401), message: "Not signed in.") }
+        let probe = JellyfinClient(baseURL: client.baseURL, device: device)
+        let result = try await probe.authenticate(username: stored.userName ?? "", password: password)
+        guard result.user.id == stored.userId else {
+            throw JellyfinError(kind: .http(401), message: "That password is for a different account.")
+        }
+        stored.token = result.accessToken
+        session = stored
+        Self.persist(stored)
+        let signedIn = probe.signedIn(token: result.accessToken, userId: result.user.id)
+        self.client = signedIn
+        lock.turnOff()
+        await Diagnostics.shared.record("session", "PIN reset with the account's password")
+        await connected(signedIn)
     }
 
     /// Adds another way to reach the same server, tried when the current one fails.
