@@ -749,8 +749,39 @@ final class SearchModel {
     }
     private(set) var results: [BaseItem] = []
     private(set) var isSearching = false
+    /// What was searched for lately, newest first: shown while the field is empty.
+    private(set) var recent: [String] = []
     @ObservationIgnored var client: JellyfinClient?
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private let recentFile: URL
+    static let recentLimit = 10
+
+    init(recentFile: URL = Paths.root.appendingPathComponent("recent-searches.json")) {
+        self.recentFile = recentFile
+        if let data = try? Data(contentsOf: recentFile), let saved = try? JSONDecoder().decode([String].self, from: data) {
+            recent = saved
+        }
+    }
+
+    /// Keeps a search (the current one unless told): when one of its results is opened,
+    /// or Enter is pressed.
+    func remember(_ searched: String? = nil) {
+        let term = (searched ?? query).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard term.count >= 2 else { return }
+        recent.removeAll { $0.caseInsensitiveCompare(term) == .orderedSame }
+        recent.insert(term, at: 0)
+        if recent.count > Self.recentLimit { recent.removeLast(recent.count - Self.recentLimit) }
+        saveRecent()
+    }
+
+    func clearRecent() {
+        recent = []
+        saveRecent()
+    }
+
+    private func saveRecent() {
+        if let data = try? JSONEncoder().encode(recent) { try? data.write(to: recentFile, options: .atomic) }
+    }
 
     struct Group: Identifiable {
         var id: String { title }

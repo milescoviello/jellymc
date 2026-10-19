@@ -956,3 +956,27 @@ struct PlainTextTests {
         #expect(Presentation.plainText("One.<br><br>\r\n \r\nTwo.") == "One.\n\nTwo.")
     }
 }
+
+@MainActor
+struct RecentSearchTests {
+    @Test func keepsTheLastTenNewestFirstWithoutRepeats() {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("recent-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let search = SearchModel(recentFile: file)
+        for term in ["sintel", "bunny", "Sintel ", "x"] {
+            search.query = term
+            search.remember()
+        }
+        // "x" is too short to keep; "Sintel " is "sintel" again, moved to the front.
+        #expect(search.recent == ["Sintel", "bunny"])
+        for index in 0 ..< 12 {
+            search.query = "term \(index)"
+            search.remember()
+        }
+        #expect(search.recent.count == 10)
+        #expect(search.recent.first == "term 11")
+        #expect(SearchModel(recentFile: file).recent == search.recent)
+        search.clearRecent()
+        #expect(SearchModel(recentFile: file).recent.isEmpty)
+    }
+}

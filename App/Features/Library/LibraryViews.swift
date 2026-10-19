@@ -316,7 +316,27 @@ struct SearchView: View {
             .padding(.vertical)
         }
         .overlay {
-            if search.groups.isEmpty {
+            if search.query.trimmingCharacters(in: .whitespaces).isEmpty, !search.recent.isEmpty {
+                // Plex's recent searches, while nothing is typed: a tap searches again.
+                List {
+                    Section {
+                        ForEach(search.recent, id: \.self) { term in
+                            Button {
+                                search.query = term
+                            } label: {
+                                Label(term, systemImage: "clock.arrow.circlepath")
+                            }
+                            .tint(.primary)
+                        }
+                    } header: {
+                        HStack {
+                            Text("Recent Searches")
+                            Spacer()
+                            Button("Clear") { search.clearRecent() }.font(.caption)
+                        }
+                    }
+                }
+            } else if search.groups.isEmpty {
                 if search.isSearching {
                     ProgressView()
                 } else if search.query.count >= 2 {
@@ -328,6 +348,11 @@ struct SearchView: View {
         }
         .navigationTitle("Search")
         .searchable(text: $search.query, prompt: "Films, shows, people")
+        .onSubmit(of: .search) { search.remember() }
+        .onChange(of: search.query) { old, new in
+            // Typed over or cleared: what was there before counts as searched for.
+            if new.isEmpty, old.count >= 2 { search.remember(old) }
+        }
         .onAppear { search.client = state.client }
     }
 }
