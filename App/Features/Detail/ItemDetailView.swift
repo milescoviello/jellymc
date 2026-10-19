@@ -34,11 +34,17 @@ struct ItemDetailView: View {
                         }
                         credits(item)
                     }
+                    // A summary across a whole iPad is hard to read; Plex keeps it a column.
+                    .frame(maxWidth: sizeClass == .regular ? 820 : .infinity, alignment: .leading)
                     .padding(.horizontal)
                     if !model.seasons.isEmpty {
                         CardRowView(title: "\(model.seasons.count) Season\(model.seasons.count == 1 ? "" : "s")", style: .poster, items: model.seasons, onParent: true)
                     }
-                    if !model.episodes.isEmpty { episodeList.padding(.horizontal) }
+                    if !model.episodes.isEmpty {
+                        episodeList
+                            .frame(maxWidth: sizeClass == .regular ? 1000 : .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                    }
                     if !model.children.isEmpty {
                         CardRowView(title: item.type == .person ? "Filmography" : "\(model.children.count) Items", style: .poster, items: model.children)
                     }
@@ -415,11 +421,12 @@ private struct CastRowView: View {
 
 private struct EpisodeRow: View {
     @Environment(AppState.self) private var state
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let episode: BaseItem
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            CardArt(item: episode, style: .landscape, width: 160)
+            CardArt(item: episode, style: .landscape, width: sizeClass == .regular ? 240 : 160)
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("\(episode.indexNumber.map { "\($0). " } ?? "")\(episode.title)")

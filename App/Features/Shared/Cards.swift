@@ -43,10 +43,14 @@ struct ArtworkView: View {
 }
 
 extension CardStyle {
-    var width: CGFloat {
+    var width: CGFloat { width(regular: false) }
+
+    /// A card's width in a row: bigger on an iPad (regular width), where Plex shows fewer,
+    /// larger posters across.
+    func width(regular: Bool) -> CGFloat {
         switch self {
-        case .poster: return 132
-        case .landscape: return 236
+        case .poster: return regular ? 168 : 132
+        case .landscape: return regular ? 300 : 236
         }
     }
 
@@ -127,6 +131,7 @@ struct CardArt: View {
 
 /// A poster, still or cover with its title under it.
 struct CardView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let item: BaseItem
     let style: CardStyle
     var width: CGFloat?
@@ -134,7 +139,7 @@ struct CardView: View {
     var onParent = false
 
     var body: some View {
-        let width = width ?? style.width
+        let width = width ?? style.width(regular: sizeClass == .regular)
         VStack(alignment: .leading, spacing: 6) {
             CardArt(item: item, style: style, width: width)
             Text(title)

@@ -115,6 +115,7 @@ struct RecommendedView: View {
 /// A library's Categories tab: a tile for each genre.
 struct CategoriesView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var model: GenresModel
 
     init(library: BaseItem) {
@@ -123,7 +124,7 @@ struct CategoriesView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 200 : 150), spacing: 12)], spacing: 12) {
                 ForEach(model.genres) { genre in
                     NavigationLink(value: model.browse(genre)) {
                         Text(genre.title)
@@ -177,6 +178,7 @@ struct BrowsePageView: View {
 /// an A–Z index down the side while sorted by title.
 struct BrowseGridView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var model: LibraryModel
 
     init(model: LibraryModel) {
@@ -189,7 +191,8 @@ struct BrowseGridView: View {
         let style = model.style
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: style == .landscape ? 220 : 108), spacing: 14, alignment: .top)], spacing: 18) {
+                let regular = sizeClass == .regular
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: style == .landscape ? (regular ? 280 : 220) : (regular ? 150 : 108)), spacing: regular ? 20 : 14, alignment: .top)], spacing: regular ? 24 : 18) {
                     ForEach(model.items) { item in
                         GridCard(item: item, style: style)
                             .id(item.id)
