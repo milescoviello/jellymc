@@ -29,6 +29,9 @@ final class MpvEngine: PlayerEngine {
     private var duration: Double?
     private var ended = false
     private var pendingSubtitle: Int?
+    /// A file asked for before the view had a render context. mpv started on it without
+    /// one would turn video off for good, so it waits for the first realize.
+    private var pendingLoad: [String]?
 
     private(set) var volume: Double = 100
     private(set) var isMuted = false
@@ -38,6 +41,9 @@ final class MpvEngine: PlayerEngine {
         weak var engine: MpvEngine?
         init(_ engine: MpvEngine) { self.engine = engine }
     }
+
+    /// `JELLYMC_MPV_LOG=v` (or `debug`) for mpv's own account of what it is doing.
+    private static let logLevel = ProcessInfo.processInfo.environment["JELLYMC_MPV_LOG"] ?? "warn"
 
     init() {
         let area = gtk_gl_area_new()!
@@ -61,7 +67,7 @@ final class MpvEngine: PlayerEngine {
             ("input-vo-keyboard", "no"),
             ("osc", "no"),
             ("terminal", "no"),
-            ("msg-level", "all=warn"),
+            ("msg-level", "all=\(Self.logLevel)"),
             ("cache", "yes"),
             ("demuxer-max-bytes", "150MiB"),
             ("demuxer-readahead-secs", "30"),
@@ -79,7 +85,7 @@ final class MpvEngine: PlayerEngine {
             self.handle = nil
             return
         }
-        mpv_request_log_messages(handle, "warn")
+        mpv_request_log_messages(handle, Self.logLevel)
         for (name, format) in [
             ("time-pos", MPV_FORMAT_DOUBLE), ("duration", MPV_FORMAT_DOUBLE), ("pause", MPV_FORMAT_FLAG),
             ("paused-for-cache", MPV_FORMAT_FLAG), ("eof-reached", MPV_FORMAT_FLAG), ("seeking", MPV_FORMAT_FLAG),
@@ -115,6 +121,10 @@ final class MpvEngine: PlayerEngine {
         Task { await Diagnostics.shared.record("mpv", "render context \(self.render == nil ? "failed" : "created") on \(api)") }
         if let render {
             cmpv_set_update_area(render, view.widget)
+            if let pendingLoad {
+                self.pendingLoad = nil
+                command(pendingLoad)
+            }
         } else {
             onEvent?(.failed("mpv could not draw into this window"))
         }
@@ -135,7 +145,7 @@ final class MpvEngine: PlayerEngine {
         let scale = gtk_widget_get_scale_factor(view.widget)
         let result = cmpv_render(render, view.width * scale, view.height * scale)
         draws += 1
-        if draws == 1 || result < 0 {
+        if draws == 1 || result < 0 || (Self.logLevel != "warn" && draws % 120 == 0) {
             let size = "\(view.width * scale)x\(view.height * scale)"
             Task { await Diagnostics.shared.record("mpv", "frame \(self.draws) at \(size): \(result < 0 ? String(cString: mpv_error_string(result)) : "ok")") }
         }
@@ -166,7 +176,12 @@ final class MpvEngine: PlayerEngine {
         }
         let headers = plan.httpHeaders.map { "\($0.key): \($0.value)" }.joined(separator: ",")
         setProperty("http-header-fields", headers)
-        command(["loadfile", plan.url.absoluteString, "replace"])
+        let loadfile = ["loadfile", plan.url.absoluteString, "replace"]
+        if render == nil {
+            pendingLoad = loadfile
+        } else {
+            command(loadfile)
+        }
     }
 
     func play() { setProperty("pause", "no") }
@@ -210,6 +225,7 @@ final class MpvEngine: PlayerEngine {
     }
 
     func stop() {
+        pendingLoad = nil
         command(["stop"])
         plan = nil
     }
@@ -327,9 +343,15 @@ final class MpvEngine: PlayerEngine {
 
     // MARK: - Plumbing
 
+    /// Asynchronous, like commands: the main thread is also the render thread, and must
+    /// never wait on mpv's core, which may itself be waiting for a frame to be drawn.
+    /// Requests are carried out in the order they were made.
     private func setProperty(_ name: String, _ value: String) {
         guard let handle else { return }
-        mpv_set_property_string(handle, name, value)
+        value.withCString { string in
+            var pointer: UnsafePointer<CChar>? = string
+            _ = mpv_set_property_async(handle, 0, name, MPV_FORMAT_STRING, &pointer)
+        }
     }
 
     private func command(_ arguments: [String]) {
