@@ -21,7 +21,11 @@ final class PlayerPage {
     private let seek = Scale(min: 0, max: 1, step: 1, value: 0)
     private let elapsed = Label("0:00", "player-time", "numeric")
     private let remaining = Label("0:00", "player-time", "numeric")
-    private let playButton = Button(icon: "media-playback-pause-symbolic", "flat", "circular")
+    private let playButton = Button(icon: "media-playback-pause-symbolic", "flat", "circular", "player-play")
+    private let nextButton = Button(icon: "media-skip-forward-symbolic", "flat", "circular")
+    private let volume = Scale(min: 0, max: 130, step: 5, value: 100)
+    private let muteButton = Button(icon: "audio-volume-high-symbolic", "flat", "circular")
+    private let poster = FixedPicture(width: 40, height: 60)
     private let skipButton = Button("Skip", "osd-pill")
     private let upNext = Box.vertical(spacing: 10).css("up-next")
     private let upNextTitle = Label("", "heading").wrap()
@@ -47,21 +51,17 @@ final class PlayerPage {
         self.window = window
         self.client = client
 
-        // Top: back, title.
+        // Top: back. The title is at the bottom, by the poster, as Plex has it.
         let back = Button(icon: "go-previous-symbolic", "flat", "circular")
         let topBar = Box.horizontal(spacing: 12) {
             back
-            Box.vertical(spacing: 2) {
-                titleLabel
-                subtitleLabel
-            }.valign(GTK_ALIGN_CENTER)
             Spacer()
         }.css("player-top")
         top = Revealer(topBar, transition: GTK_REVEALER_TRANSITION_TYPE_CROSSFADE)
         top.valign(GTK_ALIGN_START)
 
         // Bottom: seek bar, transport, tracks.
-        let audio = MenuButton(icon: "audio-volume-high-symbolic", "flat", "circular") { [weak self] in self?.audioMenu() ?? Menu([]) }
+        let audio = MenuButton(icon: "audio-headphones-symbolic", "flat", "circular") { [weak self] in self?.audioMenu() ?? Menu([]) }
         audio.tooltip("Audio")
         let subtitles = MenuButton(icon: "media-view-subtitles-symbolic", "flat", "circular") { [weak self] in self?.subtitleMenu() ?? Menu([]) }
         subtitles.tooltip("Subtitles")
@@ -75,6 +75,12 @@ final class PlayerPage {
         back10.tooltip("Back 10 s (←)")
         let forward30 = Button(icon: "media-seek-forward-symbolic", "flat", "circular")
         forward30.tooltip("Forward 30 s (→)")
+        let restart = Button(icon: "media-skip-backward-symbolic", "flat", "circular")
+        restart.tooltip("Start Over")
+        nextButton.tooltip("Next Episode (n)")
+        muteButton.tooltip("Mute (m)")
+        volume.size(width: 96).valign(GTK_ALIGN_CENTER).tooltip("Volume (↑ ↓)")
+        poster.css("card-art")
         seek.hexpand()
         let bottomBar = Box.vertical(spacing: 6) {
             Box.horizontal(spacing: 12) {
@@ -82,17 +88,31 @@ final class PlayerPage {
                 seek
                 remaining
             }
-            Box.horizontal(spacing: 6) {
-                back10
-                playButton
-                forward30
-                Spacer()
-                audio
-                subtitles
-                speed
-                info
-                fullscreen
-            }
+            CenterBox(
+                start: Box.horizontal(spacing: 12) {
+                    poster
+                    Box.vertical(spacing: 2) {
+                        titleLabel.ellipsize().halign(GTK_ALIGN_START)
+                        subtitleLabel.ellipsize().halign(GTK_ALIGN_START)
+                    }.valign(GTK_ALIGN_CENTER)
+                },
+                center: Box.horizontal(spacing: 10) {
+                    restart
+                    back10
+                    playButton
+                    forward30
+                    nextButton
+                }.valign(GTK_ALIGN_CENTER),
+                end: Box.horizontal(spacing: 4) {
+                    muteButton
+                    volume
+                    audio
+                    subtitles
+                    speed
+                    info
+                    fullscreen
+                }.valign(GTK_ALIGN_CENTER)
+            )
         }.css("player-bottom")
         bottom = Revealer(bottomBar, transition: GTK_REVEALER_TRANSITION_TYPE_CROSSFADE)
         bottom.valign(GTK_ALIGN_END)
@@ -150,6 +170,19 @@ final class PlayerPage {
         retry.onClicked { [weak self] in self?.session?.retryWithTranscode() }
         playButton.onClicked { [weak self] in self?.session?.togglePause() }
         back10.onClicked { [weak self] in self?.session?.skip(by: -10) }
+        restart.onClicked { [weak self] in self?.session?.seek(to: 0) }
+        nextButton.onClicked { [weak self] in
+            guard let session = self?.session, let next = session.next else { return }
+            session.playNext(next)
+        }
+        muteButton.onClicked { [weak self] in
+            self?.engine.toggleMute()
+            self?.updateVolume()
+        }
+        volume.onUserChange { [weak self] value in
+            self?.engine.setVolume(value)
+            self?.updateVolume()
+        }
         forward30.onClicked { [weak self] in self?.session?.skip(by: 30) }
         fullscreen.onClicked { [weak self] in self?.window.toggleFullscreen() }
         info.onClicked { [weak self] in self?.toggleStats() }
@@ -229,6 +262,8 @@ final class PlayerPage {
         titleLabel.text = session.title
         subtitleLabel.text = session.subtitle ?? ""
         gtk_window_set_title(window.window.cast(), session.title)
+        poster.picture.load(Artwork.poster(session.item, client, width: 120))
+        nextButton.visible(session.next != nil)
 
         let duration = max(session.duration, 1)
         gtk_range_set_range(seek.widget.cast(), 0, duration)
@@ -373,6 +408,7 @@ final class PlayerPage {
         Signal.connect(scroll, "scroll", scroll: { [weak self] _, dy in
             guard let self else { return false }
             self.engine.setVolume(self.engine.volume - dy * 5)
+            self.reveal()
             return true
         })
         gtk_widget_add_controller(engine.view.widget, scroll)
@@ -453,6 +489,19 @@ final class PlayerPage {
         return true
     }
 
+    /// The mute button's icon and the slider, after either changed or a key did.
+    private func updateVolume() {
+        volume.value = engine.volume
+        let icon: String
+        switch engine.isMuted ? 0 : engine.volume {
+        case 0: icon = "audio-volume-muted-symbolic"
+        case ..<40: icon = "audio-volume-low-symbolic"
+        case ..<80: icon = "audio-volume-medium-symbolic"
+        default: icon = "audio-volume-high-symbolic"
+        }
+        muteButton.icon = icon
+    }
+
     /// What another device can do to this player beyond what the session does itself.
     func remote(_ command: RemoteCommand) {
         switch command.name {
@@ -497,6 +546,8 @@ final class PlayerPage {
     }
 
     private func reveal(autohide: Bool = true) {
+        // Keys, the wheel and other devices change the volume too.
+        updateVolume()
         top.isRevealed = true
         bottom.isRevealed = true
         setCursor(visible: true)

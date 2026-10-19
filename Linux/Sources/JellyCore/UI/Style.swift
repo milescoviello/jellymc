@@ -52,6 +52,9 @@ enum Style {
     .player-top { background-image: linear-gradient(to bottom, alpha(black, 0.75), alpha(black, 0)); color: white; padding: 12px 18px 48px 18px; }
     .player-bottom { background-image: linear-gradient(to top, alpha(black, 0.85), alpha(black, 0)); color: white; padding: 48px 22px 14px 22px; }
     .player-top button, .player-bottom button { color: white; }
+    .player-play { min-width: 52px; min-height: 52px; }
+    .player-play image { -gtk-icon-size: 28px; }
+    .player-bottom scale highlight { background-color: #e5a00d; }
     .player-time { font-feature-settings: "tnum"; color: alpha(white, 0.85); }
     .osd-pill { background-color: alpha(#141414, 0.88); color: white; border-radius: 999px; padding: 10px 22px; font-weight: 700; }
     .up-next { background-color: alpha(#141414, 0.94); color: white; border-radius: 14px; padding: 14px; }
