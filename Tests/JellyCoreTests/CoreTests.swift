@@ -556,3 +556,16 @@ struct SessionPreviewTests {
         #expect(preview.tile.absoluteString.contains("ApiKey=secret-token"))
     }
 }
+
+struct PreferencesStorageTests {
+    @Test func survivesARestart() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("preferences-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        #expect(Preferences.load(from: file) == Preferences())
+        var preferences = Preferences()
+        preferences.autoplayNext = false
+        preferences.preferredAudioLanguage = "jpn"
+        preferences.save(to: file)
+        #expect(Preferences.load(from: file) == preferences)
+    }
+}

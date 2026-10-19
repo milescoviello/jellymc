@@ -35,17 +35,24 @@ struct Preferences: Codable, Sendable, Equatable {
         segmentActions[kind] ?? PlaybackSession.defaultAction(for: kind)
     }
 
-    private static let key = "preferences.v1"
+    static let file = Paths.root.appendingPathComponent("preferences.json")
 
-    static func load(from defaults: UserDefaults = .standard) -> Preferences {
-        guard let data = defaults.data(forKey: key), let value = try? JSONDecoder().decode(Preferences.self, from: data) else {
-            return Preferences()
+    /// From `preferences.json` beside the downloads. They were in UserDefaults once, which
+    /// Foundation on Linux never writes to disk: Settings were gone at every start there.
+    /// An older copy in UserDefaults is still read, once, where it exists.
+    static func load(from file: URL = Self.file) -> Preferences {
+        if let data = try? Data(contentsOf: file), let value = try? JSONDecoder().decode(Preferences.self, from: data) {
+            return value
         }
-        return value
+        if file == Self.file, let data = UserDefaults.standard.data(forKey: "preferences.v1"),
+           let value = try? JSONDecoder().decode(Preferences.self, from: data) {
+            return value
+        }
+        return Preferences()
     }
 
-    func save(to defaults: UserDefaults = .standard) {
-        if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.key) }
+    func save(to file: URL = Self.file) {
+        if let data = try? JSONEncoder().encode(self) { try? data.write(to: file, options: .atomic) }
     }
 
     /// The audio and subtitle tracks to start with, by these preferences.

@@ -7,11 +7,16 @@ import UIKit
 enum DeviceInfo {
     /// Made once per install. Each install is its own device to the server, with its own
     /// session and token.
+    ///
+    /// Kept in a file: in UserDefaults it was lost at every start on Linux, whose Foundation
+    /// never writes them out, and each start became another device on the server.
     static let id: String = {
-        let key = "device.id"
-        if let existing = UserDefaults.standard.string(forKey: key) { return existing }
-        let made = UUID().uuidString.lowercased()
-        UserDefaults.standard.set(made, forKey: key)
+        let file = Paths.root.appendingPathComponent("device-id")
+        if let saved = try? String(contentsOf: file, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !saved.isEmpty {
+            return saved
+        }
+        let made = UserDefaults.standard.string(forKey: "device.id") ?? UUID().uuidString.lowercased()
+        try? made.write(to: file, atomically: true, encoding: .utf8)
         return made
     }()
 
