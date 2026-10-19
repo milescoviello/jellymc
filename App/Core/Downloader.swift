@@ -108,8 +108,7 @@ final class URLSessionDownloader: NSObject, Downloader {
             } else {
                 result = .failure(JellyfinError(kind: .http(status), message: "The server answered \(status) to the download."))
             }
-            nonisolated(unsafe) let outcome = result
-            Task { @MainActor [weak owner] in owner?.finished(id, outcome) }
+            Task { @MainActor [weak owner] in owner?.finished(id, result) }
         }
 
         #if os(iOS)

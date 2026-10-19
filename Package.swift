@@ -60,6 +60,8 @@ let package = Package(
         .target(
             name: "JellyCore",
             path: "App/Core",
+            // Network.framework's path monitor: the apps need it, the tests do not.
+            exclude: ["Reachability.swift"],
             sources: [
                 "Models.swift",
                 "JSONCoding.swift",
