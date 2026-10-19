@@ -87,6 +87,7 @@ final class MainWindow {
     private func dropShell() {
         closePlayer()
         guard let shell else { return }
+        shell.detach()
         stack.remove(shell.root)
         self.shell = nil
     }

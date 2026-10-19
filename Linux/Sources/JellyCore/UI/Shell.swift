@@ -12,6 +12,7 @@ final class Shell {
     private var placeIds: [String] = []
     private var current: String?
     private var home: HomePage?
+    private var shortcuts: OpaquePointer?
 
     var state: AppState { window.state }
 
@@ -43,6 +44,43 @@ final class Shell {
         if let client = state.client {
             Task { await state.home.load(client) }
         }
+        installShortcuts()
+    }
+
+    /// Ctrl+F or / for Search, Ctrl+R to refresh, Ctrl+, for Settings, Ctrl+Q to quit.
+    /// On the window, bubbling: with nothing focused keys go to the window, and with a text
+    /// field focused it gets them first; the player's own come before all of these.
+    private func installShortcuts() {
+        let controller = gtk_event_controller_key_new()!
+        shortcuts = controller
+        Signal.connect(controller, "key-pressed", key: { [weak self] keyval, _, modifiers in
+            guard let self else { return false }
+            let control = modifiers.rawValue & GDK_CONTROL_MASK.rawValue != 0
+            switch (Int32(keyval), control) {
+            case (GDK_KEY_f, true), (GDK_KEY_slash, false), (GDK_KEY_KP_Divide, false):
+                self.select("search")
+            case (GDK_KEY_r, true), (GDK_KEY_F5, false):
+                if let client = self.state.client {
+                    Task { await self.state.home.load(client, force: true) }
+                }
+                self.refreshVisible()
+            case (GDK_KEY_comma, true):
+                self.select("settings")
+            case (GDK_KEY_q, true):
+                if let application = Desktop.application { g_application_quit(application.cast()) }
+            default:
+                return false
+            }
+            return true
+        })
+        gtk_widget_add_controller(window.window, controller)
+    }
+
+    /// Signed out: the window keeps no shortcuts for a shell that is gone.
+    func detach() {
+        guard let shortcuts else { return }
+        gtk_widget_remove_controller(window.window, shortcuts.cast())
+        self.shortcuts = nil
     }
 
     // MARK: - Places
@@ -52,6 +90,7 @@ final class Shell {
         guard ids != placeIds else { return }
         placeIds = ids
         places.removeAll()
+        defer { places.select(current.flatMap { ids.firstIndex(of: $0) }) }
         func row(_ title: String, _ icon: String, _ id: String) {
             places.append(Box.horizontal(spacing: 12) {
                 Icon(icon)
@@ -81,6 +120,7 @@ final class Shell {
 
     func select(_ id: String) {
         current = id
+        places.select(placeIds.firstIndex(of: id))
         let page: NavigationPage
         switch id {
         case "home":

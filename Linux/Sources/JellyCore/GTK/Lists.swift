@@ -161,6 +161,16 @@ final class ListBox: Widget {
         activations.removeAll()
     }
 
+    /// Marks one row as the current one: a sidebar's place. Nil marks none.
+    func select(_ index: Int?) {
+        gtk_list_box_set_selection_mode(widget.cast(), GTK_SELECTION_SINGLE)
+        if let index, let row = gtk_list_box_get_row_at_index(widget.cast(), Int32(index)) {
+            gtk_list_box_select_row(widget.cast(), row)
+        } else {
+            gtk_list_box_unselect_all(widget.cast())
+        }
+    }
+
     /// Shown when the list has no rows.
     @discardableResult
     func placeholder(_ child: Widget) -> Self {
