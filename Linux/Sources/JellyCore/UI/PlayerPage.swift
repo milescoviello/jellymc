@@ -247,6 +247,7 @@ final class PlayerPage {
             continuing: continuing
         )
         self.session = session
+        engine.setSubtitleScale(state.preferences.subtitleSize.scale)
         session.onPlayNext = { [weak self] next, continuing in self?.start(next, from: 0, continuing: continuing) }
         session.onFinished = { [weak self] in self?.window.closePlayer() }
         let sleepTimer = self.sleepTimer
@@ -626,6 +627,7 @@ final class PlayerPage {
     private func reveal(autohide: Bool = true) {
         // Keys, the wheel and other devices change the volume too.
         updateVolume()
+        engine.raiseSubtitles(true)
         top.isRevealed = true
         bottom.isRevealed = true
         setCursor(visible: true)
@@ -637,6 +639,7 @@ final class PlayerPage {
                   !self.scrubbing, !self.pointerOnBars, !self.menuOpen else { return }
             self.top.isRevealed = false
             self.bottom.isRevealed = false
+            self.engine.raiseSubtitles(false)
             self.seekPreview.hide()
             self.setCursor(visible: false)
         }

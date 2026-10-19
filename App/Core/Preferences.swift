@@ -12,6 +12,39 @@ struct Preferences: Codable, Sendable, Equatable {
     var preferredAudioLanguage: String?
     var preferredSubtitleLanguage: String?
     var subtitleMode: SubtitleMode = .smart
+    var subtitleSize: SubtitleSize = .normal
+
+    /// Plex's subtitle sizes, as a scale on the player's own.
+    enum SubtitleSize: String, Codable, Sendable, CaseIterable {
+        case small, normal, large, huge
+
+        var title: String { rawValue.capitalized }
+
+        var scale: Double {
+            switch self {
+            case .small: return 0.8
+            case .normal: return 1
+            case .large: return 1.25
+            case .huge: return 1.6
+            }
+        }
+    }
+
+    init() {}
+
+    /// Missing keys keep their defaults: a newer app reads what an older one saved.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = Preferences()
+        localPlayback = try container.decodeIfPresent(PlaybackPreferences.self, forKey: .localPlayback) ?? defaults.localPlayback
+        remotePlayback = try container.decodeIfPresent(PlaybackPreferences.self, forKey: .remotePlayback) ?? defaults.remotePlayback
+        segmentActions = try container.decodeIfPresent([MediaSegment.Kind: SegmentAction].self, forKey: .segmentActions) ?? defaults.segmentActions
+        autoplayNext = try container.decodeIfPresent(Bool.self, forKey: .autoplayNext) ?? defaults.autoplayNext
+        preferredAudioLanguage = try container.decodeIfPresent(String.self, forKey: .preferredAudioLanguage)
+        preferredSubtitleLanguage = try container.decodeIfPresent(String.self, forKey: .preferredSubtitleLanguage)
+        subtitleMode = (try? container.decodeIfPresent(SubtitleMode.self, forKey: .subtitleMode)) ?? defaults.subtitleMode
+        subtitleSize = (try? container.decodeIfPresent(SubtitleSize.self, forKey: .subtitleSize)) ?? defaults.subtitleSize
+    }
 
     enum SubtitleMode: String, Codable, Sendable, CaseIterable {
         /// Subtitles when the audio is not in the preferred subtitle language.

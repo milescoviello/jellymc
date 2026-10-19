@@ -69,6 +69,10 @@ final class SettingsPage {
             state.preferences.subtitleMode = modes[index]
         })
         let languages: [(String?, String)] = [(nil, "Server default"), ("eng", "English"), ("jpn", "Japanese"), ("spa", "Spanish"), ("fre", "French"), ("ger", "German"), ("ita", "Italian"), ("kor", "Korean"), ("chi", "Chinese")]
+        let sizes = Preferences.SubtitleSize.allCases
+        playback.add(ComboRow("Subtitle Size", options: sizes.map(\.title), selected: sizes.firstIndex(of: state.preferences.subtitleSize) ?? 1) { index in
+            state.preferences.subtitleSize = sizes[index]
+        })
         playback.add(ComboRow("Subtitle Language", options: languages.map(\.1), selected: languages.firstIndex { $0.0 == state.preferences.preferredSubtitleLanguage } ?? 0) { index in
             state.preferences.preferredSubtitleLanguage = languages[index].0
         })

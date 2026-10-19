@@ -206,6 +206,21 @@ final class MpvEngine: PlayerEngine {
         setProperty("audio-delay", String(seconds))
     }
 
+    /// Plex's subtitle size: text subtitles scale; styled ASS keeps the look it was made with.
+    func setSubtitleScale(_ scale: Double) {
+        setProperty("sub-scale", String(scale))
+    }
+
+    /// Subtitles move up while the controls are showing, as Plex's do, so neither hides the
+    /// other.
+    func raiseSubtitles(_ raised: Bool) {
+        guard raised != subtitlesRaised else { return }
+        subtitlesRaised = raised
+        setProperty("sub-pos", raised ? "80" : "100")
+    }
+
+    private var subtitlesRaised = false
+
     func setSubtitleDelay(_ seconds: Double) {
         subtitleDelay = seconds
         setProperty("sub-delay", String(seconds))

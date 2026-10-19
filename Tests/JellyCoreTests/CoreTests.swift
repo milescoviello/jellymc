@@ -905,3 +905,20 @@ struct LibraryFilterTests {
         #expect(model.genre == "Action")
     }
 }
+
+struct PreferencesUpgradeTests {
+    @Test func readsWhatAnOlderAppSaved() throws {
+        // As 1.0's predecessor saved it: no subtitleSize, and an unknown mode.
+        let old = #"{"autoplayNext":false,"subtitleMode":"sometimes","localPlayback":{"maxBitrate":20000000,"maxWidth":0,"keepASSStyling":true,"forceTranscode":false},"segmentActions":[]}"#
+        let read = try JSONDecoder().decode(Preferences.self, from: Data(old.utf8))
+        #expect(read.autoplayNext == false)
+        #expect(read.localPlayback.maxBitrate == 20_000_000)
+        #expect(read.remotePlayback == Preferences().remotePlayback)
+        #expect(read.subtitleMode == .smart)
+        #expect(read.subtitleSize == .normal)
+        var changed = read
+        changed.subtitleSize = .large
+        let again = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(changed))
+        #expect(again == changed)
+    }
+}

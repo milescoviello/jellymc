@@ -60,6 +60,9 @@ struct SettingsView: View {
                 Picker("Subtitles", selection: $app.preferences.subtitleMode) {
                     ForEach(Preferences.SubtitleMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
+                Picker("Subtitle Size", selection: $app.preferences.subtitleSize) {
+                    ForEach(Preferences.SubtitleSize.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
                 Picker("Subtitle Language", selection: $app.preferences.preferredSubtitleLanguage) {
                     ForEach(Self.languages, id: \.name) { Text($0.name).tag($0.code) }
                 }

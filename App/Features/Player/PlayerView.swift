@@ -25,7 +25,7 @@ struct PlayerView: View {
                 VStack {
                     Spacer()
                     Text(caption)
-                        .font(.title3.weight(.semibold))
+                        .font(.system(size: 20 * state.preferences.subtitleSize.scale, weight: .semibold))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.white)
                         .shadow(color: .black, radius: 2)
