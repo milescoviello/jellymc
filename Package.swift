@@ -76,6 +76,7 @@ let package = Package(
                 "Presentation.swift",
                 "Downloads.swift",
                 "Downloader.swift",
+                "MP4.swift",
                 "AppState.swift",
                 "DeviceInfo.swift",
                 "Keychain.swift",

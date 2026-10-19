@@ -462,3 +462,54 @@ struct DownloadRecordTests {
         #expect(record.status == "Failed: No space")
     }
 }
+
+struct MP4Tests {
+    /// The start of a real Jellyfin 12.2 direct stream: Sintel's HEVC copied out of MKV,
+    /// tagged hev1, which AVPlayer will not open.
+    private func serverHead() throws -> [UInt8] {
+        let url = try #require(Bundle.module.url(forResource: "converted-hevc-head", withExtension: "mp4", subdirectory: "Fixtures"))
+        return Array(try Data(contentsOf: url))
+    }
+
+    private func count(_ tag: String, in bytes: [UInt8]) -> Int {
+        let needle = Array(tag.utf8)
+        return (0 ... bytes.count - needle.count).filter { Array(bytes[$0 ..< $0 + 4]) == needle }.count
+    }
+
+    @Test func retagsTheServersHEVCForAVPlayer() throws {
+        var bytes = try serverHead()
+        #expect(count("hev1", in: bytes) == 1)
+        let changed = MP4.retag(&bytes, in: 0 ..< bytes.count)
+        #expect(changed.count == 1)
+        #expect(count("hev1", in: bytes) == 0)
+        #expect(count("hvc1", in: bytes) == 1)
+        // Nothing else moves.
+        #expect(bytes.count == (try serverHead()).count)
+    }
+
+    @Test func fixesTheFileInPlaceOnce() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("retag-\(UUID().uuidString).mp4")
+        defer { try? FileManager.default.removeItem(at: file) }
+        // The header, then a media box of filler, as the download would have it.
+        var data = Data(try serverHead())
+        data.append(contentsOf: [0, 0, 0, 16] + Array("mdat".utf8) + [UInt8](repeating: 7, count: 8))
+        try data.write(to: file)
+        #expect(try MP4.retagHEVC(at: file) == 1)
+        let fixed = Array(try Data(contentsOf: file))
+        #expect(count("hvc1", in: fixed) == 1)
+        #expect(fixed.count == data.count)
+        #expect(Array(fixed.suffix(8)) == [UInt8](repeating: 7, count: 8))
+        #expect(try MP4.retagHEVC(at: file) == 0)
+    }
+
+    @Test func leavesAnythingElseAlone() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("retag-\(UUID().uuidString).mkv")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let junk = Data([0x1a, 0x45, 0xdf, 0xa3] + [UInt8](repeating: 0xff, count: 60))
+        try junk.write(to: file)
+        #expect(try MP4.retagHEVC(at: file) == 0)
+        #expect(try Data(contentsOf: file) == junk)
+        var truncated = Array(try serverHead().prefix(200))
+        #expect(MP4.retag(&truncated, in: 0 ..< truncated.count).isEmpty)
+    }
+}

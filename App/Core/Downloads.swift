@@ -315,6 +315,11 @@ final class DownloadStore {
                 startNext()
                 return
             }
+            if ["mp4", "m4v", "mov"].contains(destination.pathExtension.lowercased()),
+               let retagged = try? MP4.retagHEVC(at: destination), retagged > 0 {
+                let title = record.item.title
+                Task { await Diagnostics.shared.record("downloads", "\(title): HEVC retagged hvc1 for AVPlayer") }
+            }
             record.file = "\(id)/\(name)"
             record.bytes = (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? NSNumber)?.int64Value
             record.progress = 1
