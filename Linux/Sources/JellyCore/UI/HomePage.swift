@@ -17,7 +17,13 @@ final class HomePage {
         stack.add(Spinner().size(40).halign(GTK_ALIGN_CENTER).valign(GTK_ALIGN_CENTER), name: "loading")
         stack.add(ScrolledWindow(rows.margins(top: 20, bottom: 30)).vexpand(), name: "rows")
         stack.add(empty, name: "empty")
-        root = stack
+        // Every page has a header: with the window's own decorations off, it is where the
+        // window is moved from and closed.
+        let reload = Button(icon: "view-refresh-symbolic", "flat") { [weak shell] in
+            guard let shell, let client = shell.state.client else { return }
+            Task { await shell.state.home.load(client, force: true) }
+        }.tooltip("Refresh")
+        root = ToolbarView(content: stack).top(HeaderBar().title(WindowTitle("Home")).end(reload))
         root.keep(self)
 
         let model = shell.state.home
