@@ -42,6 +42,7 @@ Everything here is Foundation plus Observation. That's what makes it shareable, 
 | `ImageURLs.swift` | `/Items/{id}/Images/{type}?tag=&maxWidth=&quality=` |
 | `Downloads.swift` | `DownloadStore` (the queue, one at a time, and `index.json`), `DownloadPlanner` (keep the original if the player opens it, else the server's HEVC/AAC MP4; WebVTT subtitles), the local playback plan, and the `Outbox` of positions not yet sent |
 | `Downloader.swift` | `URLSession` download tasks; a background session on iOS |
+| `Realtime.swift` | The server's WebSocket (`/socket`, the token in the Authorization header): user data and library changes, and remote control (Play, Playstate, GeneralCommand) routed by `AppState` to `PlaybackSession.current`; a keep-alive every half of `ForceKeepAlive`; reopens with backoff |
 | `MP4.swift` | Retags HEVC sample entries `hev1` → `hvc1` in a downloaded MP4, which AVPlayer requires and Jellyfin's direct stream does not write |
 | `Cache.swift` | A JSON disk cache: stale-while-revalidate for home rows and library pages |
 | `Diagnostics.swift` | A ring-buffer log that scrubs tokens; "send logs to server" |

@@ -156,7 +156,11 @@ final class PlaybackSession {
         )
     }
 
+    /// The session playing here now, if any: what another device's remote control acts on.
+    private(set) static weak var current: PlaybackSession?
+
     private func open(_ plan: PlaybackPlan) {
+        Self.current = self
         self.plan = plan
         error = nil
         hasEnded = false
@@ -197,6 +201,16 @@ final class PlaybackSession {
 
     func togglePause() {
         isPaused ? engine.play() : engine.pause()
+    }
+
+    func setPaused(_ paused: Bool) {
+        paused ? engine.pause() : engine.play()
+    }
+
+    /// Stops, and has the player closed, as the end of a film does.
+    func end() {
+        stop()
+        onFinished?()
     }
 
     func seek(to seconds: Double) {
@@ -291,6 +305,7 @@ final class PlaybackSession {
     func stop() {
         guard started else { return }
         started = false
+        if Self.current === self { Self.current = nil }
         reportTimer?.cancel()
         countdownTask?.cancel()
         engine.stop()

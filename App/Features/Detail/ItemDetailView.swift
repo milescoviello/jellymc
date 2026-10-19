@@ -61,8 +61,8 @@ struct ItemDetailView: View {
         .task {
             if let client = state.client { await model.load(client) }
         }
-        .onChange(of: state.playbackGeneration) {
-            // Back from the player: the progress and watched marks have moved.
+        .onChange(of: state.dataGeneration) {
+            // Back from the player, or changed on another device: progress and watched marks.
             Task { if let client = state.client { await model.load(client) } }
         }
     }

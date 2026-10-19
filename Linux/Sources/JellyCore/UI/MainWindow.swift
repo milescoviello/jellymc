@@ -44,6 +44,7 @@ final class MainWindow {
             guard let self else { return }
             Task { await self.state.reconnect() }
         }
+        installRemoteControl()
 
         gtk_window_present(window.cast())
         Task { await state.restore() }
@@ -51,6 +52,26 @@ final class MainWindow {
 
     func toast(_ message: String) {
         toasts.show(message, timeout: 3)
+    }
+
+    /// Another device (a phone, the web app) plays something here or controls the player.
+    private func installRemoteControl() {
+        state.onRemotePlay = { [weak self] item, request in
+            guard let self, self.state.phase == .signedIn else { return }
+            self.play(item, from: request.start, audioIndex: request.audioStreamIndex, subtitleIndex: request.subtitleStreamIndex, mediaSourceId: request.mediaSourceId)
+            gtk_window_present(self.window.cast())
+        }
+        state.onRemoteMessage = { [weak self] header, text in
+            self?.toasts.show([header, text].filter { !$0.isEmpty }.joined(separator: ": "), timeout: 6)
+        }
+        state.onRemoteCommand = { [weak self] command in
+            guard let self else { return }
+            if command.name == "ToggleFullscreen" {
+                self.toggleFullscreen()
+            } else {
+                self.player?.remote(command)
+            }
+        }
     }
 
     private func showShell() {

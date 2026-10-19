@@ -38,9 +38,18 @@ final class AppState {
     let home = HomeModel()
     let search = SearchModel()
     let downloads = DownloadStore()
-    /// Goes up each time the player closes: pages showing progress or watched marks
-    /// reload when it changes.
-    private(set) var playbackGeneration = 0
+    let realtime = Realtime()
+    /// Goes up when what pages show may have changed: the player here closed, or the
+    /// server says something changed. Pages showing progress or watched marks reload.
+    private(set) var dataGeneration = 0
+
+    /// Another device asked this one to play an item; the app opens its player.
+    @ObservationIgnored var onRemotePlay: (@MainActor (BaseItem, RemotePlay) -> Void)?
+    /// Another device sent a message to show: a header, and the text.
+    @ObservationIgnored var onRemoteMessage: (@MainActor (String, String) -> Void)?
+    /// A remote command only the platform can carry out: the volume, full screen.
+    @ObservationIgnored var onRemoteCommand: (@MainActor (RemoteCommand) -> Void)?
+    @ObservationIgnored private var refresh: Task<Void, Never>?
 
     @ObservationIgnored private var isReconnecting = false
     @ObservationIgnored private var retry: Task<Void, Never>?
@@ -49,6 +58,7 @@ final class AppState {
     init() {
         preferences = Preferences.load()
         device = DeviceIdentity(deviceName: DeviceInfo.name, deviceId: DeviceInfo.id, version: DeviceInfo.appVersion)
+        realtime.onMessage = { [weak self] message in self?.handle(message) }
     }
 
     var serverName: String { session?.serverName ?? "Jellyfin" }
@@ -102,17 +112,15 @@ final class AppState {
             self.session = stored
             Self.persist(stored)
             let wasOffline = isOffline
-            isOffline = false
             retryDelay = 15
-            downloads.connect(client)
-            await Outbox.shared.flush(client)
+            await Diagnostics.shared.record("session", "connected to \(info.serverName ?? "server") \(info.version ?? "") at \(address)")
+            await connected(client)
             // What was shown came from the cache; the server's is newer, and has whatever
             // was watched offline.
             if wasOffline { Task { await home.load(client, force: true) } }
-            await Diagnostics.shared.record("session", "connected to \(info.serverName ?? "server") \(info.version ?? "") at \(address)")
-            await client.registerCapabilities(playableMediaTypes: ["Video"], commands: ["Play", "Playstate", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"])
             return
         }
+        realtime.disconnect()
         isOffline = true
         await Diagnostics.shared.record("session", "no address answered; offline, trying again in \(Int(retryDelay)) s")
         scheduleRetry()
@@ -161,11 +169,11 @@ final class AppState {
             )
             Self.persist(stored)
             session = stored
-            client = probe.signedIn(token: result.accessToken, userId: result.user.id)
-            isOffline = false
-            downloads.connect(client)
+            let client = probe.signedIn(token: result.accessToken, userId: result.user.id)
+            self.client = client
             phase = .signedIn
             await Diagnostics.shared.record("session", "signed in to \(info.serverName ?? "server") \(info.version ?? "") as \(username)")
+            await connected(client)
             return
         }
         throw lastError
@@ -197,6 +205,7 @@ final class AppState {
 
     func signOut(tellServer: Bool = true) async {
         if tellServer { await client?.logout() }
+        realtime.disconnect()
         retry?.cancel()
         retry = nil
         isOffline = false
@@ -208,12 +217,97 @@ final class AppState {
         phase = .signedOut
     }
 
+    /// Reached the server, at sign-in or since: what waited for it goes, and it learns
+    /// this device can be played to and controlled.
+    private func connected(_ client: JellyfinClient) async {
+        isOffline = false
+        downloads.connect(client)
+        realtime.connect(client)
+        await Outbox.shared.flush(client)
+        await client.registerCapabilities(playableMediaTypes: ["Video"], commands: Self.remoteCommands)
+    }
+
     /// The player has closed. The server takes a moment with the final position, so the
     /// home rows and open pages catch up after one.
     func playbackEnded() async {
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         if let client { await home.load(client, force: true) }
-        playbackGeneration += 1
+        dataGeneration += 1
+    }
+
+    // MARK: - From the server
+
+    /// What other devices can ask of this one (GeneralCommandType names; Play and PlayState
+    /// are the Play and Playstate messages).
+    static var remoteCommands: [String] {
+        var commands = ["Play", "PlayState", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"]
+        #if !os(iOS)
+        // An iPhone's volume and screen are its own.
+        commands += ["VolumeUp", "VolumeDown", "SetVolume", "Mute", "Unmute", "ToggleMute", "ToggleFullscreen", "TakeScreenshot"]
+        #endif
+        return commands
+    }
+
+    private func handle(_ message: ServerMessage) {
+        let session = PlaybackSession.current
+        switch message {
+        case let .userDataChanged(changes):
+            // This device's own reports come back too; what is playing knows its place.
+            guard changes.contains(where: { $0.itemId != session?.item.id }) else { return }
+            scheduleRefresh()
+        case .libraryChanged:
+            scheduleRefresh()
+        case let .play(request):
+            guard request.playCommand == nil || ["PlayNow", "PlayNext", "PlayLast"].contains(request.playCommand),
+                  let id = request.itemId, let client
+            else { return }
+            Task {
+                guard let item = try? await client.item(id) else { return }
+                await Diagnostics.shared.record("realtime", "asked to play \(item.title)")
+                onRemotePlay?(item, request)
+            }
+        case let .playstate(request):
+            guard let session else { return }
+            switch request.command {
+            case "Stop": session.end()
+            case "Pause": session.setPaused(true)
+            case "Unpause": session.setPaused(false)
+            case "PlayPause": session.togglePause()
+            case "Seek": if let ticks = request.seekPositionTicks { session.seek(to: Ticks.seconds(ticks)) }
+            case "Rewind": session.skip(by: -10)
+            case "FastForward": session.skip(by: 30)
+            case "NextTrack": if let next = session.next { session.playNext(next) }
+            case "PreviousTrack": session.seek(to: 0)
+            default: break
+            }
+        case let .command(command):
+            switch command.name {
+            case "SetAudioStreamIndex":
+                if let index = command.argument("Index").flatMap(Int.init) { session?.selectAudio(index) }
+            case "SetSubtitleStreamIndex":
+                // -1 is off.
+                if let index = command.argument("Index").flatMap(Int.init) { session?.selectSubtitle(index < 0 ? nil : index) }
+            case "DisplayMessage":
+                onRemoteMessage?(command.argument("Header") ?? "", command.argument("Text") ?? "")
+            default:
+                onRemoteCommand?(command)
+            }
+        case .forceKeepAlive, .other:
+            break
+        }
+    }
+
+    /// Changes come in bursts, and while something plays here the pages wait: closing the
+    /// player reloads them anyway.
+    private func scheduleRefresh() {
+        refresh?.cancel()
+        refresh = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled, let self, PlaybackSession.current == nil, let client = self.client else { return }
+            await Diagnostics.shared.record("realtime", "changed on the server; reloading")
+            await self.home.load(client, force: true)
+            self.dataGeneration += 1
+        }
     }
 
     // MARK: - Playback settings

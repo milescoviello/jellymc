@@ -453,6 +453,21 @@ final class PlayerPage {
         return true
     }
 
+    /// What another device can do to this player beyond what the session does itself.
+    func remote(_ command: RemoteCommand) {
+        switch command.name {
+        case "VolumeUp": engine.setVolume(engine.volume + 5)
+        case "VolumeDown": engine.setVolume(engine.volume - 5)
+        case "SetVolume": if let volume = command.argument("Volume").flatMap(Double.init) { engine.setVolume(volume) }
+        case "Mute": if !engine.isMuted { engine.toggleMute() }
+        case "Unmute": if engine.isMuted { engine.toggleMute() }
+        case "ToggleMute": engine.toggleMute()
+        case "TakeScreenshot": engine.screenshot()
+        default: return
+        }
+        reveal()
+    }
+
     private func cycleSubtitles(_ session: PlaybackSession) {
         guard let plan = session.plan else { return }
         let indices: [Int?] = [nil] + plan.subtitleStreams.map(\.index)

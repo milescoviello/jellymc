@@ -267,6 +267,17 @@ final class JellyfinClient: Sendable {
 
     // MARK: - URLs for players and images
 
+    /// The server's WebSocket, at the same address: ws for http, wss for https. The token
+    /// goes in the Authorization header, not the URL.
+    var socketURL: URL? {
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else { return nil }
+        components.scheme = components.scheme == "https" ? "wss" : "ws"
+        let path = components.path.hasSuffix("/") ? String(components.path.dropLast()) : components.path
+        components.path = path + "/socket"
+        components.queryItems = [URLQueryItem(name: "deviceId", value: device.deviceId)]
+        return components.url
+    }
+
     /// A URL relative to the server, with the token as `ApiKey` so a player that knows
     /// nothing of headers can open it.
     func authorizedURL(_ path: String) -> URL? {

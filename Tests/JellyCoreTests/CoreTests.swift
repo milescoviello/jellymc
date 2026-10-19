@@ -569,3 +569,45 @@ struct PreferencesStorageTests {
         #expect(Preferences.load(from: file) == preferences)
     }
 }
+
+struct ServerMessageTests {
+    private func decode(_ json: String) -> ServerMessage? {
+        ServerMessage.decode(Data(json.utf8))
+    }
+
+    @Test func readsWhatJellyfinSends() throws {
+        // Both as a 12.2 server sent them to the test socket.
+        #expect(decode(#"{"MessageId":"416cf1d220a948ff955a851ffe38b4fb","Data":60,"MessageType":"ForceKeepAlive"}"#) == .forceKeepAlive(seconds: 60))
+        let changed = decode(#"""
+        {"MessageId":"c85e","Data":{"UserId":"8cbc","UserDataList":[{"PlaybackPositionTicks":0,"PlayCount":0,"IsFavorite":false,"Played":true,"Key":"10378","ItemId":"4216"},{"PlayedPercentage":50,"UnplayedItemCount":2,"PlaybackPositionTicks":0,"PlayCount":0,"IsFavorite":false,"Played":false,"Key":"x","ItemId":"series"}]},"MessageType":"UserDataChanged"}
+        """#)
+        #expect(changed == .userDataChanged([
+            UserDataChange(itemId: "4216", playbackPositionTicks: 0, played: true, isFavorite: false),
+            UserDataChange(itemId: "series", playbackPositionTicks: 0, played: false, isFavorite: false),
+        ]))
+    }
+
+    @Test func readsRemoteControl() throws {
+        let play = decode(#"{"MessageType":"Play","Data":{"ItemIds":["a","b"],"StartPositionTicks":600000000,"PlayCommand":"PlayNow","StartIndex":1,"AudioStreamIndex":2}}"#)
+        guard case let .play(request) = play else { Issue.record("\(String(describing: play))"); return }
+        #expect(request.itemId == "b")
+        #expect(request.start == 60)
+        #expect(request.audioStreamIndex == 2)
+        #expect(decode(#"{"MessageType":"Playstate","Data":{"Command":"Seek","SeekPositionTicks":300000000}}"#)
+            == .playstate(RemotePlaystate(command: "Seek", seekPositionTicks: 300_000_000)))
+        let message = decode(#"{"MessageType":"GeneralCommand","Data":{"Name":"DisplayMessage","Arguments":{"Header":"Hi","Text":"From the phone","TimeoutMs":"5000"}}}"#)
+        guard case let .command(command) = message else { Issue.record("\(String(describing: message))"); return }
+        #expect(command.name == "DisplayMessage")
+        #expect(command.argument("Header") == "Hi")
+        #expect(command.argument("text") == "From the phone")
+        #expect(decode(#"{"MessageType":"LibraryChanged","Data":{"ItemsAdded":["x"]}}"#) == .libraryChanged)
+        #expect(decode(#"{"MessageType":"ScheduledTaskEnded","Data":{}}"#) == .other("ScheduledTaskEnded"))
+        #expect(decode("not json") == nil)
+    }
+
+    @Test func socketFollowsTheAddress() {
+        #expect(client.socketURL?.absoluteString == "ws://jelly.lan:8096/socket?deviceId=device-1")
+        let secure = JellyfinClient(baseURL: URL(string: "https://media.example.com/jellyfin/")!, device: client.device)
+        #expect(secure.socketURL?.absoluteString == "wss://media.example.com/jellyfin/socket?deviceId=device-1")
+    }
+}
