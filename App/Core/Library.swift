@@ -94,7 +94,9 @@ final class HomeModel {
             async let user = client.currentUser()
             let views = try await client.userViews().filter(Self.isShown)
             guard load == latestLoad else { return }
-            libraries = views
+            // Written only when changed: every write redraws what shows it, and a pull to
+            // refresh that changes nothing should not move anything.
+            if libraries != views { libraries = views }
             async let resume = client.resume()
             async let nextUp = client.nextUp()
             async let watchlist = Hubs.watchlist(client)
@@ -116,7 +118,7 @@ final class HomeModel {
             if let watchlist = await watchlist { rows.append(watchlist) }
             rows += perLibrary.sorted { $0.0 < $1.0 }.flatMap(\.1)
             guard load == latestLoad else { return }
-            self.rows = rows
+            if self.rows != rows { self.rows = rows }
             error = nil
             ResponseCache.store(Snapshot(rows: rows, libraries: views), key: cacheKey(client))
             await Diagnostics.shared.record("home", "\(rows.count) rows in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
@@ -421,7 +423,7 @@ final class RecommendedModel {
         let fresh = await Hubs.recommended(for: library, client)
         await Diagnostics.shared.record("home", "\(library.title) recommended: \(fresh.count) rows in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         guard !fresh.isEmpty else { return }
-        rows = fresh
+        if rows != fresh { rows = fresh }
         ResponseCache.store(fresh, key: key)
     }
 }

@@ -100,7 +100,7 @@ struct RecommendedView: View {
                 }
             }
         }
-        .refreshable {
+        .pullToRefresh {
             if let client = state.client { await model.load(client, force: true) }
         }
         .task {

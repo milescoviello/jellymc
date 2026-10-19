@@ -25,7 +25,7 @@ struct HomeView: View {
             }
         }
         .navigationTitle("Home")
-        .refreshable {
+        .pullToRefresh {
             if let client = state.client { await home.load(client, force: true) }
         }
         .task {

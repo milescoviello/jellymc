@@ -289,3 +289,14 @@ struct HubList: View {
         .padding(.vertical)
     }
 }
+
+extension View {
+    /// Pull to refresh, with its work in a task of its own. SwiftUI cancels a refresh's
+    /// task when the view it belongs to is updated, which the refresh itself causes, and
+    /// the spinner was left hanging with the page pulled down.
+    func pullToRefresh(_ action: @escaping @MainActor () async -> Void) -> some View {
+        refreshable {
+            await Task { @MainActor in await action() }.value
+        }
+    }
+}

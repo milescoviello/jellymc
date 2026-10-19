@@ -94,15 +94,14 @@ struct DownloadButton: View {
             }
         } label: {
             switch record?.state {
-            case nil: Image(systemName: "arrow.down.circle")
-            case .queued?: Image(systemName: "clock")
-            case .downloading?: Text("\(Int((record?.progress ?? 0) * 100))%").monospacedDigit()
-            case .done?: Image(systemName: "arrow.down.circle.fill")
-            case .failed?: Image(systemName: "exclamationmark.arrow.circlepath")
+            case nil: ActionLabel(title: "Download", systemImage: "arrow.down.circle")
+            case .queued?: ActionLabel(title: "Waiting", systemImage: "clock")
+            case .downloading?: ActionLabel(title: "Downloading", text: "\(Int((record?.progress ?? 0) * 100))%")
+            case .done?: ActionLabel(title: "Downloaded", systemImage: "arrow.down.circle.fill", isOn: true)
+            case .failed?: ActionLabel(title: "Retry", systemImage: "exclamationmark.arrow.circlepath")
             }
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
+        .buttonStyle(.plain)
         .accessibilityLabel(label(record))
         .confirmationDialog(
             record?.isDone == true ? "Remove the download?" : "Stop the download?",

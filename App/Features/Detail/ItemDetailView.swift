@@ -145,17 +145,38 @@ struct ItemDetailView: View {
 
     // MARK: - Actions
 
+    /// Plex's buttons: Play (and Play from Beginning) first, then the rest as icons with
+    /// their names under them. A phone gives Play the width and puts the rest in a row
+    /// of their own below; on an iPad they share one row.
     @ViewBuilder
     private func actions(_ item: BaseItem) -> some View {
-        HStack(spacing: 12) {
-            if let playable = model.playable {
+        if sizeClass == .regular {
+            HStack(spacing: 14) {
+                playButtons(item)
+                Group { otherButtons(item) }.frame(width: 72)
+            }
+        } else {
+            VStack(spacing: 16) {
+                playButtons(item)
+                HStack(alignment: .top, spacing: 4) {
+                    Group { otherButtons(item) }.frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func playButtons(_ item: BaseItem) -> some View {
+        if let playable = model.playable {
+            HStack(spacing: 10) {
                 Button {
                     start(playable)
                 } label: {
                     Label(Presentation.playLabel(for: playable, on: item), systemImage: "play.fill")
                         .font(.headline)
+                        .lineLimit(1)
                         .foregroundStyle(.black)
-                        .frame(minWidth: 130)
+                        .frame(minWidth: 130, maxWidth: sizeClass == .regular ? nil : .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.plexGold)
@@ -171,67 +192,61 @@ struct ItemDetailView: View {
                     .accessibilityLabel("Play from Beginning")
                 }
             }
-            if model.canShuffle {
-                Button {
-                    Task {
-                        let order = await model.shuffled()
-                        guard let first = order.first else { return }
-                        router.play(first, from: 0, queue: Array(order.dropFirst()))
-                    }
-                } label: {
-                    Image(systemName: "shuffle")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .accessibilityLabel("Shuffle")
-            }
-            if let trailer = item.remoteTrailers?.first?.url.flatMap(URL.init(string:)) {
-                Link(destination: trailer) {
-                    Image(systemName: "film")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .accessibilityLabel("Play Trailer")
-            } else if let local = model.extras.first(where: { $0.type == .trailer }) {
-                Button { router.play(local) } label: { Image(systemName: "film") }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .accessibilityLabel("Play Trailer")
-            }
-            if item.type != .person, item.type != .boxSet {
-                Button {
-                    Task { await model.togglePlayed() }
-                } label: {
-                    Image(systemName: item.isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
-                        .foregroundStyle(item.isPlayed ? Color.plexGold : Color.primary)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .accessibilityLabel(item.isPlayed ? "Mark as Unwatched" : "Mark as Watched")
-            }
+        }
+    }
+
+    /// Each one sized by the caller: spread across a phone, a fixed width on an iPad.
+    @ViewBuilder
+    private func otherButtons(_ item: BaseItem) -> some View {
+        if model.canShuffle {
             Button {
-                Task { await model.toggleFavorite() }
-            } label: {
-                Image(systemName: item.isFavorite ? "heart.fill" : "heart")
-                    .foregroundStyle(item.isFavorite ? Color.plexGold : Color.primary)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .accessibilityLabel(item.isFavorite ? "Remove from Favourites" : "Add to Favourites")
-            if item.type?.isVideo == true {
-                DownloadButton(item: item)
-            }
-            if item.type == .season, !model.episodes.isEmpty {
-                let episodes = model.episodes
-                Button {
-                    Task { await state.downloads.download(episodes, for: .avPlayer) }
-                } label: {
-                    Image(systemName: "arrow.down.circle")
+                Task {
+                    let order = await model.shuffled()
+                    guard let first = order.first else { return }
+                    router.play(first, from: 0, queue: Array(order.dropFirst()))
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .accessibilityLabel("Download Season")
+            } label: {
+                ActionLabel(title: "Shuffle", systemImage: "shuffle")
             }
+            .buttonStyle(.plain)
+        }
+        if let trailer = item.remoteTrailers?.first?.url.flatMap(URL.init(string:)) {
+            Link(destination: trailer) {
+                ActionLabel(title: "Trailer", systemImage: "film")
+            }
+            .buttonStyle(.plain)
+        } else if let local = model.extras.first(where: { $0.type == .trailer }) {
+            Button { router.play(local) } label: { ActionLabel(title: "Trailer", systemImage: "film") }
+                .buttonStyle(.plain)
+        }
+        if item.type != .person, item.type != .boxSet {
+            Button {
+                Task { await model.togglePlayed() }
+            } label: {
+                ActionLabel(title: "Watched", systemImage: item.isPlayed ? "checkmark.circle.fill" : "checkmark.circle", isOn: item.isPlayed)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(item.isPlayed ? "Mark as Unwatched" : "Mark as Watched")
+        }
+        Button {
+            Task { await model.toggleFavorite() }
+        } label: {
+            ActionLabel(title: "Favourite", systemImage: item.isFavorite ? "heart.fill" : "heart", isOn: item.isFavorite)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.isFavorite ? "Remove from Favourites" : "Add to Favourites")
+        if item.type?.isVideo == true {
+            DownloadButton(item: item)
+        }
+        if item.type == .season, !model.episodes.isEmpty {
+            let episodes = model.episodes
+            Button {
+                Task { await state.downloads.download(episodes, for: .avPlayer) }
+            } label: {
+                ActionLabel(title: "Download", systemImage: "arrow.down.circle")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Download Season")
         }
     }
 
@@ -376,6 +391,37 @@ struct ItemDetailView: View {
                 }
             }
         }
+    }
+}
+
+/// A pre-play button's face: an icon with its name under it, gold while it is on.
+struct ActionLabel: View {
+    let title: String
+    var systemImage: String?
+    /// Shown in the icon's place: a download's percentage.
+    var text: String?
+    var isOn = false
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Group {
+                if let text {
+                    Text(text).font(.subheadline.weight(.semibold)).monospacedDigit()
+                } else if let systemImage {
+                    Image(systemName: systemImage).font(.title3)
+                }
+            }
+            .frame(height: 26)
+            .foregroundStyle(isOn ? Color.plexGold : Color.primary)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(.vertical, 4)
+        .frame(minWidth: 44)
+        .contentShape(Rectangle())
     }
 }
 
