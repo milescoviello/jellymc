@@ -6,6 +6,9 @@ import Foundation
 public enum JellymcApplication {
     @MainActor
     public static func run() {
+        // The video is drawn with OpenGL; GTK's GL renderer puts it on screen as it is,
+        // where the Vulkan one copies every frame across. Unless asked for another.
+        setenv("GSK_RENDERER", "gl", 0)
         MainLoop.install()
         let application = adw_application_new(Desktop.applicationID, GApplicationFlags(rawValue: 0))!
         Desktop.application = OpaquePointer(application)
