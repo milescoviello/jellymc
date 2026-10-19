@@ -8,7 +8,6 @@ The toolchain is already on this machine:
 
 - Swift 6.3.1 (swiftly)
 - gtk4 4.20 and libadwaita 1.8
-- libsecret
 - mpv 0.41 with `libmpv` (the global USE flags already include `libmpv vaapi wayland pipewire`)
 - EGL/epoxy
 - FFmpeg 8.1

@@ -1,142 +1,56 @@
-import CGtk
-import CSecret
 import Foundation
 
-/// The iPhone's Keychain wrapper, on the desktop's keyring.
-///
-/// libsecret talks to whatever implements the Secret Service — GNOME Keyring, or KWallet
-/// on Plasma — so the token lives where the desktop keeps every other password. The same
-/// item as on the phone, as JSON, under the same name.
-///
-/// With no keyring at all it falls back to a file only this user can read: signing in on
-/// every launch would be worse, and the fallback is recorded in Diagnostics.
+/// The iPhone's Keychain wrapper, on the desktop: files only this user can read, beside the
+/// preferences in ~/.local/share/jellymc. The desktop's keyring is not used: asking it
+/// opens a wallet prompt (KWallet's first-use wizard on Plasma), on every start.
 enum Keychain {
-    private static let account = "session"
-
     static func save(_ session: StoredSession) {
         guard let data = try? JSONEncoder().encode(session) else { return }
-        write(data, account: account, label: "jellymc: Jellyfin sign-in")
+        write(data, to: sessionFile)
     }
 
     static func loadSession() -> StoredSession? {
-        guard let data = read(account: account) else { return nil }
+        guard let data = try? Data(contentsOf: sessionFile) else { return nil }
         return try? JSONDecoder().decode(StoredSession.self, from: data)
     }
 
     static func clear() {
-        delete(account: account)
+        try? FileManager.default.removeItem(at: sessionFile)
     }
 
     // MARK: - The app's PIN
 
-    private static let pinAccount = "app-pin"
-
     static func savePIN(_ pin: String?) {
         guard let pin else {
-            delete(account: pinAccount)
+            try? FileManager.default.removeItem(at: pinFile)
             return
         }
-        write(Data(pin.utf8), account: pinAccount, label: "jellymc: app PIN")
+        write(Data(pin.utf8), to: pinFile)
     }
 
     static func loadPIN() -> String? {
-        read(account: pinAccount).map { String(decoding: $0, as: UTF8.self) }
+        (try? Data(contentsOf: pinFile)).map { String(decoding: $0, as: UTF8.self) }
     }
 
-    // MARK: - Plumbing
+    // MARK: -
 
-    private static func write(_ data: Data, account: String, label: String) {
-        let secret = String(decoding: data, as: UTF8.self)
-        let stored = withDeadline(false) {
-            let attributes = attributesTable(account)
-            defer { g_hash_table_unref(attributes) }
-            var error: UnsafeMutablePointer<GError>?
-            let ok = secret_password_storev_sync(csecret_jellymc_schema(), attributes, "default", label, secret, nil, &error)
-            if let error { g_error_free(error) }
-            return ok != 0
-        }
-        if stored {
-            try? FileManager.default.removeItem(at: fallbackFile(account))
+    // The names the keyring's fallback used, so a sign-in kept that way still counts.
+    private static var sessionFile: URL { Paths.root.appendingPathComponent(".session.json") }
+    private static var pinFile: URL { Paths.root.appendingPathComponent(".app-pin.json") }
+
+    /// Written beside and moved into place, created readable by this user alone: there is
+    /// no moment at which another user could read it, or a crash leave half of it.
+    private static func write(_ data: Data, to url: URL) {
+        let manager = FileManager.default
+        try? manager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.deletingLastPathComponent().path)
+        let temporary = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).tmp")
+        guard manager.createFile(atPath: temporary.path, contents: data, attributes: [.posixPermissions: 0o600]) else {
+            Task { await Diagnostics.shared.record("session", "could not write \(url.lastPathComponent)") }
             return
         }
-        writeFallback(data, account: account)
-    }
-
-    private static func read(account: String) -> Data? {
-        // The file exists only because the keyring failed before; asking it again would
-        // mean waiting out the same failure on every launch.
-        if let data = try? Data(contentsOf: fallbackFile(account)) { return data }
-        return withDeadline(nil) { () -> Data? in
-            let attributes = attributesTable(account)
-            defer { g_hash_table_unref(attributes) }
-            var error: UnsafeMutablePointer<GError>?
-            let password = secret_password_lookupv_sync(csecret_jellymc_schema(), attributes, nil, &error)
-            if let error { g_error_free(error) }
-            guard let password else { return nil }
-            defer { secret_password_free(password) }
-            return Data(String(cString: password).utf8)
+        if rename(temporary.path, url.path) != 0 {
+            try? manager.removeItem(at: temporary)
+            Task { await Diagnostics.shared.record("session", "could not move \(url.lastPathComponent) into place") }
         }
-    }
-
-    private static func delete(account: String) {
-        try? FileManager.default.removeItem(at: fallbackFile(account))
-        withDeadline(()) {
-            let attributes = attributesTable(account)
-            defer { g_hash_table_unref(attributes) }
-            var error: UnsafeMutablePointer<GError>?
-            secret_password_clearv_sync(csecret_jellymc_schema(), attributes, nil, &error)
-            if let error { g_error_free(error) }
-        }
-    }
-
-    /// The item's attributes, owning their strings: a call that outlives its deadline
-    /// keeps using them.
-    private static func attributesTable(_ account: String) -> OpaquePointer? {
-        let table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free)
-        g_hash_table_insert(table, g_strdup("account"), g_strdup(account))
-        return table
-    }
-
-    nonisolated(unsafe) private static var unresponsive = false
-
-    private final class Outcome<Value: Sendable>: @unchecked Sendable {
-        var value: Value?
-        let done = DispatchSemaphore(value: 0)
-    }
-
-    /// Runs a keyring call on a thread of its own and waits five seconds for it.
-    ///
-    /// KDE's ksecretd answers libsecret's first-use prompt (the wallet wizard) with a reply
-    /// libsecret does not expect, and the synchronous call then never returns, cancellable
-    /// or not. Past the deadline the call is abandoned, its thread left to it, and the
-    /// caller goes on as if there were no keyring.
-    @discardableResult
-    private static func withDeadline<Value: Sendable>(_ fallback: Value, _ call: @escaping @Sendable () -> Value) -> Value {
-        // One that has missed a deadline is not asked again this run: each call would wait
-        // out the same five seconds.
-        if unresponsive { return fallback }
-        let outcome = Outcome<Value>()
-        Thread {
-            outcome.value = call()
-            outcome.done.signal()
-        }.start()
-        guard outcome.done.wait(timeout: .now() + 5) == .success else {
-            unresponsive = true
-            Task { await Diagnostics.shared.record("keyring", "the Secret Service did not answer within 5 s") }
-            return fallback
-        }
-        return outcome.value ?? fallback
-    }
-
-    // MARK: - Without a keyring
-
-    private static func fallbackFile(_ account: String) -> URL {
-        Paths.root.appendingPathComponent(".\(account).json")
-    }
-
-    private static func writeFallback(_ data: Data, account: String) {
-        let url = fallbackFile(account)
-        _ = FileManager.default.createFile(atPath: url.path, contents: data, attributes: [.posixPermissions: 0o600])
-        Task { await Diagnostics.shared.record("keyring", "no Secret Service; \(account) kept in a private file") }
     }
 }

@@ -15,7 +15,7 @@ A personal Jellyfin client for **iPhone/iPad** and **Linux** (GTK 4 + libadwaita
 
 ## Install
 
-**Linux** (Swift 6, GTK 4, libadwaita, libsecret, libmpv, libepoxy, libsoup 3):
+**Linux** (Swift 6, GTK 4, libadwaita, libmpv, libepoxy, libsoup 3):
 
 ```sh
 Linux/install.sh            # builds a release and installs jellymc for this user

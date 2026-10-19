@@ -5,7 +5,7 @@ import Observation
 /// away, so whoever picks up the phone cannot look through the library. It only hides
 /// the app; nothing is signed out.
 ///
-/// The PIN is in the Keychain (the keyring on Linux), with the sign-in. The rest is this
+/// The PIN is in the Keychain (a private file on Linux), with the sign-in. The rest is this
 /// device's alone, in its own file: it is not among the settings that follow you.
 @MainActor
 @Observable

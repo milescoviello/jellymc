@@ -29,7 +29,7 @@ Left before calling it 1.0:
 - `Jellymc.xcodeproj` with a file-system synchronized `App` group, iPhone + iPad, iOS 18.
 - `.github/workflows/ios.yml`: `swift test`, an ad-hoc-signed archive, `Jellymc.ipa` uploaded as an artifact and to the rolling `latest` release.
 - `tools/testserver`: Jellyfin 12.2 in Docker, the first-run wizard scripted, and generated media.
-- Core: `JellyfinClient`, the auth header, `/System/Info/Public`, `AuthenticateByName`, the session in the Keychain/libsecret.
+- Core: `JellyfinClient`, the auth header, `/System/Info/Public`, `AuthenticateByName`, the session in the Keychain (a private file on Linux).
 
 **Exit:** `swift test` passes on Linux; the GTK app logs in to the test server; CI publishes an IPA that `xtool install` puts on the phone.
 

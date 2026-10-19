@@ -17,7 +17,7 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Feature | Tag | Where | Notes |
 |---|---|---|---|
 | Add server by URL, with `/System/Info/Public` check | M1 | Both | Friendly errors for "not Jellyfin", "too old", TLS |
-| Username/password login | M1 | Both | Token in Keychain or Secret Service |
+| Username/password login | M1 | Both | Token in the Keychain, or a private file on Linux |
 | Multiple addresses per server (LAN + remote) with auto-switching on network change | M2 | Both | Matters most on the iPhone |
 | Reverse-proxy base path, custom headers, your own CA | M2 | Both | Only if your setup needs them |
 | Approve another device's Quick Connect code from the app | M4 | Both | `POST /QuickConnect/Authorize`, handy for signing in TV apps |

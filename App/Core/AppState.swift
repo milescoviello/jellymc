@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// The signed-in server and user, as kept in the Keychain (libsecret on Linux).
+/// The signed-in server and user, as kept in the Keychain (a private file on Linux).
 struct StoredSession: Codable, Sendable, Equatable {
     /// Every address the server has been reached at, the last one that worked first.
     var addresses: [String]
@@ -446,8 +446,7 @@ final class AppState {
 }
 
 extension AppState {
-    /// The keyring can be slow, or wait on a prompt (a desktop's first-use wallet wizard),
-    /// so it is never asked from the main actor.
+    /// Written off the main actor: the Keychain and the disk can both be slow.
     nonisolated static func persist(_ session: StoredSession) {
         Task.detached(priority: .utility) { Keychain.save(session) }
     }

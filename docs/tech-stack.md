@@ -9,12 +9,12 @@
 | UI | SwiftUI: the system's scrolling, swipe-back, tab bar and sheets | GTK 4 + libadwaita, through C interop and the small declarative wrapper the Music app's Linux build already has (`Linux/Sources/JellyCore/GTK`) |
 | Core | `App/Core`: Jellyfin client, models, session, device profiles, playback negotiation and reporting, queues, outbox, caches. Foundation-only, except for a few named Apple-only files. | **The same files**: `Linux/Sources/JellyCore/Core` is a symlink to `App/Core`. Apple-only files are excluded, and each has a Linux file of the same name and shape under `Platform/`. |
 | Video | **AVPlayer** (`AVPlayerViewController`): PiP, AirPlay, Dolby Vision/HDR, Now Playing, all from the system. The server remuxes to HLS (or transcodes) whatever AVPlayer can't open. | **libmpv** through its render API into a `GtkGLArea` (OpenGL via EGL), with VA-API decoding on the Arrow Lake iGPU. Every container, codec and subtitle format, including ASS with fonts. |
-| Secrets | Keychain | libsecret (Secret Service) |
+| Secrets | Keychain | A private file (0600) in ~/.local/share/jellymc |
 | Media controls | MPNowPlayingInfoCenter / MPRemoteCommandCenter | MPRIS on D-Bus (Plasma's media applet, media keys, KDE Connect) |
 | Network status | `NWPathMonitor` | GIO `GNetworkMonitor` |
 | Keep awake | idle timer | `org.freedesktop.ScreenSaver` inhibit |
 
-There are no third-party Swift packages on iOS. On Linux, everything comes from system libraries through `systemLibrary` targets: gtk4, libadwaita-1, libsecret-1, mpv, egl.
+There are no third-party Swift packages on iOS. On Linux, everything comes from system libraries through `systemLibrary` targets: gtk4, libadwaita-1, mpv, egl, epoxy, libsoup-3.0.
 
 ## Why
 

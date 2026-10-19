@@ -44,7 +44,7 @@ esac
 
 # What the build links against, by pkg-config name, with the packages that provide it.
 missing=""
-for module in gtk4 libadwaita-1 libsecret-1 mpv epoxy egl libsoup-3.0; do
+for module in gtk4 libadwaita-1 mpv epoxy egl libsoup-3.0; do
     pkg-config --exists "$module" 2>/dev/null || missing="$missing $module"
 done
 if ! command -v swift >/dev/null; then
@@ -55,10 +55,10 @@ if [ -n "$missing" ]; then
     cat >&2 <<EOF
 Missing development files for:$missing
 
-  Fedora:         sudo dnf install gtk4-devel libadwaita-devel libsecret-devel mpv-devel libepoxy-devel mesa-libEGL-devel libsoup3-devel
-  Debian, Ubuntu: sudo apt install libgtk-4-dev libadwaita-1-dev libsecret-1-dev libmpv-dev libepoxy-dev libegl-dev libsoup-3.0-dev
-  Arch:           sudo pacman -S gtk4 libadwaita libsecret mpv libepoxy libsoup3
-  Gentoo:         emerge gui-libs/gtk gui-libs/libadwaita app-crypt/libsecret media-video/mpv[libmpv] media-libs/libepoxy net-libs/libsoup:3.0
+  Fedora:         sudo dnf install gtk4-devel libadwaita-devel mpv-devel libepoxy-devel mesa-libEGL-devel libsoup3-devel
+  Debian, Ubuntu: sudo apt install libgtk-4-dev libadwaita-1-dev libmpv-dev libepoxy-dev libegl-dev libsoup-3.0-dev
+  Arch:           sudo pacman -S gtk4 libadwaita mpv libepoxy libsoup3
+  Gentoo:         emerge gui-libs/gtk gui-libs/libadwaita media-video/mpv[libmpv] media-libs/libepoxy net-libs/libsoup:3.0
 EOF
     exit 1
 fi

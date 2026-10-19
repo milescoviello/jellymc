@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Turns a fresh distro-matrix Kubuntu 26.04 desktop into a jellymc test machine: the Swift
-# toolchain, the GTK/libadwaita/libmpv/libsecret headers, Docker for the test server.
+# toolchain, the GTK/libadwaita/libmpv headers, Docker for the test server.
 # Runs on the VM, as tester (sudo is passwordless there). Idempotent.
 #
 #   (from the laptop) tools/vm/push && tools/vm/run provision
@@ -13,7 +13,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     binutils git gnupg2 libc6-dev libcurl4-openssl-dev libedit2 libpython3-dev libsqlite3-0 \
     libstdc++-14-dev libxml2-dev libncurses-dev libz3-dev pkg-config tzdata unzip zlib1g-dev \
-    libgtk-4-dev libadwaita-1-dev libmpv-dev libsecret-1-dev libegl-dev libsoup-3.0-dev \
+    libgtk-4-dev libadwaita-1-dev libmpv-dev libegl-dev libsoup-3.0-dev \
     docker.io ffmpeg jq curl rsync mpv >/dev/null
 sudo usermod -aG docker "$USER"
 

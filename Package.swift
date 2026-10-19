@@ -30,12 +30,11 @@ let package = Package(
     name: "Jellymc",
     targets: [
         .systemLibrary(name: "CGtk", path: "Linux/Modules/CGtk", pkgConfig: "gtk4 libadwaita-1"),
-        .systemLibrary(name: "CSecret", path: "Linux/Modules/CSecret", pkgConfig: "libsecret-1"),
         .systemLibrary(name: "CMpv", path: "Linux/Modules/CMpv", pkgConfig: "mpv egl epoxy gtk4"),
         .systemLibrary(name: "CSoup", path: "Linux/Modules/CSoup", pkgConfig: "libsoup-3.0"),
         .target(
             name: "JellyCore",
-            dependencies: ["CGtk", "CSecret", "CMpv", "CSoup"],
+            dependencies: ["CGtk", "CMpv", "CSoup"],
             path: "Linux/Sources/JellyCore",
             exclude: appleOnly
         ),

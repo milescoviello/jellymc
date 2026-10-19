@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-/// The signed-in session, in the Keychain. On Linux the same calls go to libsecret
+/// The signed-in session, in the Keychain. On Linux the same calls write private files
 /// (`Linux/Sources/JellyCore/Platform/Keychain.swift`).
 enum Keychain {
     private static let service = "com.milescoviello.jellymc"

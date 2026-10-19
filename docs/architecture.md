@@ -13,7 +13,7 @@ App/                          the iOS app (file-system synchronized group in Jel
 Jellymc.xcodeproj/
 Jellymc-Info.plist
 Linux/
-  Modules/                    C modules: CGtk (gtk4 + libadwaita), CMpv (libmpv + EGL), CSecret (libsecret)
+  Modules/                    C modules: CGtk (gtk4 + libadwaita), CMpv (libmpv + EGL), CSoup (libsoup)
   Sources/JellyCore/Core      → symlink to App/Core
   Sources/JellyCore/Platform  Linux counterparts of Apple-only Core files (same name, same shape)
   Sources/JellyCore/GTK       the declarative GTK wrapper (from the Music app)
@@ -37,7 +37,7 @@ Everything here is Foundation plus Observation. That's what makes it shareable, 
 | `Ticks.swift` | Conversion between ticks (100 ns) and seconds/`Duration`, and runtime formatting |
 | `DeviceProfiles.swift` | `DeviceProfile` for AVPlayer (iOS) and for mpv (Linux): direct-play, transcoding, codec and subtitle profiles |
 | `PlaybackSession.swift` | `PlaybackInfo` negotiation, choosing direct play vs stream vs transcode, the URL, reporting (start/progress/stopped/ping), track switching, segments, up next |
-| `Session.swift` | The signed-in server and user: multiple addresses with fall-through, token in the Keychain/libsecret, device id |
+| `Session.swift` | The signed-in server and user: multiple addresses with fall-through, token in the Keychain (a private file on Linux), device id |
 | `Library.swift` | Observable view state for home, libraries, items, search, details. Each screen reads one of these. |
 | `ImageURLs.swift` | `/Items/{id}/Images/{type}?tag=&maxWidth=&quality=` |
 | `Downloads.swift` | `DownloadStore` (the queue, one at a time, and `index.json`), `DownloadPlanner` (keep the original if the player opens it, else the server's HEVC/AAC MP4; WebVTT subtitles), the local playback plan, and the `Outbox` of positions not yet sent |
@@ -46,7 +46,7 @@ Everything here is Foundation plus Observation. That's what makes it shareable, 
 | `MP4.swift` | Retags HEVC sample entries `hev1` → `hvc1` in a downloaded MP4, which AVPlayer requires and Jellyfin's direct stream does not write |
 | `Cache.swift` | A JSON disk cache: stale-while-revalidate for home rows and library pages |
 | `Diagnostics.swift` | A ring-buffer log that scrubs tokens; "send logs to server" |
-| `Keychain.swift`, `Reachability.swift`, `NowPlayingCenter.swift`, `ScreenAwake.swift` | **Apple-only.** Replaced on Linux by libsecret, GIO `GNetworkMonitor`, MPRIS, and the ScreenSaver inhibit. |
+| `Keychain.swift`, `Reachability.swift`, `NowPlayingCenter.swift`, `ScreenAwake.swift` | **Apple-only.** Replaced on Linux by private files, GIO `GNetworkMonitor`, MPRIS, and the ScreenSaver inhibit. |
 
 Rules:
 
@@ -58,7 +58,7 @@ Rules:
 
 - One server and one user in the UI. The model is keyed by server `Id` and user id, so more can be added later without a migration.
 - **Several addresses per server** (LAN, remote domain, Tailscale). On each network change, try them in order with a short timeout and keep the first that answers.
-- Login with username/password (`/Users/AuthenticateByName`). The token is stored in the Keychain or libsecret. The DeviceId is a random id generated once per install.
+- Login with username/password (`/Users/AuthenticateByName`). The token is stored in the Keychain, or on Linux in a file only the user can read (the keyring is not used: it opens a wallet prompt). The DeviceId is a random id generated once per install.
 
 ## Data
 
@@ -84,7 +84,7 @@ See [playback.md](playback.md).
 | AirPlay | AVRoutePickerView / AVPlayerViewController | — |
 | Background | `audio` background mode | always running |
 | Keep awake | `isIdleTimerDisabled` during video | `org.freedesktop.ScreenSaver` inhibit |
-| Secrets | Keychain | libsecret (gnome-keyring on this machine) |
+| Secrets | Keychain | A private file (0600) in ~/.local/share/jellymc |
 | Network | `NWPathMonitor` | `GNetworkMonitor` |
 
 ## UI
