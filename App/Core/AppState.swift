@@ -221,6 +221,7 @@ final class AppState {
     /// this device can be played to and controlled.
     private func connected(_ client: JellyfinClient) async {
         isOffline = false
+        Task { await loadPlaylists() }
         downloads.connect(client)
         realtime.connect(client)
         await Outbox.shared.flush(client)
@@ -248,6 +249,30 @@ final class AppState {
     func removeFromContinueWatching(_ item: BaseItem) async {
         guard let client else { return }
         try? await client.setPosition(0, played: item.isPlayed, lastPlayed: item.userData?.lastPlayedDate ?? Date(), itemId: item.id)
+        await changedHere()
+    }
+
+    /// The user's playlists, for "Add to Playlist"; kept from the last time asked.
+    private(set) var playlists: [BaseItem] = []
+    /// What "New Playlist…" was chosen for, while its name is asked (iOS asks from the root).
+    var namingPlaylistFor: BaseItem?
+
+    func loadPlaylists() async {
+        guard let client else { return }
+        if let found = try? await client.playlists() { playlists = found }
+    }
+
+    func add(_ item: BaseItem, to playlist: BaseItem) async {
+        guard let client else { return }
+        try? await client.addToPlaylist(playlist.id, ids: [item.id])
+        await Diagnostics.shared.record("playlists", "added \(item.title) to \(playlist.title)")
+        dataGeneration += 1
+    }
+
+    func newPlaylist(_ name: String, with item: BaseItem) async {
+        guard let client, !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        _ = try? await client.createPlaylist(name: name, ids: [item.id])
+        await loadPlaylists()
         await changedHere()
     }
 

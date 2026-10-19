@@ -840,3 +840,16 @@ struct QueueTests {
         _ = model
     }
 }
+
+struct PlaylistTests {
+    @Test func playlistsAreALibraryOfTheirOwn() {
+        var view = BaseItem(id: "p")
+        view.collectionType = "playlists"
+        #expect(HomeModel.isShown(view))
+        #expect(!HomeModel.showsLatest(view))
+        #expect(libraryItemTypes(view) == [.playlist])
+        var playlist = BaseItem(id: "pl")
+        playlist.type = .playlist
+        #expect(Presentation.playLabel(for: BaseItem(id: "f"), on: playlist) == "Play")
+    }
+}

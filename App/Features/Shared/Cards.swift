@@ -203,6 +203,16 @@ struct ItemMenu: View {
                 Label("Remove from Continue Watching", systemImage: "minus.circle")
             }
         }
+        if item.type?.isVideo == true || item.type == .series || item.type == .season {
+            Menu {
+                ForEach(state.playlists) { playlist in
+                    Button(playlist.title) { Task { await state.add(item, to: playlist) } }
+                }
+                Button { state.namingPlaylistFor = item } label: { Label("New Playlist…", systemImage: "plus") }
+            } label: {
+                Label("Add to Playlist", systemImage: "text.badge.plus")
+            }
+        }
         if item.type == .episode, let seriesId = item.seriesId {
             NavigationLink(value: ItemRoute(item: Self.show(seriesId, item))) {
                 Label("Go to Show", systemImage: "tv")

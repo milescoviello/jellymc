@@ -52,6 +52,7 @@ func libraryItemTypes(_ library: BaseItem) -> [ItemKind] {
     case "movies": return [.movie]
     case "tvshows": return [.series]
     case "boxsets": return [.boxSet]
+    case "playlists": return [.playlist]
     default: return []
     }
 }
@@ -137,7 +138,7 @@ final class HomeModel {
     /// Films and shows, and collections of them: the app is for watching. Music, books,
     /// photos and Live TV libraries are left out.
     nonisolated static func isShown(_ view: BaseItem) -> Bool {
-        ["movies", "tvshows", "boxsets"].contains(view.collectionType)
+        ["movies", "tvshows", "boxsets", "playlists"].contains(view.collectionType)
     }
 
     nonisolated static func showsLatest(_ view: BaseItem) -> Bool {
@@ -583,6 +584,8 @@ final class ItemModel {
                 query.personIds = [id]
                 query.includeItemTypes = [.movie, .series]
                 children = (try? await client.items(query).items) ?? []
+            case .playlist?:
+                children = (try? await client.playlistItems(id)) ?? []
             case .boxSet?, .folder?, .collectionFolder?:
                 var query = ItemQuery()
                 query.parentId = id
@@ -615,6 +618,8 @@ final class ItemModel {
             let films = children.filter { $0.type?.isVideo == true }
             return films.first { !$0.isPlayed } ?? films.first
         }
+        // A playlist plays from its top, as Plex's does.
+        if item.type == .playlist { return children.first { $0.type?.isVideo == true } }
         return item.type?.isVideo == true ? item : nil
     }
 
@@ -623,7 +628,7 @@ final class ItemModel {
         guard let item else { return false }
         switch item.type {
         case .series?, .season?: return true
-        case .boxSet?: return children.filter { $0.type?.isVideo == true }.count > 1
+        case .boxSet?, .playlist?: return children.filter { $0.type?.isVideo == true }.count > 1
         default: return false
         }
     }
@@ -637,7 +642,7 @@ final class ItemModel {
             return Queues.shuffle((try? await client.episodes(seriesId: item.id, seasonId: nil)) ?? [])
         case .season?:
             return Queues.shuffle(episodes)
-        case .boxSet?:
+        case .boxSet?, .playlist?:
             return Queues.shuffle(children.filter { $0.type?.isVideo == true })
         default:
             return []
@@ -646,7 +651,7 @@ final class ItemModel {
 
     /// What follows the play button: the rest of a collection.
     var queueAfterPlayable: [BaseItem] {
-        guard let item, item.type == .boxSet, let playable else { return [] }
+        guard let item, item.type == .boxSet || item.type == .playlist, let playable else { return [] }
         return Queues.after(playable, in: children.filter { $0.type?.isVideo == true })
     }
 

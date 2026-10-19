@@ -220,6 +220,44 @@ final class JellyfinClient: Sendable {
         return ((try? await trailers) ?? []) + ((try? await features) ?? [])
     }
 
+    // MARK: - Playlists
+
+    /// The user's playlists of video.
+    func playlists() async throws -> [BaseItem] {
+        var query = ItemQuery()
+        query.recursive = true
+        query.includeItemTypes = [.playlist]
+        query.sort = .name
+        query.limit = 200
+        return try await items(query).items
+    }
+
+    /// A playlist's items, in its order.
+    func playlistItems(_ id: String) async throws -> [BaseItem] {
+        let page: ItemsPage<BaseItem> = try await get("Playlists/\(id)/Items", query: userQuery([
+            "fields": Self.listFields, "enableImageTypes": Self.imageTypes, "imageTypeLimit": "1",
+        ]))
+        return page.items
+    }
+
+    func addToPlaylist(_ playlistId: String, ids: [String]) async throws {
+        try await sendNoContent("POST", "Playlists/\(playlistId)/Items", query: userQuery(["ids": ids.joined(separator: ",")]))
+    }
+
+    /// Makes a playlist with these in it; its id comes back.
+    @discardableResult
+    func createPlaylist(name: String, ids: [String]) async throws -> String {
+        struct Body: Encodable {
+            let name: String
+            let ids: [String]
+            let userId: String?
+            let mediaType = "Video"
+        }
+        struct Created: Decodable { let id: String }
+        let created: Created = try await send("POST", "Playlists", body: Body(name: name, ids: ids, userId: userId))
+        return created.id
+    }
+
     func similar(to id: String, limit: Int = 12) async throws -> [BaseItem] {
         let page: ItemsPage<BaseItem> = try await get("Items/\(id)/Similar", query: userQuery([
             "limit": String(limit), "fields": Self.listFields,

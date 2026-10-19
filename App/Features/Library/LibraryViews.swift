@@ -26,6 +26,7 @@ struct LibrariesView: View {
         case "movies": return "film"
         case "tvshows": return "tv"
         case "boxsets": return "square.stack"
+        case "playlists": return "list.and.film"
         case "homevideos", "photos": return "photo.on.rectangle"
         case "livetv": return "antenna.radiowaves.left.and.right"
         default: return "folder"

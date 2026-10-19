@@ -72,6 +72,7 @@ final class Shell {
         case "movies": return "camera-video-symbolic"
         case "tvshows": return "video-display-symbolic"
         case "boxsets": return "view-grid-symbolic"
+        case "playlists": return "view-list-symbolic"
         case "homevideos", "photos": return "image-x-generic-symbolic"
         case "livetv": return "network-wireless-symbolic"
         default: return "folder-symbolic"
@@ -104,7 +105,7 @@ final class Shell {
 
     func open(_ item: BaseItem) {
         switch item.type {
-        case .episode?, .movie?, .video?, .trailer?, .series?, .season?, .boxSet?, .folder?, .person?:
+        case .episode?, .movie?, .video?, .trailer?, .series?, .season?, .boxSet?, .playlist?, .folder?, .person?:
             content.push(NavigationPage(ItemPage(shell: self, item: item).root, title: item.title))
         case .collectionFolder?, .userView?:
             content.push(NavigationPage(LibraryPage(shell: self, library: item).root, title: item.title))

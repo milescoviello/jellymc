@@ -87,6 +87,7 @@ enum Presentation {
         if page.type == .boxSet {
             return resume > 0 ? "Resume \(playable.title)" : "Play \(playable.title)"
         }
+        if page.type == .playlist { return "Play" }
         return resume > 0 ? "Resume \(Ticks.clock(resume))" : "Play"
     }
 

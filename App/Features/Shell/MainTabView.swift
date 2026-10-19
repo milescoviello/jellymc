@@ -46,6 +46,7 @@ struct MainTabView: View {
     @State private var router = PlayerRouter()
     @State private var selection = Tabs.home
     @State private var remoteMessage: RemoteMessage?
+    @State private var playlistName = ""
 
     /// Text another device sent, through the server.
     struct RemoteMessage: Identifiable {
@@ -89,6 +90,17 @@ struct MainTabView: View {
             Button("OK") {}
         } message: { message in
             Text(message.text)
+        }
+        .alert("New Playlist", isPresented: Binding(get: { state.namingPlaylistFor != nil }, set: { if !$0 { state.namingPlaylistFor = nil } })) {
+            TextField("Name", text: $playlistName)
+            Button("Create") {
+                if let item = state.namingPlaylistFor {
+                    let name = playlistName
+                    Task { await state.newPlaylist(name, with: item) }
+                }
+                playlistName = ""
+            }
+            Button("Cancel", role: .cancel) { playlistName = "" }
         }
         .onAppear {
             // Another device plays something here: the same player a tap opens.

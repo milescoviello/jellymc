@@ -30,6 +30,20 @@ enum ItemMenu {
             })
         }
 
+        // Plex's Add to Playlist: the playlists there are, and a new one.
+        var keep: [Menu.Item] = []
+        if item.type?.isVideo == true || item.type == .series || item.type == .season {
+            var choices: [Menu.Item] = state.playlists.map { playlist in
+                .action(playlist.title) { Task { await state.add(item, to: playlist) } }
+            }
+            choices.append(.action("New Playlist…") {
+                Dialogs.prompt("New Playlist", placeholder: "Name", confirm: "Create") { name in
+                    Task { await state.newPlaylist(name, with: item) }
+                }
+            })
+            keep.append(.submenu("Add to Playlist", [choices]))
+        }
+
         var go: [Menu.Item] = []
         if item.type == .episode, let seriesId = item.seriesId {
             go.append(.action("Go to Show") {
@@ -49,6 +63,6 @@ enum ItemMenu {
                 })
             }
         }
-        return Menu([play, mark, go].filter { !$0.isEmpty })
+        return Menu([play, mark, keep, go].filter { !$0.isEmpty })
     }
 }
