@@ -52,8 +52,8 @@ final class PlayerPage {
     private var menuOpen = false
     private var showsStats = false
     private var lastPointer: (Double, Double) = (0, 0)
-    /// The session's idle inhibitor: no screen saver while a video is open.
-    private var inhibitor: guint = 0
+    /// No screen saver while a video is open.
+    private let inhibitor = IdleInhibitor()
 
     init(window: MainWindow, client: JellyfinClient) {
         self.window = window
@@ -224,9 +224,7 @@ final class PlayerPage {
         installPointer(overlay)
         installSeekPreview()
         installKeys()
-        if let application = Desktop.application {
-            inhibitor = gtk_application_inhibit(application.cast(), window.window.cast(), GTK_APPLICATION_INHIBIT_IDLE, "Playing video")
-        }
+        inhibitor.hold("Playing video")
         engine.onLog = { line in Task { await Diagnostics.shared.record("mpv", line) } }
         reveal()
     }
@@ -289,10 +287,7 @@ final class PlayerPage {
         setCursor(visible: true)
         Menu.onOpen = nil
         MediaControls.shared.clear()
-        if inhibitor != 0, let application = Desktop.application {
-            gtk_application_uninhibit(application.cast(), inhibitor)
-            inhibitor = 0
-        }
+        inhibitor.release()
         engine.shutdown()
     }
 
