@@ -1,0 +1,124 @@
+name: Build iOS app
+
+# Produces an UNSIGNED .ipa. It is re-signed on-device by xtool with a free
+# Apple developer certificate, which is why nothing here needs secrets.
+#
+# There is no macOS available locally, so this workflow is the compiler: a red
+# run here is the only signal that the iOS Swift does not build. (The shared Core is
+# also built and tested on Linux, before a push: see docs/dev-workflow.md.)
+#
+# One job, not the Music app's two: the repository is private, and macOS minutes count
+# ten times against the allowance.
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [main, MM]
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        runs-on: macos-26
+        timeout-minutes: 40
+
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Show toolchain
+              run: |
+                  xcodebuild -version
+                  swift --version
+
+            # Pure logic, `swift test`, no simulator: the same tests Linux runs.
+            - name: Test the shared core
+              run: swift test --disable-sandbox
+
+            # Written into the plist rather than passed as a build setting: with
+            # GENERATE_INFOPLIST_FILE=NO the plist is copied largely as-is, so an
+            # explicit write is the version that cannot quietly not happen.
+            - name: Stamp the build
+              run: |
+                  BUILD="${{ github.run_number }}"
+                  SHA="$(git rev-parse --short=7 HEAD)"
+                  plutil -replace CFBundleVersion -string "$BUILD" Jellymc-Info.plist
+                  plutil -replace GitCommit -string "$SHA" Jellymc-Info.plist
+                  plutil -p Jellymc-Info.plist | grep -E "CFBundleVersion|GitCommit"
+
+            - name: Archive (ad-hoc signed)
+              run: |
+                  # Ad-hoc rather than unsigned: a binary with no
+                  # LC_CODE_SIGNATURE at all cannot be reliably re-signed later,
+                  # and iOS then refuses to launch it ("Bootstrap failed").
+                  xcodebuild \
+                    -project Jellymc.xcodeproj \
+                    -scheme Jellymc \
+                    -configuration Release \
+                    -sdk iphoneos \
+                    -destination 'generic/platform=iOS' \
+                    -archivePath "$RUNNER_TEMP/Jellymc.xcarchive" \
+                    archive \
+                    CODE_SIGNING_ALLOWED=YES \
+                    AD_HOC_CODE_SIGNING_ALLOWED=YES \
+                    CODE_SIGNING_REQUIRED=NO \
+                    CODE_SIGN_IDENTITY="-" \
+                    CODE_SIGN_STYLE=Manual \
+                    DEVELOPMENT_TEAM=""
+
+            - name: Package .ipa
+              run: |
+                  APP="$RUNNER_TEMP/Jellymc.xcarchive/Products/Applications/Jellymc.app"
+                  test -d "$APP" || { echo "no .app produced"; exit 1; }
+                  mkdir -p "$RUNNER_TEMP/Payload"
+                  cp -R "$APP" "$RUNNER_TEMP/Payload/"
+                  cd "$RUNNER_TEMP"
+                  zip -qry Jellymc-unsigned.ipa Payload
+                  ls -lh Jellymc-unsigned.ipa
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: Jellymc-unsigned-ipa
+                  path: ${{ runner.temp }}/Jellymc-unsigned.ipa
+                  if-no-files-found: error
+
+            # Also published to a rolling prerelease, for two reasons: the artifact
+            # API has gone down mid-install before, and a release asset has a stable
+            # URL, so the weekly re-sign is always `gh release download latest`
+            # rather than looking up a run id.
+            - name: Publish to the rolling 'latest' release
+              if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/MM'
+              # Never fails the run. This workflow's real job is to tell me whether
+              # the Swift compiles; a GitHub upload outage must not turn that signal
+              # red, because then a genuine compile error is indistinguishable.
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  cp "$RUNNER_TEMP/Jellymc-unsigned.ipa" "$RUNNER_TEMP/Jellymc.ipa"
+                  # Notes built in a variable: a literal newline inside the YAML
+                  # block scalar has to stay indented, and an unindented
+                  # continuation line silently invalidates the whole workflow.
+                  printf 'Ad-hoc signed. Install with `xtool install Jellymc.ipa`.\n\nBuild %s · commit %s\n' \
+                    "${{ github.run_number }}" "${GITHUB_SHA:0:7}" > "$RUNNER_TEMP/notes.md"
+                  gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+
+                  # Retried: the asset upload endpoint returns 503 during GitHub
+                  # incidents, and a half-created release with no .ipa is worse than
+                  # none at all.
+                  for attempt in 1 2 3 4 5; do
+                    if gh release create latest \
+                      "$RUNNER_TEMP/Jellymc.ipa" \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --title "Latest build" \
+                      --notes-file "$RUNNER_TEMP/notes.md" \
+                      --prerelease; then
+                      echo "published"
+                      exit 0
+                    fi
+                    echo "attempt $attempt failed; cleaning up and retrying"
+                    gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+                    sleep 20
+                  done
+                  echo "could not publish the release; the artifact is still attached to this run"
+                  exit 1

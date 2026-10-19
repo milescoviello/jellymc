@@ -1,0 +1,103 @@
+import SwiftUI
+
+/// What the player is asked to play: everything a play button can choose.
+struct PlayRequest: Identifiable {
+    let id = UUID()
+    var item: BaseItem
+    var start: Double?
+    var audioIndex: Int?
+    var subtitleIndex: Int?
+    var mediaSourceId: String?
+}
+
+/// Starts playback from anywhere below the tabs: views ask it, the tab view presents.
+@MainActor
+@Observable
+final class PlayerRouter {
+    var request: PlayRequest?
+
+    func play(_ item: BaseItem, from start: Double? = nil, audio: Int? = nil, subtitle: Int? = nil, version: String? = nil) {
+        request = PlayRequest(item: item, start: start, audioIndex: audio, subtitleIndex: subtitle, mediaSourceId: version)
+    }
+}
+
+/// A page that can be opened from a card: hashed by id, so a refreshed item is the same
+/// destination.
+struct ItemRoute: Hashable {
+    let item: BaseItem
+
+    static func == (lhs: ItemRoute, rhs: ItemRoute) -> Bool { lhs.item.id == rhs.item.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(item.id) }
+}
+
+struct LibraryRoute: Hashable {
+    let library: BaseItem
+
+    static func == (lhs: LibraryRoute, rhs: LibraryRoute) -> Bool { lhs.library.id == rhs.library.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(library.id) }
+}
+
+/// Home, the libraries, search and settings; a sidebar on iPad.
+struct MainTabView: View {
+    @Environment(AppState.self) private var state
+    @Environment(Reachability.self) private var reachability
+    @State private var router = PlayerRouter()
+    @State private var selection = Tabs.home
+
+    enum Tabs: Hashable { case home, libraries, search, settings }
+
+    var body: some View {
+        TabView(selection: $selection) {
+            Tab("Home", systemImage: "house", value: Tabs.home) {
+                NavigationStack { HomeView().withRoutes() }
+            }
+            Tab("Libraries", systemImage: "square.grid.2x2", value: Tabs.libraries) {
+                NavigationStack { LibrariesView().withRoutes() }
+            }
+            Tab("Settings", systemImage: "gearshape", value: Tabs.settings) {
+                NavigationStack { SettingsView() }
+            }
+            Tab(value: Tabs.search, role: .search) {
+                NavigationStack { SearchView().withRoutes() }
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .environment(router)
+        .fullScreenCover(item: $router.request, onDismiss: refresh) { request in
+            PlayerView(request: request)
+                .environment(state)
+                .environment(reachability)
+        }
+        .overlay(alignment: .top) {
+            if state.isOffline {
+                Label("Server unreachable — showing what was saved", systemImage: "wifi.slash")
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.thinMaterial, in: Capsule())
+                    .padding(.top, 4)
+            }
+        }
+    }
+
+    /// Progress and Next Up move after playing; the home rows catch up.
+    private func refresh() {
+        guard let client = state.client else { return }
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            await state.home.load(client, force: true)
+        }
+    }
+}
+
+extension View {
+    /// The pages every tab's stack can open.
+    func withRoutes() -> some View {
+        navigationDestination(for: ItemRoute.self) { route in
+            ItemDetailView(item: route.item)
+        }
+        .navigationDestination(for: LibraryRoute.self) { route in
+            LibraryGridView(library: route.library)
+        }
+    }
+}
