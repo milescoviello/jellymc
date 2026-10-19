@@ -40,7 +40,9 @@ Everything here is Foundation plus Observation. That's what makes it shareable, 
 | `Session.swift` | The signed-in server and user: multiple addresses with fall-through, token in the Keychain/libsecret, device id |
 | `Library.swift` | Observable view state for home, libraries, items, search, details. Each screen reads one of these. |
 | `ImageURLs.swift` | `/Items/{id}/Images/{type}?tag=&maxWidth=&quality=` |
-| `Outbox.swift` | Mutations queued while offline (played, favourite, progress), replayed in order |
+| `Downloads.swift` | `DownloadStore` (the queue, one at a time, and `index.json`), `DownloadPlanner` (keep the original if the player opens it, else the server's HEVC/AAC MP4; WebVTT subtitles), the local playback plan, and the `Outbox` of positions not yet sent |
+| `Downloader.swift` | `URLSession` download tasks; a background session on iOS |
+| `MP4.swift` | Retags HEVC sample entries `hev1` → `hvc1` in a downloaded MP4, which AVPlayer requires and Jellyfin's direct stream does not write |
 | `Cache.swift` | A JSON disk cache: stale-while-revalidate for home rows and library pages |
 | `Diagnostics.swift` | A ring-buffer log that scrubs tokens; "send logs to server" |
 | `Keychain.swift`, `Reachability.swift`, `NowPlayingCenter.swift`, `ScreenAwake.swift` | **Apple-only.** Replaced on Linux by libsecret, GIO `GNetworkMonitor`, MPRIS, and the ScreenSaver inhibit. |
@@ -61,7 +63,9 @@ Rules:
 
 - **Cache:** JSON files per query key (`home`, `library/{id}/{sort}/{page}`, `item/{id}`) under Application Support or `$XDG_DATA_HOME/jellymc`. Screens render from the cache instantly, then refresh.
 - **Roaming settings** use `/DisplayPreferences/jellymc?client=jellymc` with `CustomPrefs`: subtitle language rules, skip rules and so on.
-- **Outbox:** offline mutations are replayed in order on reconnect. Offline progress goes to `POST /UserItems/{id}/UserData`.
+- **Downloads** live in `downloads/<itemId>/` beside the cache: the file, its subtitles as WebVTT, a picture, and the item as it was. A downloaded item plays from disk, online or not.
+- **Outbox:** where a downloaded item was left, kept every 10 s and on stop, sent on reconnect with `POST /UserItems/{id}/UserData`. Until it is sent it is newer than the server, so playback resumes from it and item pages show it.
+- **Offline:** when no address answers, the app shows what it cached and tries again every 15 s, backing off to every five minutes.
 
 ## Playback
 
