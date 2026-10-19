@@ -32,6 +32,36 @@ struct Preferences: Codable, Sendable, Equatable {
 
     init() {}
 
+    /// What follows you from device to device: how subtitles and audio are chosen, what is
+    /// skipped, whether the next episode starts. Quality stays with each device: a phone on
+    /// cellular and a desktop on the LAN want different ones.
+    struct Shared: Codable, Sendable, Equatable {
+        var segmentActions: [MediaSegment.Kind: SegmentAction]
+        var autoplayNext: Bool
+        var preferredAudioLanguage: String?
+        var preferredSubtitleLanguage: String?
+        var subtitleMode: SubtitleMode
+        var subtitleSize: SubtitleSize
+    }
+
+    var shared: Shared {
+        get {
+            Shared(
+                segmentActions: segmentActions, autoplayNext: autoplayNext,
+                preferredAudioLanguage: preferredAudioLanguage, preferredSubtitleLanguage: preferredSubtitleLanguage,
+                subtitleMode: subtitleMode, subtitleSize: subtitleSize
+            )
+        }
+        set {
+            segmentActions = newValue.segmentActions
+            autoplayNext = newValue.autoplayNext
+            preferredAudioLanguage = newValue.preferredAudioLanguage
+            preferredSubtitleLanguage = newValue.preferredSubtitleLanguage
+            subtitleMode = newValue.subtitleMode
+            subtitleSize = newValue.subtitleSize
+        }
+    }
+
     /// Missing keys keep their defaults: a newer app reads what an older one saved.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

@@ -133,6 +133,12 @@ final class Shell {
             page = NavigationPage(DownloadsPage(shell: self).root, title: "Downloads", tag: "downloads")
         case "settings":
             page = NavigationPage(SettingsPage(shell: self).root, title: "Settings", tag: "settings")
+            // Settings that came from another device: the page is made again with them.
+            let generation = state.settingsGeneration
+            page.observe { [weak self] in
+                guard let self, self.state.settingsGeneration != generation, self.current == "settings" else { return }
+                Task { @MainActor in self.select("settings") }
+            }
         default:
             guard let library = state.home.libraries.first(where: { $0.id == id }) else { return }
             page = NavigationPage(LibraryPage(shell: self, library: library).root, title: library.title)

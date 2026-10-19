@@ -129,6 +129,35 @@ final class JellyfinClient: Sendable {
         _ = try await perform(request)
     }
 
+    // MARK: - Settings kept on the server
+
+    /// This app's settings in the user's DisplayPreferences, as one JSON string under a key
+    /// of CustomPrefs; nil when none was ever saved.
+    func roamingSettings() async throws -> Data? {
+        guard let userId else { return nil }
+        let data = try await perform(try makeRequest("GET", "DisplayPreferences/jellymc", query: ["userId": userId, "client": "jellymc"]))
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let prefs = object?["CustomPrefs"] as? [String: Any], let value = prefs["jellymc"] as? String else { return nil }
+        return Data(value.utf8)
+    }
+
+    /// Writes them back. The server keeps a DisplayPreferences whole, so it is read first
+    /// and only this one key changes.
+    func saveRoamingSettings(_ settings: Data) async throws {
+        guard let userId else { return }
+        let query = ["userId": userId, "client": "jellymc"]
+        let current = try await perform(try makeRequest("GET", "DisplayPreferences/jellymc", query: query))
+        var object = (try JSONSerialization.jsonObject(with: current) as? [String: Any]) ?? [:]
+        var prefs = (object["CustomPrefs"] as? [String: Any]) ?? [:]
+        prefs["jellymc"] = String(decoding: settings, as: UTF8.self)
+        object["CustomPrefs"] = prefs
+        object["Client"] = "jellymc"
+        var request = try makeRequest("POST", "DisplayPreferences/jellymc", query: query)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: object)
+        _ = try await perform(request)
+    }
+
     func logout() async {
         try? await sendNoContent("POST", "Sessions/Logout")
     }

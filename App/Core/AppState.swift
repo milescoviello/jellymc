@@ -31,8 +31,16 @@ final class AppState {
     /// True when no address of the server answers; the app shows what it has cached.
     private(set) var isOffline = false
     var preferences: Preferences {
-        didSet { if preferences != oldValue { preferences.save() } }
+        didSet {
+            guard preferences != oldValue else { return }
+            preferences.save()
+            if preferences.shared != oldValue.shared, !isApplyingRoaming { scheduleRoamingSave() }
+        }
     }
+    @ObservationIgnored private var isApplyingRoaming = false
+    /// Goes up when settings arrive from the server, for a Settings page to redraw.
+    private(set) var settingsGeneration = 0
+    @ObservationIgnored private var roamingSave: Task<Void, Never>?
 
     let device: DeviceIdentity
     let home = HomeModel()
@@ -222,6 +230,7 @@ final class AppState {
     private func connected(_ client: JellyfinClient) async {
         isOffline = false
         Task { await loadPlaylists() }
+        Task { await pullRoamingSettings(client) }
         downloads.connect(client)
         realtime.connect(client)
         await Outbox.shared.flush(client)
@@ -234,6 +243,42 @@ final class AppState {
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         if let client { await home.load(client, force: true) }
         dataGeneration += 1
+    }
+
+    // MARK: - Settings that follow you
+
+    /// The server's copy wins at connect: it is what another device last chose. With none
+    /// there yet, this device's settings go up as the first.
+    private func pullRoamingSettings(_ client: JellyfinClient) async {
+        do {
+            if let data = try await client.roamingSettings(), let shared = try? JSONCoding.decoder().decode(Preferences.Shared.self, from: data) {
+                guard shared != preferences.shared else { return }
+                isApplyingRoaming = true
+                preferences.shared = shared
+                isApplyingRoaming = false
+                settingsGeneration += 1
+                await Diagnostics.shared.record("settings", "took the settings from the server")
+            } else {
+                try await client.saveRoamingSettings(JSONCoding.encoder().encode(preferences.shared))
+            }
+        } catch {
+            await Diagnostics.shared.record("settings", "could not sync settings: \(error.localizedDescription)")
+        }
+    }
+
+    /// A second after the last change, so a run of them is one write.
+    private func scheduleRoamingSave() {
+        roamingSave?.cancel()
+        let shared = preferences.shared
+        roamingSave = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled, let client = self?.client, let data = try? JSONCoding.encoder().encode(shared) else { return }
+            do {
+                try await client.saveRoamingSettings(data)
+            } catch {
+                await Diagnostics.shared.record("settings", "could not save settings to the server: \(error.localizedDescription)")
+            }
+        }
     }
 
     // MARK: - What a card's menu does, in both apps

@@ -1032,3 +1032,22 @@ struct ChapterTests {
         #expect(engine.seeks.last == 0)
     }
 }
+
+struct RoamingSettingsTests {
+    @Test func onlyTheSharedPartTravels() throws {
+        var phone = Preferences()
+        phone.localPlayback.maxBitrate = 6_000_000
+        phone.subtitleMode = .always
+        phone.preferredSubtitleLanguage = "eng"
+        phone.autoplayNext = false
+        let sent = try JSONCoding.encoder().encode(phone.shared)
+        var desktop = Preferences()
+        desktop.localPlayback.maxBitrate = 120_000_000
+        desktop.shared = try JSONCoding.decoder().decode(Preferences.Shared.self, from: sent)
+        #expect(desktop.subtitleMode == .always)
+        #expect(desktop.preferredSubtitleLanguage == "eng")
+        #expect(desktop.autoplayNext == false)
+        // Each keeps its own quality.
+        #expect(desktop.localPlayback.maxBitrate == 120_000_000)
+    }
+}
