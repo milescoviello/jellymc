@@ -44,7 +44,7 @@ struct MainTabView: View {
     @State private var router = PlayerRouter()
     @State private var selection = Tabs.home
 
-    enum Tabs: Hashable { case home, libraries, search, settings }
+    enum Tabs: Hashable { case home, libraries, downloads, search, settings }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -53,6 +53,9 @@ struct MainTabView: View {
             }
             Tab("Libraries", systemImage: "square.grid.2x2", value: Tabs.libraries) {
                 NavigationStack { LibrariesView().withRoutes() }
+            }
+            Tab("Downloads", systemImage: "arrow.down.circle", value: Tabs.downloads) {
+                NavigationStack { DownloadsView().withRoutes() }
             }
             Tab("Settings", systemImage: "gearshape", value: Tabs.settings) {
                 NavigationStack { SettingsView() }
@@ -82,11 +85,7 @@ struct MainTabView: View {
 
     /// Progress and Next Up move after playing; the home rows catch up.
     private func refresh() {
-        guard let client = state.client else { return }
-        Task {
-            try? await Task.sleep(for: .seconds(1))
-            await state.home.load(client, force: true)
-        }
+        Task { await state.playbackEnded() }
     }
 }
 

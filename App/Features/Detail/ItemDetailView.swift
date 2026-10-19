@@ -61,6 +61,10 @@ struct ItemDetailView: View {
         .task {
             if let client = state.client { await model.load(client) }
         }
+        .onChange(of: state.playbackGeneration) {
+            // Back from the player: the progress and watched marks have moved.
+            Task { if let client = state.client { await model.load(client) } }
+        }
     }
 
     // MARK: - Hero
@@ -151,6 +155,9 @@ struct ItemDetailView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
             .accessibilityLabel(item.isFavorite ? "Remove from favourites" : "Add to favourites")
+            if item.type?.isVideo == true {
+                DownloadButton(item: item)
+            }
             if let trailer = item.remoteTrailers?.first?.url.flatMap(URL.init(string:)) {
                 Link(destination: trailer) {
                     Image(systemName: "film.stack")
@@ -223,13 +230,25 @@ struct ItemDetailView: View {
     // MARK: - Series
 
     private var seasonPicker: some View {
-        Picker("Season", selection: $model.selectedSeasonId) {
-            ForEach(model.seasons) { season in
-                Text(season.title).tag(Optional(season.id))
+        HStack {
+            Picker("Season", selection: $model.selectedSeasonId) {
+                ForEach(model.seasons) { season in
+                    Text(season.title).tag(Optional(season.id))
+                }
+            }
+            .pickerStyle(.menu)
+            .font(.headline)
+            Spacer()
+            if !model.episodes.isEmpty {
+                let episodes = model.episodes
+                Button {
+                    Task { await state.downloads.download(episodes, for: .avPlayer) }
+                } label: {
+                    Label("Download Season", systemImage: "arrow.down.circle")
+                }
+                .font(.subheadline)
             }
         }
-        .pickerStyle(.menu)
-        .font(.headline)
     }
 
     private var episodeList: some View {
@@ -247,6 +266,13 @@ struct ItemDetailView: View {
                         Task { await model.setEpisodePlayed(episode, !episode.isPlayed) }
                     } label: {
                         Label(episode.isPlayed ? "Mark Unplayed" : "Mark Played", systemImage: "checkmark.circle")
+                    }
+                    if state.downloads.record(for: episode.id) == nil {
+                        Button {
+                            Task { await state.downloads.download(episode, for: .avPlayer) }
+                        } label: {
+                            Label("Download", systemImage: "arrow.down.circle")
+                        }
                     }
                     NavigationLink(value: ItemRoute(item: episode)) { Label("Details", systemImage: "info.circle") }
                 }
@@ -313,6 +339,10 @@ private struct EpisodeRow: View {
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(2)
                     Spacer(minLength: 4)
+                    if state.downloads.record(for: episode.id)?.isDone == true {
+                        Image(systemName: "arrow.down.circle.fill").foregroundStyle(.secondary)
+                            .accessibilityLabel("Downloaded")
+                    }
                     if episode.isPlayed {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.tint)
                     }

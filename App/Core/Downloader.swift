@@ -27,6 +27,12 @@ final class URLSessionDownloader: NSObject, Downloader {
     private var session: URLSession!
     private var tasks: [String: URLSessionDownloadTask] = [:]
 
+    #if os(iOS)
+    /// Handed over when iOS wakes the app for the background session's events; called once
+    /// they have all been delivered, so the system can take its snapshot and suspend it.
+    static var backgroundCompletion: (() -> Void)?
+    #endif
+
     override init() {
         super.init()
         #if os(iOS)
@@ -105,6 +111,15 @@ final class URLSessionDownloader: NSObject, Downloader {
             nonisolated(unsafe) let outcome = result
             Task { @MainActor [weak owner] in owner?.finished(id, outcome) }
         }
+
+        #if os(iOS)
+        func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+            Task { @MainActor in
+                URLSessionDownloader.backgroundCompletion?()
+                URLSessionDownloader.backgroundCompletion = nil
+            }
+        }
+        #endif
 
         func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
             guard let error, let id = task.taskDescription else { return }

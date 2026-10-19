@@ -88,8 +88,10 @@ struct PlayerView: View {
         if audio == nil, subtitle == nil, let source = item.mediaSources?.first(where: { $0.id == version }) ?? item.mediaSources?.first {
             tracks = state.preferences.initialTracks(for: source)
         }
+        // A downloaded copy plays from the phone, with the server or without it.
+        let local = state.downloads.localPlan(for: item.id, start: start ?? item.resumeSeconds)
         Task {
-            await session.start(at: start, audioIndex: tracks.audio, subtitleIndex: tracks.subtitle, mediaSourceId: version)
+            await session.start(at: start, audioIndex: tracks.audio, subtitleIndex: tracks.subtitle, mediaSourceId: version, local: local)
         }
     }
 

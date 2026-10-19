@@ -1,8 +1,17 @@
 import AVFoundation
 import SwiftUI
+import UIKit
+
+/// Only for what SwiftUI has no hook for: downloads that finished while the app was away.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
+        URLSessionDownloader.backgroundCompletion = completionHandler
+    }
+}
 
 @main
 struct JellymcApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var state = AppState()
     @State private var reachability = Reachability()
