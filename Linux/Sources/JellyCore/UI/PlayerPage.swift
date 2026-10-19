@@ -169,6 +169,7 @@ final class PlayerPage {
         self.session = session
         session.onPlayNext = { [weak self] next in self?.start(next, from: 0) }
         session.onFinished = { [weak self] in self?.window.closePlayer() }
+        connectMediaControls(session)
         root.observe { [weak self, weak session] in
             guard let self, let session, session === self.session else { return }
             self.update(from: session)
@@ -195,6 +196,7 @@ final class PlayerPage {
             self.keyController = nil
         }
         setCursor(visible: true)
+        MediaControls.shared.clear()
         if inhibitor != 0, let application = Desktop.application {
             gtk_application_uninhibit(application.cast(), inhibitor)
             inhibitor = 0
@@ -242,6 +244,40 @@ final class PlayerPage {
 
         if showsStats { stats.text = statsText(session) }
         if session.isPaused { reveal(autohide: false) }
+
+        MediaControls.shared.update(
+            track: MediaControls.Track(
+                id: session.item.id,
+                title: session.item.type == .episode ? session.item.title : session.title,
+                artist: session.item.type == .episode ? session.item.seriesName : session.item.artists?.first,
+                album: session.item.type == .episode ? session.item.seasonName : session.item.album,
+                duration: session.duration
+            ),
+            elapsed: session.position,
+            isPlaying: !session.isPaused,
+            canGoNext: session.next != nil
+        )
+    }
+
+    /// The desktop's media keys, Plasma's applet and KDE Connect drive this session.
+    private func connectMediaControls(_ session: PlaybackSession) {
+        let controls = MediaControls.shared
+        controls.onToggle = { [weak session] in session?.togglePause() }
+        controls.onPlay = { [weak session] in if session?.isPaused == true { session?.togglePause() } }
+        controls.onPause = { [weak session] in if session?.isPaused == false { session?.togglePause() } }
+        controls.onNext = { [weak session] in
+            guard let session, let next = session.next else { return }
+            session.playNext(next)
+        }
+        controls.onPrevious = { [weak session] in session?.seek(to: 0) }
+        controls.onSeek = { [weak session] seconds in session?.seek(to: seconds) }
+        if let url = Artwork.primary(session.item, client, width: 600) {
+            let id = session.item.id
+            Images.shared.load(url) { texture in
+                guard let texture else { return }
+                MediaControls.shared.setArtwork(texture, for: id)
+            }
+        }
     }
 
     private func statsText(_ session: PlaybackSession) -> String {

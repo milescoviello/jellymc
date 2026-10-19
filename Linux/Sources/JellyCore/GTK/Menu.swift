@@ -98,12 +98,10 @@ struct Menu {
             g_menu_append(menu, title, "menu.\(name)")
 
         case let .choice(title, options, selected, handler):
-            // An owned type: a Swift string literal's C pointer lives only for the call it is
-            // passed to, so `cgtk_variant_type("s")` handed the action a dangling type, the
+            // GLib's static type: a Swift string literal's C pointer lives only for the call it
+            // is passed to, so `cgtk_variant_type("s")` handed the action a dangling type, the
             // targets never matched it, and GTK showed every option disabled.
-            let type = g_variant_type_new("s")
-            defer { g_variant_type_free(type) }
-            let action = g_simple_action_new_stateful(name, type, g_variant_new_string(selected ?? ""))!
+            let action = g_simple_action_new_stateful(name, cgtk_type_string(), g_variant_new_string(selected ?? ""))!
             Signal.connect(action, "activate", pointer: { parameter in
                 guard let parameter else { return }
                 let value = OpaquePointer(parameter)

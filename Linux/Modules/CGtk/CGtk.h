@@ -16,3 +16,8 @@ static inline guint cgtk_disconnect_by_data(gpointer instance, gpointer data) {
 }
 static inline gboolean cgtk_is_widget(gpointer object) { return GTK_IS_WIDGET(object); }
 static inline GVariantType *cgtk_variant_type(const char *string) { return (GVariantType *)string; }
+
+// GVariant types as GLib's own static constants. A type made from a Swift string literal
+// (`cgtk_variant_type("s")`) points at a temporary that is freed once that call returns.
+static inline const GVariantType *cgtk_type_string(void) { return G_VARIANT_TYPE_STRING; }
+static inline const GVariantType *cgtk_type_vardict_entry(void) { return G_VARIANT_TYPE("{sv}"); }
