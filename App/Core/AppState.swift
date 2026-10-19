@@ -38,6 +38,9 @@ final class AppState {
     let home = HomeModel()
     let search = SearchModel()
     let downloads = DownloadStore()
+    /// Goes up each time the player closes: pages showing progress or watched marks
+    /// reload when it changes.
+    private(set) var playbackGeneration = 0
 
     @ObservationIgnored private var isReconnecting = false
     @ObservationIgnored private var retry: Task<Void, Never>?
@@ -203,6 +206,14 @@ final class AppState {
         client = nil
         home.reset()
         phase = .signedOut
+    }
+
+    /// The player has closed. The server takes a moment with the final position, so the
+    /// home rows and open pages catch up after one.
+    func playbackEnded() async {
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        if let client { await home.load(client, force: true) }
+        playbackGeneration += 1
     }
 
     // MARK: - Playback settings

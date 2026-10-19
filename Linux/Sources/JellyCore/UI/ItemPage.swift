@@ -72,6 +72,11 @@ final class ItemPage {
         if let client = shell.state.client {
             Task { await model.load(client) }
         }
+        let generation = shell.state.playbackGeneration
+        root.observe { [weak self] in
+            guard let self, self.shell.state.playbackGeneration != generation, let client = self.shell.state.client else { return }
+            Task { await self.model.load(client) }
+        }
     }
 
     // MARK: - Rendering

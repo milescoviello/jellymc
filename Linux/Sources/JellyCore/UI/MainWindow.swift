@@ -92,8 +92,7 @@ final class MainWindow {
         stack.visibleName = shell == nil ? "signin" : "shell"
         stack.remove(player.root)
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            if let client = self.state.client { await self.state.home.load(client, force: true) }
+            await self.state.playbackEnded()
             self.shell?.refreshVisible()
         }
     }
