@@ -273,6 +273,29 @@ final class JellyfinClient: Sendable {
         return ((try? await trailers) ?? []) + ((try? await features) ?? [])
     }
 
+    // MARK: - Playing on other devices
+
+    /// Other apps this user can play on: they take remote control and play video, and were
+    /// seen in the last ten minutes. This device is left out.
+    func remoteSessions() async throws -> [RemoteSession] {
+        guard let userId else { return [] }
+        let sessions: [RemoteSession] = try await get("Sessions", query: ["controllableByUserId": userId, "activeWithinSeconds": "600"])
+        return sessions.filter { session in
+            session.deviceId != device.deviceId && session.supportsRemoteControl == true
+                && (session.playableMediaTypes ?? []).contains("Video")
+        }
+    }
+
+    /// Asks another app to play the item, from where and with which tracks.
+    func play(_ itemId: String, on sessionId: String, start: Double?, mediaSourceId: String?, audioIndex: Int?, subtitleIndex: Int?) async throws {
+        var query = ["playCommand": "PlayNow", "itemIds": itemId]
+        if let start, start > 0 { query["startPositionTicks"] = String(Ticks.from(seconds: start)) }
+        if let mediaSourceId { query["mediaSourceId"] = mediaSourceId }
+        if let audioIndex { query["audioStreamIndex"] = String(audioIndex) }
+        if let subtitleIndex { query["subtitleStreamIndex"] = String(subtitleIndex) }
+        try await sendNoContent("POST", "Sessions/\(sessionId)/Playing", query: query)
+    }
+
     // MARK: - Playlists
 
     /// The user's playlists of video.

@@ -165,6 +165,21 @@ struct TrickplayInfo: Codable, Sendable, Equatable {
     var bandwidth: Int?
 }
 
+/// Another app signed in to the server: something to play on.
+struct RemoteSession: Codable, Sendable, Equatable, Identifiable {
+    var id: String
+    var deviceName: String?
+    var deviceId: String?
+    var client: String?
+    var supportsRemoteControl: Bool?
+    var playableMediaTypes: [String]?
+    var lastActivityDate: Date?
+
+    var title: String {
+        [deviceName, client].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
 /// What a library's items can be filtered by: `/Items/Filters`.
 struct LibraryFilters: Codable, Sendable, Equatable {
     var genres: [String]?

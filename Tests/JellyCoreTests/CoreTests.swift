@@ -1079,3 +1079,11 @@ struct OfflineHomeTests {
         #expect(HomeModel.offlineRows([]).isEmpty)
     }
 }
+
+struct RemoteSessionTests {
+    @Test func namesTheDeviceAndApp() throws {
+        let json = #"[{"Id":"s1","DeviceName":"Living Room TV","Client":"Jellyfin Android TV","DeviceId":"tv","SupportsRemoteControl":true,"PlayableMediaTypes":["Video","Audio"]}]"#
+        let sessions = try JSONCoding.decoder().decode([RemoteSession].self, from: Data(json.utf8))
+        #expect(sessions.first?.title == "Living Room TV · Jellyfin Android TV")
+    }
+}

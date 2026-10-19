@@ -37,6 +37,8 @@ final class ItemPage {
     private var shownEpisodes: [String] = []
     private var shownChildren: [String] = []
     private var shownExtras = ""
+    /// Other apps to play on, as last fetched.
+    private var remoteSessions: [RemoteSession] = []
 
     init(shell: Shell, item: BaseItem) {
         self.shell = shell
@@ -84,6 +86,7 @@ final class ItemPage {
         root.keep(self)
 
         parent.onClicked { [weak self] in self?.openParent() }
+        refreshRemoteSessions()
         root.observe { [weak self] in self?.render() }
         if let client = shell.state.client {
             Task { await model.load(client) }
@@ -176,6 +179,23 @@ final class ItemPage {
                     self?.play(playable, from: 0)
                 }.tooltip("Play from Beginning"))
             }
+        }
+        if let playable = model.playable {
+            // Plex's cast: another app signed in to the server plays it instead. The list is
+            // the one last fetched (the buttons are remade as the page fills in, so a menu
+            // cannot wait on the network), and opening it fetches it again for next time.
+            let playOn = MenuButton(icon: "video-display-symbolic", "circular") { [weak self] in
+                guard let self else { return Menu([]) }
+                self.refreshRemoteSessions()
+                let choices: [Menu.Item] = self.remoteSessions.isEmpty
+                    ? [.action("No other device is open", enabled: false) {}]
+                    : self.remoteSessions.map { session in
+                        .action(session.title) { [weak self] in self?.play(playable, on: session) }
+                    }
+                return Menu([choices])
+            }
+            playOn.tooltip("Play On…")
+            actions.append(playOn)
         }
         if model.canShuffle {
             actions.append(Button(icon: "media-playlist-shuffle-symbolic", "circular") { [weak self] in
@@ -427,6 +447,32 @@ final class ItemPage {
         show.type = .series
         show.name = item.seriesName
         shell.open(show)
+    }
+
+    private func refreshRemoteSessions() {
+        guard let client = shell.state.client else { return }
+        Task { [weak self] in
+            let sessions = (try? await client.remoteSessions()) ?? []
+            self?.remoteSessions = sessions
+        }
+    }
+
+    /// Sends it to another app, with the tracks chosen here, from where it was left.
+    private func play(_ playable: BaseItem, on session: RemoteSession) {
+        guard let client = shell.state.client else { return }
+        let isThis = playable.id == model.item?.id
+        let subtitle: Int?? = isThis ? subtitleChoice : nil
+        Task {
+            do {
+                try await client.play(
+                    playable.id, on: session.id, start: playable.resumeSeconds,
+                    mediaSourceId: isThis ? versionChoice : nil, audioIndex: isThis ? audioChoice : nil, subtitleIndex: subtitle ?? nil
+                )
+                Desktop.main?.toast("Playing on \(session.deviceName ?? "the other device")")
+            } catch {
+                Desktop.main?.toast("Couldn’t play there: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func play(_ playable: BaseItem, from start: Double? = nil, queue: [BaseItem] = []) {
