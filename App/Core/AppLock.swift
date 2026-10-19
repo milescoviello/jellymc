@@ -141,25 +141,26 @@ final class AppLock {
     // MARK: - The app coming and going
 
     /// Not in front for a moment (the app switcher, a call, Control Center): hidden.
-    /// `hiding` is false while a video plays: covered, it would not go on in Picture in
-    /// Picture, which shows it anyway.
-    func becameInactive(hiding: Bool = true) {
-        if isEnabled, hiding { isCovered = true }
+    ///
+    /// While a video plays nothing is hidden or locked: it goes on in Picture in Picture,
+    /// which shows it anyway, and coming back to it is not asked for the PIN.
+    func becameInactive(playing: Bool = false) {
+        if isEnabled, !playing { isCovered = true }
     }
 
-    func enteredBackground(hiding: Bool = true) {
+    func enteredBackground(playing: Bool = false) {
         guard isEnabled else { return }
-        if hiding { isCovered = true }
+        if !playing { isCovered = true }
         if leftAt == nil { leftAt = now() }
     }
 
     /// In front again: locked if it was away long enough.
-    func becameActive() {
+    func becameActive(playing: Bool = false) {
         defer {
             leftAt = nil
             isCovered = false
         }
-        guard isEnabled, let leftAt else { return }
+        guard isEnabled, !playing, let leftAt else { return }
         if now().timeIntervalSince(leftAt) >= Double(settings.delay.rawValue) { isLocked = true }
     }
 

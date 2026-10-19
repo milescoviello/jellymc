@@ -1174,15 +1174,19 @@ struct AppLockTests {
 }
 
 extension AppLockTests {
-    @Test func aPlayingVideoIsNotCoveredButStillLocksOnReturn() {
+    @Test func nothingLocksWhileAVideoPlays() {
         let fixture = Fixture()
         let lock = fixture.lock()
         lock.setPIN("2580")
         lock.setDelay(.immediately)
-        lock.becameInactive(hiding: false)
-        lock.enteredBackground(hiding: false)
+        lock.becameInactive(playing: true)
+        lock.enteredBackground(playing: true)
         #expect(!lock.isShown)
-        lock.becameActive()
+        lock.becameActive(playing: true)
+        #expect(!lock.isShown)
+        // It ended while away: back to the library, which is asked for.
+        lock.enteredBackground(playing: true)
+        lock.becameActive(playing: false)
         #expect(lock.isLocked)
     }
 }

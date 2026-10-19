@@ -40,16 +40,16 @@ struct JellymcApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     switch phase {
                     case .active:
-                        state.lock.becameActive()
+                        state.lock.becameActive(playing: PlaybackSession.current != nil)
                         // Coming back is the most likely moment for the network to have
                         // changed under the app: home Wi-Fi to cellular, a VPN coming up.
                         if state.phase == .signedIn {
                             Task { await state.reconnect() }
                         }
                     case .inactive:
-                        state.lock.becameInactive(hiding: PlaybackSession.current == nil)
+                        state.lock.becameInactive(playing: PlaybackSession.current != nil)
                     case .background:
-                        state.lock.enteredBackground(hiding: PlaybackSession.current == nil)
+                        state.lock.enteredBackground(playing: PlaybackSession.current != nil)
                     @unknown default:
                         break
                     }
