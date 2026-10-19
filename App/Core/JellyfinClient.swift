@@ -340,7 +340,16 @@ final class JellyfinClient: Sendable {
         let data: Data
         let response: URLResponse
         do {
+            #if canImport(FoundationNetworking)
+            // Linux's URLSession crashes when a task that has just failed is cancelled
+            // ("a task that in not in the registry"), and cancelling the Swift task that
+            // awaits it cancels it: an `async let` left by a throw, a search typed over.
+            // So the request runs in a task of its own, which nothing cancels.
+            let session = session
+            (data, response) = try await Task { try await session.data(for: request) }.value
+            #else
             (data, response) = try await session.data(for: request)
+            #endif
         } catch {
             throw JellyfinError(kind: .transport, message: error.localizedDescription)
         }
