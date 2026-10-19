@@ -121,7 +121,7 @@ struct CardArt: View {
 
     private func url(width: Int) -> URL? {
         guard let client = state.client else { return nil }
-        return style == .landscape ? Artwork.landscape(item, client, width: width) : Artwork.primary(item, client, width: width)
+        return style == .landscape ? Artwork.landscape(item, client, width: width) : Artwork.poster(item, client, width: width)
     }
 }
 
@@ -130,6 +130,8 @@ struct CardView: View {
     let item: BaseItem
     let style: CardStyle
     var width: CGFloat?
+    /// On its parent's page: a season card names the season, not the show again.
+    var onParent = false
 
     var body: some View {
         let width = width ?? style.width
@@ -147,16 +149,9 @@ struct CardView: View {
         .contentShape(Rectangle())
     }
 
-    private var title: String {
-        style == .landscape && item.type == .episode ? (item.seriesName ?? item.title) : item.title
-    }
+    private var title: String { Presentation.cardLines(item, style: style, onParent: onParent).title }
 
-    private var subtitle: String {
-        if style == .landscape, item.type == .episode {
-            return [item.episodeLabel, item.name].compactMap { $0 }.joined(separator: " · ")
-        }
-        return item.subtitle ?? ""
-    }
+    private var subtitle: String { Presentation.cardLines(item, style: style, onParent: onParent).subtitle }
 }
 
 /// A card that opens its item's page, Plex's way: play is on the page and in the menu.
@@ -164,10 +159,11 @@ struct CardLink: View {
     let item: BaseItem
     let style: CardStyle
     var width: CGFloat?
+    var onParent = false
 
     var body: some View {
         NavigationLink(value: ItemRoute(item: item)) {
-            CardView(item: item, style: style, width: width)
+            CardView(item: item, style: style, width: width, onParent: onParent)
         }
         .buttonStyle(.plain)
         .contextMenu { ItemMenu(item: item) }
@@ -249,6 +245,7 @@ struct CardRowView: View {
     let items: [BaseItem]
     /// What "See All" opens, if anything.
     var seeAll: Browse?
+    var onParent = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -265,7 +262,7 @@ struct CardRowView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(items) { item in
-                        CardLink(item: item, style: style)
+                        CardLink(item: item, style: style, onParent: onParent)
                     }
                 }
                 .padding(.horizontal)

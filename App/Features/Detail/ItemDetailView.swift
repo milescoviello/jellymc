@@ -28,7 +28,7 @@ struct ItemDetailView: View {
                             Text(tagline).font(.headline)
                         }
                         if let overview = item.overview {
-                            Text(overview)
+                            Text(Presentation.plainText(overview))
                                 .foregroundStyle(.secondary)
                                 .textSelection(.enabled)
                         }
@@ -36,7 +36,7 @@ struct ItemDetailView: View {
                     }
                     .padding(.horizontal)
                     if !model.seasons.isEmpty {
-                        CardRowView(title: "\(model.seasons.count) Season\(model.seasons.count == 1 ? "" : "s")", style: .poster, items: model.seasons)
+                        CardRowView(title: "\(model.seasons.count) Season\(model.seasons.count == 1 ? "" : "s")", style: .poster, items: model.seasons, onParent: true)
                     }
                     if !model.episodes.isEmpty { episodeList.padding(.horizontal) }
                     if !model.children.isEmpty {
@@ -435,7 +435,7 @@ private struct EpisodeRow: View {
                     Text(Ticks.runtime(runtime)).font(.caption).foregroundStyle(.secondary)
                 }
                 if let overview = episode.overview {
-                    Text(overview).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                    Text(Presentation.plainText(overview)).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                 }
             }
         }

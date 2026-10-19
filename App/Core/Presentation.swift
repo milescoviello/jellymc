@@ -25,6 +25,45 @@ enum Presentation {
         return parts.joined(separator: " · ")
     }
 
+    /// A card's two lines, as Plex words them. An episode on a poster is its show, with
+    /// where it falls ("S2 · E4"); on a still, the show and then the episode. A season is its
+    /// show and which season.
+    /// `onParent`: the card is on its show's page, where the show's name says nothing.
+    static func cardLines(_ item: BaseItem, style: CardStyle, onParent: Bool = false) -> (title: String, subtitle: String) {
+        switch item.type {
+        case .episode?:
+            let place = [item.parentIndexNumber.map { "S\($0)" }, item.indexNumber.map { "E\($0)" }].compactMap { $0 }.joined(separator: " · ")
+            if style == .poster {
+                return (item.seriesName ?? item.title, place.isEmpty ? item.title : place)
+            }
+            return (item.seriesName ?? item.title, [place.isEmpty ? nil : place, item.name].compactMap { $0 }.joined(separator: " · "))
+        case .season?:
+            let count = (item.childCount ?? item.recursiveItemCount).map { "\($0) episode\($0 == 1 ? "" : "s")" }
+            if onParent { return (item.title, count ?? "") }
+            return (item.seriesName ?? item.title, [item.title, count].compactMap { $0 }.joined(separator: " · "))
+        default:
+            return (item.title, item.subtitle ?? "")
+        }
+    }
+
+    /// A summary as text: servers keep some as HTML from where they came, with <br> for a
+    /// break and &amp; for &.
+    static func plainText(_ html: String) -> String {
+        var text = html
+        for (pattern, replacement) in [(#"(?i)<br\s*/?>"#, "\n"), (#"(?i)</p>\s*<p[^>]*>"#, "\n\n"), (#"<[^>]+>"#, "")] {
+            text = text.replacingOccurrences(of: pattern, with: replacement, options: .regularExpression)
+        }
+        for (entity, character) in [("&nbsp;", " "), ("&quot;", "\""), ("&#39;", "'"), ("&apos;", "'"), ("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&")] {
+            text = text.replacingOccurrences(of: entity, with: character)
+        }
+        // At most one blank line between paragraphs, and none at the ends: Windows line
+        // ends and spaces around the breaks count as nothing.
+        text = text.replacingOccurrences(of: "\r", with: "")
+        text = text.replacingOccurrences(of: #"[ \t]*\n[ \t]*"#, with: "\n", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// The audience's score and the critics': "★ 7.4", "🍅 85%".
     static func ratings(_ item: BaseItem) -> [String] {
         var ratings: [String] = []

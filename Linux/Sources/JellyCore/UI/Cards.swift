@@ -9,8 +9,10 @@ import Foundation
 final class Card {
     private(set) var root: Widget = Bin()
     private var picture: FixedPicture!
-    private let title = Label("", "card-title").ellipsize().lines(1)
-    private let subtitle = Label("", "dim-label", "caption").ellipsize().lines(1)
+    // Ellipsized and never wrapped, with no width of their own: a wrapping label asks for
+    // room for its whole title, and a long one stretched its card past the poster.
+    private let title = Label("", "card-title").ellipsize().maxWidthChars(1)
+    private let subtitle = Label("", "dim-label", "caption").ellipsize().maxWidthChars(1)
     private let progress = ProgressBar()
     /// Plex's gold corner on what has not been watched.
     private let unwatchedMark = DrawingArea(width: 26, height: 26) { cairo, width, height in
@@ -36,8 +38,12 @@ final class Card {
         }
     }
 
-    init(style: CardStyle, activate: @escaping @MainActor (BaseItem) -> Void, menu: (@MainActor (BaseItem) -> Menu?)? = nil) {
+    /// On its parent's page: a season card names the season, not the show again.
+    let onParent: Bool
+
+    init(style: CardStyle, onParent: Bool = false, activate: @escaping @MainActor (BaseItem) -> Void, menu: (@MainActor (BaseItem) -> Menu?)? = nil) {
         self.style = style
+        self.onParent = onParent
         let (width, height) = Self.size(style)
         picture = FixedPicture(width: width, height: height)
         picture.css("card-art")
@@ -81,18 +87,14 @@ final class Card {
         let art: URL?
         switch style {
         case .landscape: art = Artwork.landscape(item, client, width: pixels)
-        default: art = Artwork.primary(item, client, width: pixels)
+        default: art = Artwork.poster(item, client, width: pixels)
         }
         picture.picture.load(art)
         placeholder.text = item.title
         placeholder.visible(art == nil)
-        if style == .landscape, item.type == .episode {
-            title.text = item.seriesName ?? item.title
-            subtitle.text = [item.episodeLabel, item.name].compactMap { $0 }.joined(separator: " · ")
-        } else {
-            title.text = item.title
-            subtitle.text = item.subtitle ?? ""
-        }
+        let lines = Presentation.cardLines(item, style: style, onParent: onParent)
+        title.text = lines.title
+        subtitle.text = lines.subtitle
         root.tooltip(item.title)
         if let value = item.progress {
             progress.fraction = value
@@ -130,12 +132,14 @@ final class CardRow {
     private let style: CardStyle
     private let activate: @MainActor (BaseItem) -> Void
     private let menu: (@MainActor (BaseItem) -> Menu?)?
+    private let onParent: Bool
 
     init(
-        title: String, style: CardStyle, more: (@MainActor () -> Void)? = nil,
+        title: String, style: CardStyle, onParent: Bool = false, more: (@MainActor () -> Void)? = nil,
         activate: @escaping @MainActor (BaseItem) -> Void, menu: (@MainActor (BaseItem) -> Menu?)? = nil
     ) {
         self.style = style
+        self.onParent = onParent
         self.activate = activate
         self.menu = menu
         let header = Box.horizontal(spacing: 8) {
@@ -156,7 +160,7 @@ final class CardRow {
 
     func show(_ items: [BaseItem], client: JellyfinClient) {
         while cards.count < items.count {
-            let card = Card(style: style, activate: activate, menu: menu)
+            let card = Card(style: style, onParent: onParent, activate: activate, menu: menu)
             cards.append(card)
             strip.append(card.root)
         }
@@ -225,8 +229,8 @@ final class CastRow {
             face.clipped().css("cast-art")
             let card = Box.vertical(spacing: 4) {
                 face
-                Label(person.name ?? "", "card-title").ellipsize().lines(1).maxWidthChars(14)
-                Label(person.role ?? person.type ?? "", "dim-label", "caption").ellipsize().lines(1).maxWidthChars(14)
+                Label(person.name ?? "", "card-title").ellipsize().maxWidthChars(1)
+                Label(person.role ?? person.type ?? "", "dim-label", "caption").ellipsize().maxWidthChars(1)
             }.size(width: 112)
             strip.append(Button(child: card, "flat", "card") { open(item) })
         }

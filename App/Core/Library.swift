@@ -89,6 +89,7 @@ final class HomeModel {
         let load = latestLoad
         isLoading = true
         defer { if load == latestLoad { isLoading = false } }
+        let started = Date()
         do {
             async let user = client.currentUser()
             let views = try await client.userViews().filter(Self.isShown)
@@ -115,6 +116,7 @@ final class HomeModel {
             self.rows = rows
             error = nil
             ResponseCache.store(Snapshot(rows: rows, libraries: views), key: cacheKey(client))
+            await Diagnostics.shared.record("home", "\(rows.count) rows in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         } catch {
             if load == latestLoad { self.error = error.localizedDescription }
         }
@@ -162,21 +164,15 @@ enum Hubs {
         return started + next
     }
 
-    /// Home's rows for one library: what was added, and for films what came out.
+    /// Home's row for one library, as Plex's Home has it: what was added. The rest is in
+    /// the library's Recommended tab.
     static func home(for library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
-        let types = libraryItemTypes(library)
-        async let added = try? client.latest(parentId: library.id)
-        async let released = library.collectionType == "movies" ? released(in: library, client, title: "Recently Released in \(library.title)") : nil
-        var rows: [HomeRow] = []
-        if let items = await added, !items.isEmpty {
-            rows.append(HomeRow(
-                id: "added-\(library.id)", kind: .recentlyAdded, title: "Recently Added in \(library.title)", style: .poster,
-                items: items, libraryId: library.id,
-                seeAll: Browse(title: "Recently Added", libraryId: library.id, itemTypes: types, sort: .dateAdded)
-            ))
-        }
-        if let row = await released { rows.append(row) }
-        return rows
+        guard let items = try? await client.latest(parentId: library.id), !items.isEmpty else { return [] }
+        return [HomeRow(
+            id: "added-\(library.id)", kind: .recentlyAdded, title: "Recently Added in \(library.title)", style: .poster,
+            items: items, libraryId: library.id,
+            seeAll: Browse(title: "Recently Added", libraryId: library.id, itemTypes: libraryItemTypes(library), sort: .dateAdded)
+        )]
     }
 
     /// A library's Recommended tab.
@@ -363,7 +359,9 @@ final class RecommendedModel {
         loaded = true
         isLoading = true
         defer { isLoading = false }
+        let started = Date()
         let fresh = await Hubs.recommended(for: library, client)
+        await Diagnostics.shared.record("home", "\(library.title) recommended: \(fresh.count) rows in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         guard !fresh.isEmpty else { return }
         rows = fresh
         ResponseCache.store(fresh, key: key)

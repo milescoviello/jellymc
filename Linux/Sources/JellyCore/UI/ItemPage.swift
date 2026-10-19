@@ -138,7 +138,7 @@ final class ItemPage {
         genres.visible(!(item.genres ?? []).isEmpty)
         tagline.text = item.taglines?.first ?? ""
         tagline.visible(item.taglines?.first != nil)
-        overview.text = item.overview ?? ""
+        overview.text = item.overview.map(Presentation.plainText) ?? ""
         overview.visible(item.overview != nil)
         credits.removeAll()
         for (row, credit) in Presentation.credits(item).enumerated() {
@@ -294,7 +294,7 @@ final class ItemPage {
         seasons.removeAll()
         guard !list.isEmpty else { return }
         let row = CardRow(
-            title: "\(list.count) Season\(list.count == 1 ? "" : "s")", style: .poster,
+            title: "\(list.count) Season\(list.count == 1 ? "" : "s")", style: .poster, onParent: true,
             activate: { [weak self] season in self?.shell.open(season) },
             menu: { [weak self] season in self.flatMap { ItemMenu.make(season, shell: $0.shell) } }
         )
@@ -340,7 +340,7 @@ final class ItemPage {
                 art
                 Box.vertical(spacing: 6) {
                     titleRow
-                    Label(episode.overview ?? "", "dim-label").wrap().lines(3).ellipsize()
+                    Label(episode.overview.map(Presentation.plainText) ?? "", "dim-label").wrap().lines(3).ellipsize()
                 }.valign(GTK_ALIGN_CENTER).hexpand()
             }.margin(10)
             row.contextMenu { [weak self] in

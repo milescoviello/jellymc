@@ -922,3 +922,37 @@ struct PreferencesUpgradeTests {
         #expect(again == changed)
     }
 }
+
+struct CardLinesTests {
+    @Test func episodesAndSeasonsReadLikePlex() {
+        var episode = BaseItem(id: "e")
+        episode.type = .episode
+        episode.name = "The Lighthouse"
+        episode.seriesName = "Harbour Lights"
+        episode.parentIndexNumber = 2
+        episode.indexNumber = 3
+        #expect(Presentation.cardLines(episode, style: .poster) == ("Harbour Lights", "S2 · E3"))
+        #expect(Presentation.cardLines(episode, style: .landscape) == ("Harbour Lights", "S2 · E3 · The Lighthouse"))
+        var season = BaseItem(id: "s")
+        season.type = .season
+        season.name = "Season 1"
+        season.seriesName = "Harbour Lights"
+        season.childCount = 5
+        #expect(Presentation.cardLines(season, style: .poster) == ("Harbour Lights", "Season 1 · 5 episodes"))
+        #expect(Presentation.cardLines(season, style: .poster, onParent: true) == ("Season 1", "5 episodes"))
+        var film = BaseItem(id: "f")
+        film.type = .movie
+        film.name = "Sintel"
+        film.productionYear = 2010
+        #expect(Presentation.cardLines(film, style: .poster) == ("Sintel", "2010"))
+    }
+}
+
+struct PlainTextTests {
+    @Test func summariesLoseTheirHTML() {
+        let html = "A keeper tends the light.<br><br>\nStorms &amp; ships <i>come</i>.<br/><br><br>(Source: example)"
+        #expect(Presentation.plainText(html) == "A keeper tends the light.\n\nStorms & ships come.\n\n(Source: example)")
+        #expect(Presentation.plainText("Plain.") == "Plain.")
+        #expect(Presentation.plainText("One.<br><br>\r\n \r\nTwo.") == "One.\n\nTwo.")
+    }
+}
