@@ -12,6 +12,8 @@ struct PlayerView: View {
 
     @State private var engine = AVPlayerEngine()
     @State private var session: PlaybackSession?
+    /// Kept across episodes, as on Linux.
+    @State private var sleepTimer = SleepTimer()
 
     var body: some View {
         ZStack {
@@ -53,6 +55,29 @@ struct PlayerView: View {
             .padding(.top, 8)
             .accessibilityLabel("Close")
         }
+        .overlay(alignment: .topTrailing) {
+            // Plex's playback settings; speed is in the system player's own menu.
+            if let session {
+                Menu {
+                    Picker("Quality", selection: Binding(get: { session.maxBitrate }, set: { session.setMaxBitrate($0) })) {
+                        ForEach(PlaybackPreferences.bitrateChoices, id: \.bits) { Text($0.title).tag($0.bits) }
+                    }
+                    .pickerStyle(.menu)
+                    Picker("Sleep Timer", selection: Binding(get: { sleepTimer.choice }, set: { sleepTimer.set($0) })) {
+                        ForEach(SleepTimer.Choice.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                } label: {
+                    Image(systemName: sleepTimer.choice == .off ? "gearshape" : "moon.zzz.fill")
+                        .font(.headline)
+                        .padding(12)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .padding(.trailing, 12)
+                .padding(.top, 8)
+                .accessibilityLabel("Playback Settings")
+            }
+        }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .task {
@@ -83,6 +108,10 @@ struct PlayerView: View {
             self.start(next, from: 0, audio: nil, subtitle: nil, version: nil, continuing: continuing)
         }
         session.onFinished = { close() }
+        let timer = sleepTimer
+        session.stopsAtEnd = { timer.itemEnded() }
+        session.willStopAtEnd = { timer.choice == .endOfItem }
+        timer.onFire = { [weak session] in session?.setPaused(true) }
         self.session = session
 
         var tracks = (audio: audio, subtitle: subtitle)
