@@ -33,7 +33,7 @@ gh release download latest -p Jellymc.ipa -D dist --clobber
 xtool install dist/Jellymc.ipa
 ```
 
-Or let plugging the phone in do it: `tools/phone/install.sh` starts a watcher (and adds it to KDE autostart) that installs the newest build every time the iPhone is plugged in, and any newer one while it stays plugged in, as the Music app's does.
+Or let plugging the phone in do it: `tools/phone/install.sh` starts a watcher (and adds it to KDE autostart) that installs the newest build every time the iPhone is plugged in and again every 15 minutes while it stays plugged in (a fresh seven-day signature each time; iOS waits while the app is in use).
 
 ## Developing
 
