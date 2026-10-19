@@ -7,6 +7,13 @@
 #include <gdk/wayland/gdkwayland.h>
 #endif
 #include <stdlib.h>
+#include <malloc.h>
+
+// glibc keeps freed memory for the next allocation; after a film, hundreds of megabytes of
+// decoding buffers. This hands what it can back to the system.
+static inline void cmpv_release_free_memory(void) {
+    malloc_trim(0);
+}
 
 // The C half of drawing libmpv into a GtkGLArea. Everything here is plumbing Swift would
 // write clumsily: parameter arrays terminated by an INVALID entry, function pointers mpv

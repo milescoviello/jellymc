@@ -1,4 +1,5 @@
 import CGtk
+import CMpv
 import Foundation
 
 /// The one window: signing in, the library, and the player over everything.
@@ -121,6 +122,9 @@ final class MainWindow {
         Task {
             await self.state.playbackEnded()
             self.shell?.refreshVisible()
+            // A film's decoding buffers are hundreds of megabytes, freed by now but kept by
+            // the allocator for next time; it hands them back to the system.
+            cmpv_release_free_memory()
         }
     }
 
