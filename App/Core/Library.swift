@@ -13,9 +13,26 @@ enum CardStyle: String, Codable, Sendable {
     case landscape
 }
 
+/// A library seen one way: what a row's "See All" opens, and what a library's Library,
+/// Collections and genre pages page through.
+struct Browse: Codable, Sendable, Equatable, Hashable {
+    var title: String
+    /// Nil for every library at once: collections live in their own.
+    var libraryId: String?
+    var itemTypes: [ItemKind]
+    var sort: ItemQuery.Sort = .name
+    var descending: Bool?
+    var filter: ItemQuery.Filter?
+    var genre: String?
+
+    var isDescending: Bool { descending ?? sort.defaultDescending }
+}
+
+/// A row of cards with a title: Plex's hubs.
 struct HomeRow: Identifiable, Codable, Sendable, Equatable {
     enum Kind: String, Codable, Sendable {
-        case resume, nextUp, latest
+        case continueWatching, recentlyAdded, recentlyReleased, topRated, recentlyViewed
+        case startWatching, rediscover, newEpisodes, genre, recommended
     }
 
     var id: String
@@ -23,10 +40,23 @@ struct HomeRow: Identifiable, Codable, Sendable, Equatable {
     var title: String
     var style: CardStyle
     var items: [BaseItem]
-    /// For "Latest in …": the library to open from the row's header.
+    /// The library the row belongs to, if one.
     var libraryId: String?
+    /// What "See All" opens: the library, sorted or filtered the row's way.
+    var seeAll: Browse?
 }
 
+/// The kinds of item a library holds.
+func libraryItemTypes(_ library: BaseItem) -> [ItemKind] {
+    switch library.collectionType {
+    case "movies": return [.movie]
+    case "tvshows": return [.series]
+    case "boxsets": return [.boxSet]
+    default: return []
+    }
+}
+
+/// Plex's Home: Continue Watching, then what is new in each library.
 @MainActor
 @Observable
 final class HomeModel {
@@ -44,9 +74,11 @@ final class HomeModel {
         var libraries: [BaseItem]
     }
 
+    private func cacheKey(_ client: JellyfinClient) -> String { "home-v2-\(client.userId ?? "")" }
+
     /// Shows the cached home first, then whatever the server says now.
     func load(_ client: JellyfinClient, force: Bool = false) async {
-        if !loaded, let snapshot = ResponseCache.load(Snapshot.self, key: "home-\(client.userId ?? "")") {
+        if !loaded, let snapshot = ResponseCache.load(Snapshot.self, key: cacheKey(client)) {
             rows = snapshot.rows
             libraries = snapshot.libraries
         }
@@ -65,34 +97,23 @@ final class HomeModel {
             async let nextUp = client.nextUp()
             // The server's own Home settings: a library can be kept out of "Latest".
             let excluded = Set((try? await user)?.configuration?.latestItemsExcludes ?? [])
-            var latest: [(BaseItem, [BaseItem])] = []
-            await withTaskGroup(of: (Int, BaseItem, [BaseItem]).self) { group in
+            var perLibrary: [(Int, [HomeRow])] = []
+            await withTaskGroup(of: (Int, [HomeRow]).self) { group in
                 for (index, view) in views.enumerated() where Self.showsLatest(view) && !excluded.contains(view.id) {
-                    group.addTask { (index, view, (try? await client.latest(parentId: view.id)) ?? []) }
+                    group.addTask { (index, await Hubs.home(for: view, client)) }
                 }
-                var results: [(Int, BaseItem, [BaseItem])] = []
-                for await result in group { results.append(result) }
-                latest = results.sorted { $0.0 < $1.0 }.map { ($0.1, $0.2) }
+                for await result in group { perLibrary.append(result) }
             }
             var rows: [HomeRow] = []
-            let resumeItems = (try? await resume) ?? []
-            if !resumeItems.isEmpty {
-                rows.append(HomeRow(id: "resume", kind: .resume, title: "Continue Watching", style: .landscape, items: resumeItems))
+            let continuing = Hubs.continueWatching(resume: (try? await resume) ?? [], nextUp: (try? await nextUp) ?? [])
+            if !continuing.isEmpty {
+                rows.append(HomeRow(id: "continue", kind: .continueWatching, title: "Continue Watching", style: .landscape, items: continuing))
             }
-            let nextItems = ((try? await nextUp) ?? []).filter { next in !resumeItems.contains { $0.id == next.id } }
-            if !nextItems.isEmpty {
-                rows.append(HomeRow(id: "nextup", kind: .nextUp, title: "Next Up", style: .landscape, items: nextItems))
-            }
-            for (view, items) in latest where !items.isEmpty {
-                rows.append(HomeRow(
-                    id: "latest-\(view.id)", kind: .latest, title: "Latest \(view.title)",
-                    style: .poster, items: items, libraryId: view.id
-                ))
-            }
+            rows += perLibrary.sorted { $0.0 < $1.0 }.flatMap(\.1)
             guard load == latestLoad else { return }
             self.rows = rows
             error = nil
-            ResponseCache.store(Snapshot(rows: rows, libraries: views), key: "home-\(client.userId ?? "")")
+            ResponseCache.store(Snapshot(rows: rows, libraries: views), key: cacheKey(client))
         } catch {
             if load == latestLoad { self.error = error.localizedDescription }
         }
@@ -119,16 +140,248 @@ final class HomeModel {
         ["movies", "tvshows", "boxsets"].contains(view.collectionType)
     }
 
-    static func showsLatest(_ view: BaseItem) -> Bool {
+    nonisolated static func showsLatest(_ view: BaseItem) -> Bool {
         ["movies", "tvshows"].contains(view.collectionType)
     }
 }
 
-/// One library, paged as it scrolls.
+/// The rows Plex builds: for Home, and for each library's Recommended tab.
+enum Hubs {
+    /// Plex's Continue Watching is one row with one card per show: what was stopped part
+    /// way, most recent first (a show's latest episode only), then the next episode of each
+    /// other show going on ("On Deck").
+    static func continueWatching(resume: [BaseItem], nextUp: [BaseItem]) -> [BaseItem] {
+        let sorted = resume.sorted { ($0.userData?.lastPlayedDate ?? .distantPast) > ($1.userData?.lastPlayedDate ?? .distantPast) }
+        var seen = Set<String>()
+        let started = sorted.filter { item in
+            guard let show = item.seriesId else { return true }
+            return seen.insert(show).inserted
+        }
+        let next = nextUp.filter { item in seen.insert(item.seriesId ?? item.id).inserted }
+        return started + next
+    }
+
+    /// Home's rows for one library: what was added, and for films what came out.
+    static func home(for library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
+        let types = libraryItemTypes(library)
+        async let added = try? client.latest(parentId: library.id)
+        async let released = library.collectionType == "movies" ? released(in: library, client, title: "Recently Released in \(library.title)") : nil
+        var rows: [HomeRow] = []
+        if let items = await added, !items.isEmpty {
+            rows.append(HomeRow(
+                id: "added-\(library.id)", kind: .recentlyAdded, title: "Recently Added in \(library.title)", style: .poster,
+                items: items, libraryId: library.id,
+                seeAll: Browse(title: "Recently Added", libraryId: library.id, itemTypes: types, sort: .dateAdded)
+            ))
+        }
+        if let row = await released { rows.append(row) }
+        return rows
+    }
+
+    /// A library's Recommended tab.
+    static func recommended(for library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
+        library.collectionType == "tvshows" ? await shows(library, client) : await films(library, client)
+    }
+
+    private static func films(_ library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
+        let id = library.id
+        async let resume = try? client.resume(parentId: id)
+        async let released = released(in: library, client, title: "Recently Released")
+        async let added = try? client.latest(parentId: id)
+        async let picks = try? client.recommendations(parentId: id)
+        async let top = query(library, client, sort: .rating, limit: 20)
+        async let viewed = query(library, client, sort: .lastPlayed, filter: .played, limit: 20)
+        async let rediscover = query(library, client, sort: .lastPlayed, descending: false, filter: .played, limit: 20)
+        async let genres = genreRows(library, client, noun: "Movies")
+
+        var rows: [HomeRow] = []
+        rows.append(row("continue", .continueWatching, "Continue Watching", .landscape, (await resume) ?? [], library))
+        if let released = await released { rows.append(released) }
+        rows.append(row("added", .recentlyAdded, "Recently Added", .poster, (await added) ?? [], library,
+                        Browse(title: "Recently Added", libraryId: id, itemTypes: [.movie], sort: .dateAdded)))
+        for pick in ((await picks) ?? []).prefix(3) {
+            guard let title = pick.title else { continue }
+            rows.append(row("pick-\(pick.categoryId ?? title)", .recommended, title, .poster, pick.items ?? [], library))
+        }
+        rows.append(row("top", .topRated, "Top Rated", .poster, (await top)?.items ?? [], library,
+                        Browse(title: "Top Rated", libraryId: id, itemTypes: [.movie], sort: .rating)))
+        rows += await genres
+        rows.append(row("viewed", .recentlyViewed, "Recently Viewed", .poster, (await viewed)?.items ?? [], library,
+                        Browse(title: "Recently Viewed", libraryId: id, itemTypes: [.movie], sort: .lastPlayed, filter: .played)))
+        // Watched longest ago: worth another look.
+        rows.append(row("rediscover", .rediscover, "Rediscover", .poster, (await rediscover)?.items ?? [], library))
+        return rows.filter { !$0.items.isEmpty }
+    }
+
+    private static func shows(_ library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
+        let id = library.id
+        async let resume = try? client.resume(parentId: id)
+        async let nextUp = try? client.nextUp(parentId: id)
+        async let added = try? client.latest(parentId: id)
+        async let aired = episodes(library, client)
+        async let fresh = query(library, client, sort: .dateAdded, limit: 60)
+        async let touched = query(library, client, sort: .lastPlayed, descending: false, limit: 100)
+        async let top = query(library, client, sort: .rating, limit: 20)
+        async let genres = genreRows(library, client, noun: "Shows")
+
+        var rows: [HomeRow] = []
+        let continuing = continueWatching(resume: (await resume) ?? [], nextUp: (await nextUp) ?? [])
+        rows.append(row("continue", .continueWatching, "Continue Watching", .landscape, continuing, library))
+        rows.append(row("added", .recentlyAdded, "Recently Added", .poster, (await added) ?? [], library,
+                        Browse(title: "Recently Added", libraryId: id, itemTypes: [.series], sort: .dateAdded)))
+        rows.append(row("aired", .newEpisodes, "New Episodes", .landscape, (await aired) ?? [], library))
+        // Shows added and not begun.
+        let unstarted = ((await fresh)?.items ?? []).filter { ($0.userData?.playedPercentage ?? 0) == 0 && !$0.isPlayed }
+        rows.append(row("start", .startWatching, "Start Watching", .poster, Array(unstarted.prefix(20)), library))
+        // What the show being watched now is like.
+        // The server's like-this can name the show itself; that is no suggestion.
+        if let show = continuing.first, let showId = show.seriesId ?? (show.type == .series ? show.id : nil),
+           let alike = (try? await client.similar(to: showId, limit: 16))?.filter({ $0.id != showId }), !alike.isEmpty {
+            rows.append(row("because", .recommended, "Because You Watched \(show.seriesName ?? show.title)", .poster, alike, library))
+        }
+        rows.append(row("top", .topRated, "Top Rated", .poster, (await top)?.items ?? [], library,
+                        Browse(title: "Top Rated", libraryId: id, itemTypes: [.series], sort: .rating)))
+        rows += await genres
+        // Begun and left the longest.
+        let lapsed = ((await touched)?.items ?? []).filter {
+            let done = $0.userData?.playedPercentage ?? 0
+            return done > 0 && done < 100 && !$0.isPlayed
+        }
+        rows.append(row("rediscover", .rediscover, "Rediscover", .poster, Array(lapsed.prefix(20)), library))
+        return rows.filter { !$0.items.isEmpty }
+    }
+
+    private static func released(in library: BaseItem, _ client: JellyfinClient, title: String) async -> HomeRow? {
+        var query = ItemQuery()
+        query.parentId = library.id
+        query.includeItemTypes = [.movie]
+        query.recursive = true
+        query.sort = .premiere
+        query.descending = true
+        query.releasedBy = Date()
+        query.limit = 20
+        guard let items = try? await client.items(query).items, !items.isEmpty else { return nil }
+        return HomeRow(
+            id: "released-\(library.id)", kind: .recentlyReleased, title: title,
+            style: .poster, items: items, libraryId: library.id,
+            seeAll: Browse(title: "Recently Released", libraryId: library.id, itemTypes: [.movie], sort: .premiere)
+        )
+    }
+
+    /// The newest episodes to air, of every show in the library.
+    private static func episodes(_ library: BaseItem, _ client: JellyfinClient) async -> [BaseItem]? {
+        var query = ItemQuery()
+        query.parentId = library.id
+        query.includeItemTypes = [.episode]
+        query.recursive = true
+        query.sort = .premiere
+        query.descending = true
+        query.releasedBy = Date()
+        query.limit = 20
+        return try? await client.items(query).items
+    }
+
+    /// Two genres, a different two each time, best rated first: "Top Movies in Action".
+    private static func genreRows(_ library: BaseItem, _ client: JellyfinClient, noun: String) async -> [HomeRow] {
+        let types = libraryItemTypes(library)
+        guard let genres = try? await client.genres(parentId: library.id, includeItemTypes: types), !genres.isEmpty else { return [] }
+        // Only genres with a row's worth in them; the server counts them.
+        let full = genres.filter { ($0.childCount ?? 0) >= 3 }
+        var rows: [HomeRow] = []
+        for genre in full.shuffled().prefix(2) {
+            var query = ItemQuery()
+            query.parentId = library.id
+            query.includeItemTypes = types
+            query.recursive = true
+            query.genres = [genre.title]
+            query.sort = .rating
+            query.descending = true
+            query.limit = 20
+            guard let items = try? await client.items(query).items, items.count >= 3 else { continue }
+            rows.append(row(
+                "genre-\(genre.title)", .genre, "Top \(noun) in \(genre.title)", .poster, items, library,
+                Browse(title: genre.title, libraryId: library.id, itemTypes: types, sort: .rating, genre: genre.title)
+            ))
+        }
+        return rows
+    }
+
+    private static func query(
+        _ library: BaseItem, _ client: JellyfinClient, sort: ItemQuery.Sort, descending: Bool = true,
+        filter: ItemQuery.Filter? = nil, limit: Int
+    ) async -> ItemsPage<BaseItem>? {
+        var query = ItemQuery()
+        query.parentId = library.id
+        query.includeItemTypes = libraryItemTypes(library)
+        query.recursive = true
+        query.sort = sort
+        query.descending = descending
+        query.filters = filter.map { [$0] } ?? []
+        query.limit = limit
+        return try? await client.items(query)
+    }
+
+    private static func row(
+        _ id: String, _ kind: HomeRow.Kind, _ title: String, _ style: CardStyle, _ items: [BaseItem], _ library: BaseItem,
+        _ seeAll: Browse? = nil
+    ) -> HomeRow {
+        HomeRow(id: "\(id)-\(library.id)", kind: kind, title: title, style: style, items: items, libraryId: library.id, seeAll: seeAll)
+    }
+}
+
+/// A library's Recommended tab: Plex's rows for it.
+@MainActor
+@Observable
+final class RecommendedModel {
+    let library: BaseItem
+    private(set) var rows: [HomeRow] = []
+    private(set) var isLoading = false
+    @ObservationIgnored private var loaded = false
+
+    init(library: BaseItem) {
+        self.library = library
+    }
+
+    func load(_ client: JellyfinClient, force: Bool = false) async {
+        let key = "recommended-v1-\(library.id)"
+        if rows.isEmpty, let cached = ResponseCache.load([HomeRow].self, key: key) { rows = cached }
+        guard force || !loaded else { return }
+        loaded = true
+        isLoading = true
+        defer { isLoading = false }
+        let fresh = await Hubs.recommended(for: library, client)
+        guard !fresh.isEmpty else { return }
+        rows = fresh
+        ResponseCache.store(fresh, key: key)
+    }
+}
+
+/// A library's Categories tab: its genres.
+@MainActor
+@Observable
+final class GenresModel {
+    let library: BaseItem
+    private(set) var genres: [BaseItem] = []
+
+    init(library: BaseItem) {
+        self.library = library
+    }
+
+    func load(_ client: JellyfinClient) async {
+        guard genres.isEmpty else { return }
+        genres = (try? await client.genres(parentId: library.id, includeItemTypes: libraryItemTypes(library))) ?? []
+    }
+
+    func browse(_ genre: BaseItem) -> Browse {
+        Browse(title: genre.title, libraryId: library.id, itemTypes: libraryItemTypes(library), sort: .name, genre: genre.title)
+    }
+}
+
+/// A library, or part of one, paged as it scrolls.
 @MainActor
 @Observable
 final class LibraryModel {
-    let library: BaseItem
+    let browse: Browse
     private(set) var items: [BaseItem] = []
     private(set) var total: Int?
     private(set) var isLoading = false
@@ -136,7 +389,7 @@ final class LibraryModel {
     var sort: ItemQuery.Sort {
         didSet { if sort != oldValue { descending = sort.defaultDescending; restart() } }
     }
-    var descending: Bool = false {
+    var descending: Bool {
         didSet { if descending != oldValue { restart() } }
     }
     var filter: ItemQuery.Filter? {
@@ -145,21 +398,28 @@ final class LibraryModel {
     @ObservationIgnored private var client: JellyfinClient?
     @ObservationIgnored private var generation = 0
 
-    init(library: BaseItem) {
-        self.library = library
-        sort = .name
+    init(browse: Browse) {
+        self.browse = browse
+        sort = browse.sort
+        descending = browse.isDescending
+        filter = browse.filter
     }
 
-    var style: CardStyle { .poster }
-
-    var kinds: [ItemKind] {
-        switch library.collectionType {
-        case "movies": return [.movie]
-        case "tvshows": return [.series]
-        case "boxsets": return [.boxSet]
-        default: return []
-        }
+    /// The whole of a library, by title.
+    convenience init(library: BaseItem) {
+        self.init(browse: Browse(title: library.title, libraryId: library.id, itemTypes: libraryItemTypes(library)))
     }
+
+    /// Every collection, from whichever library.
+    static func collections() -> LibraryModel {
+        LibraryModel(browse: Browse(title: "Collections", libraryId: nil, itemTypes: [.boxSet]))
+    }
+
+    var title: String { browse.title }
+
+    var style: CardStyle { browse.itemTypes == [.episode] ? .landscape : .poster }
+
+    var kinds: [ItemKind] { browse.itemTypes }
 
     var hasMore: Bool { total.map { items.count < $0 } ?? true }
 
@@ -178,12 +438,50 @@ final class LibraryModel {
         await fetch(from: items.count, replacing: false)
     }
 
-    private var cacheKey: String { "library-\(library.id)-\(sort.rawValue)-\(descending)-\(filter?.rawValue ?? "all")" }
+    /// Whether the A–Z bar means anything: titles in order.
+    var isAlphabetical: Bool { sort == .name && !descending }
+
+    /// Where the first title from `letter` on is: what the A–Z bar jumps to. "#" is the
+    /// start, before A.
+    func index(of letter: String) async -> Int? {
+        guard let client, isAlphabetical else { return nil }
+        if letter == "#" { return 0 }
+        var query = baseQuery()
+        query.limit = 0
+        query.nameLessThan = letter
+        return (try? await client.items(query))?.totalRecordCount
+    }
+
+    /// Pages in until `index` is loaded, for a jump.
+    func load(through index: Int) async {
+        while items.count <= index, hasMore {
+            let before = items.count
+            await loadMore()
+            if items.count == before { return }
+        }
+    }
+
+    private var cacheKey: String {
+        let types = browse.itemTypes.map(\.rawValue).joined(separator: ",")
+        return "browse-\(browse.libraryId ?? "all")-\(types)-\(browse.genre ?? "")-\(sort.rawValue)-\(descending)-\(filter?.rawValue ?? "all")"
+    }
 
     private func restart() {
         items = []
         total = nil
         Task { await fetch(from: 0, replacing: true) }
+    }
+
+    private func baseQuery() -> ItemQuery {
+        var query = ItemQuery()
+        query.parentId = browse.libraryId
+        query.includeItemTypes = browse.itemTypes
+        query.recursive = !browse.itemTypes.isEmpty
+        query.genres = browse.genre.map { [$0] } ?? []
+        query.sort = sort
+        query.descending = descending
+        query.filters = filter.map { [$0] } ?? []
+        return query
     }
 
     private func fetch(from start: Int, replacing: Bool) async {
@@ -192,13 +490,7 @@ final class LibraryModel {
         let mine = generation
         isLoading = true
         defer { if mine == generation { isLoading = false } }
-        var query = ItemQuery()
-        query.parentId = library.id
-        query.includeItemTypes = kinds
-        query.recursive = !kinds.isEmpty
-        query.sort = sort
-        query.descending = descending
-        query.filters = filter.map { [$0] } ?? []
+        var query = baseQuery()
         query.startIndex = start
         query.limit = 120
         do {
@@ -214,23 +506,26 @@ final class LibraryModel {
     }
 }
 
-/// A film, series, season, episode, collection or person, with what its page shows.
+/// A film, series, season, episode, collection or person, with what its page shows:
+/// Plex's pre-play screen.
 @MainActor
 @Observable
 final class ItemModel {
     let id: String
     private(set) var item: BaseItem?
+    /// A series' seasons, as a row of posters.
     private(set) var seasons: [BaseItem] = []
+    /// A season's episodes.
     private(set) var episodes: [BaseItem] = []
-    /// For a series: the episode the play button starts.
+    /// For a series: the episode the play button starts (Plex's On Deck).
     private(set) var nextEpisode: BaseItem?
     /// A collection's or folder's contents; a person's films and shows.
     private(set) var children: [BaseItem] = []
+    /// Related: Plex's "More Like This".
     private(set) var similar: [BaseItem] = []
+    /// Trailers and special features.
+    private(set) var extras: [BaseItem] = []
     private(set) var error: String?
-    var selectedSeasonId: String? {
-        didSet { if selectedSeasonId != oldValue { Task { await loadEpisodes() } } }
-    }
     @ObservationIgnored private var client: JellyfinClient?
 
     init(id: String, placeholder: BaseItem? = nil) {
@@ -250,20 +545,21 @@ final class ItemModel {
             self.item = Outbox.shared.applying(to: item)
             ResponseCache.store(item, key: "item-\(id)")
             error = nil
+            async let related: [BaseItem]? = [.movie, .series].contains(item.type) ? try? client.similar(to: id, limit: 16) : nil
+            async let extra: [BaseItem]? = (item.localTrailerCount ?? 0) + (item.specialFeatureCount ?? 0) > 0 ? try? client.extras(for: id) : nil
             switch item.type {
             case .series?:
                 async let seasons = client.seasons(seriesId: id)
                 async let next = client.nextUp(seriesId: id, limit: 1)
                 self.seasons = (try? await seasons) ?? []
-                nextEpisode = (try? await next)?.first
-                if selectedSeasonId == nil {
-                    selectedSeasonId = nextEpisode?.seasonId ?? self.seasons.first?.id
-                } else {
-                    await loadEpisodes()
+                nextEpisode = (try? await next)?.first.map(Outbox.shared.applying)
+                if nextEpisode == nil, let first = self.seasons.first {
+                    // All watched, or never begun: the play button starts at the beginning.
+                    nextEpisode = (try? await client.episodes(seriesId: id, seasonId: first.id))?.first
                 }
             case .season?:
                 if let seriesId = item.seriesId {
-                    episodes = (try? await client.episodes(seriesId: seriesId, seasonId: id)) ?? []
+                    episodes = ((try? await client.episodes(seriesId: seriesId, seasonId: id)) ?? []).map(Outbox.shared.applying)
                 }
             case .person?:
                 var query = ItemQuery()
@@ -283,24 +579,24 @@ final class ItemModel {
             default:
                 break
             }
-            if [.movie, .series].contains(item.type) {
-                similar = (try? await client.similar(to: id)) ?? []
-            }
+            similar = ((await related) ?? []).filter { $0.id != id }
+            extras = (await extra) ?? []
         } catch {
             self.error = error.localizedDescription
         }
     }
 
-    private func loadEpisodes() async {
-        guard let client, let seasonId = selectedSeasonId else { return }
-        episodes = ((try? await client.episodes(seriesId: id, seasonId: seasonId)) ?? []).map(Outbox.shared.applying)
-    }
-
-    /// What the big play button plays: the film, or for a series the next episode.
+    /// What the big play button plays: the film or episode, a series' next episode, a
+    /// season's first unwatched one.
     var playable: BaseItem? {
         guard let item else { return nil }
-        if item.type == .series { return nextEpisode ?? episodes.first }
-        if item.type == .season { return episodes.first { !$0.isPlayed } ?? episodes.first }
+        if item.type == .series { return nextEpisode }
+        if item.type == .season {
+            // One part way through comes first, the latest touched; then the first not seen.
+            let started = episodes.filter { $0.resumeSeconds > 0 }
+                .max { ($0.userData?.lastPlayedDate ?? .distantPast) < ($1.userData?.lastPlayedDate ?? .distantPast) }
+            return started ?? episodes.first { !$0.isPlayed } ?? episodes.first
+        }
         return item.type?.isVideo == true ? item : nil
     }
 
@@ -310,6 +606,17 @@ final class ItemModel {
         if let data = try? await client.setPlayed(played, itemId: item.id) {
             item.userData = data
             self.item = item
+            // A show or season marked watched marks its episodes, on the server and here.
+            episodes = episodes.map { episode in
+                var episode = episode
+                episode.userData = (episode.userData ?? UserItemData()).marked(played: played)
+                return episode
+            }
+            seasons = seasons.map { season in
+                var season = season
+                season.userData = (season.userData ?? UserItemData()).marked(played: played)
+                return season
+            }
         }
     }
 

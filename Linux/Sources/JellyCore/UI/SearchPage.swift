@@ -54,7 +54,11 @@ final class SearchPage {
         shown = key
         results.removeAll()
         rows = groups.map { group in
-            let row = CardRow(title: group.title, style: group.style) { [weak self] item in self?.shell.open(item) }
+            let row = CardRow(
+                title: group.title, style: group.style,
+                activate: { [weak self] item in self?.shell.open(item) },
+                menu: { [weak self] item in self.flatMap { ItemMenu.make(item, shell: $0.shell) } }
+            )
             row.show(group.items, client: client)
             results.append(row.root)
             return row

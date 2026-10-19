@@ -90,7 +90,9 @@ struct JSONCodingTests {
         #expect(Ticks.from(seconds: 1.5) == 15_000_000)
         #expect(Ticks.clock(3725) == "1:02:05")
         #expect(Ticks.clock(65) == "1:05")
-        #expect(Ticks.runtime(6300) == "1h 45m")
+        #expect(Ticks.runtime(6300) == "1 hr 45 min")
+        #expect(Ticks.runtime(7200) == "2 hr")
+        #expect(Ticks.runtime(2520) == "42 min")
     }
 }
 
@@ -609,5 +611,87 @@ struct ServerMessageTests {
         #expect(client.socketURL?.absoluteString == "ws://jelly.lan:8096/socket?deviceId=device-1")
         let secure = JellyfinClient(baseURL: URL(string: "https://media.example.com/jellyfin/")!, device: client.device)
         #expect(secure.socketURL?.absoluteString == "wss://media.example.com/jellyfin/socket?deviceId=device-1")
+    }
+}
+
+struct PlexLayoutTests {
+    private func episode(_ id: String, series: String, played: Date? = nil, position: Int64 = 0) -> BaseItem {
+        var item = BaseItem(id: id)
+        item.type = .episode
+        item.seriesId = series
+        item.userData = UserItemData(playbackPositionTicks: position, lastPlayedDate: played)
+        return item
+    }
+
+    @Test func continueWatchingIsOneRowNewestFirstOneEpisodePerShow() {
+        let old = episode("a2", series: "a", played: Date(timeIntervalSince1970: 100), position: 50)
+        let new = episode("b5", series: "b", played: Date(timeIntervalSince1970: 200), position: 50)
+        var film = BaseItem(id: "film")
+        film.type = .movie
+        film.userData = UserItemData(playbackPositionTicks: 10, lastPlayedDate: Date(timeIntervalSince1970: 150))
+        // An older episode of show b started too; next up has b, and c twice.
+        let older = episode("b4", series: "b", played: Date(timeIntervalSince1970: 50), position: 50)
+        let row = Hubs.continueWatching(
+            resume: [old, new, film, older],
+            nextUp: [episode("b6", series: "b"), episode("c1", series: "c"), episode("c2", series: "c")]
+        )
+        #expect(row.map(\.id) == ["b5", "film", "a2", "c1"])
+    }
+
+    @Test func cornersSayWhatIsLeft() {
+        var film = BaseItem(id: "f")
+        film.type = .movie
+        #expect(Presentation.unwatched(film) == .mark)
+        film.userData = UserItemData(playbackPositionTicks: 100)
+        #expect(Presentation.unwatched(film) == .none)
+        film.userData = UserItemData(played: true)
+        #expect(Presentation.unwatched(film) == .none)
+        var show = BaseItem(id: "s")
+        show.type = .series
+        show.userData = UserItemData(unplayedItemCount: 4)
+        #expect(Presentation.unwatched(show) == .count(4))
+    }
+
+    @Test func detailsReadLikePlex() {
+        var film = BaseItem(id: "f")
+        film.type = .movie
+        film.productionYear = 2010
+        film.officialRating = "PG-13"
+        film.runTimeTicks = Ticks.from(seconds: 6300)
+        film.communityRating = 7.4
+        film.criticRating = 85
+        film.people = [
+            Person(id: "1", name: "Actor One", role: "Hero", type: "Actor"),
+            Person(id: "2", name: "Dee Rector", type: "Director"),
+            Person(id: "3", name: "Rita Writer", type: "Writer"),
+        ]
+        film.studios = [NameIdPair(name: "Blender", id: "b")]
+        let meta = Presentation.metaLine(film, now: Date(timeIntervalSince1970: 0))
+        #expect(meta.hasPrefix("2010 · 1 hr 45 min · PG-13 · Ends at "))
+        #expect(Presentation.ratings(film) == ["★ 7.4", "🍅 85%"])
+        let credits = Presentation.credits(film)
+        #expect(credits.map(\.title) == ["Directed by", "Written by", "Studio"])
+        #expect(credits.first?.names == "Dee Rector")
+        #expect(Presentation.castAndCrew(film).map(\.id) == ["1", "2", "3"])
+    }
+
+    @Test func recommendationsGetPlexTitles() {
+        func title(_ type: String) -> String? {
+            Recommendation(items: [], recommendationType: type, baselineItemName: "Sintel").title
+        }
+        #expect(title("SimilarToRecentlyPlayed") == "Because You Watched Sintel")
+        #expect(title("HasDirectorFromRecentlyPlayed") == "Top Movies by Sintel")
+        #expect(title("HasLikedActor") == "Top Movies Starring Sintel")
+        #expect(title("Unknown") == nil)
+    }
+
+    @Test @MainActor func seeAllKeepsTheRowsOrder() {
+        let browse = Browse(title: "Recently Added", libraryId: "lib", itemTypes: [.movie], sort: .dateAdded)
+        #expect(browse.isDescending)
+        let model = LibraryModel(browse: browse)
+        #expect(model.sort == .dateAdded)
+        #expect(model.descending)
+        #expect(!model.isAlphabetical)
+        #expect(LibraryModel(browse: Browse(title: "All", libraryId: "lib", itemTypes: [.movie])).isAlphabetical)
     }
 }

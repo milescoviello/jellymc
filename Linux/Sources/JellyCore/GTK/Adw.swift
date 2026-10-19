@@ -657,3 +657,47 @@ enum Dialogs {
         adw_dialog_close(dialog.cast())
     }
 }
+
+/// Pages with titles, switched between by a ViewSwitcher: a library's Recommended,
+/// Library, Collections and Categories.
+final class ViewStack: Widget {
+    init() {
+        super.init(adw_view_stack_new()!)
+    }
+
+    @discardableResult
+    func add(_ child: Widget, name: String, title: String) -> Self {
+        adw_view_stack_add_titled(widget.cast(), child.widget, name, title)
+        return self
+    }
+
+    var visibleName: String? {
+        get { adw_view_stack_get_visible_child_name(widget.cast()).map { String(cString: $0) } }
+        set {
+            guard let newValue else { return }
+            adw_view_stack_set_visible_child_name(widget.cast(), newValue)
+        }
+    }
+
+    /// Called with the page's name whenever another is shown.
+    @discardableResult
+    func onSwitch(_ handler: @escaping @MainActor (String) -> Void) -> Self {
+        let pointer = widget
+        Signal.connect(widget, "notify::visible-child-name", pointer: { _ in
+            guard let name = adw_view_stack_get_visible_child_name(OpaquePointer(pointer)) else { return }
+            handler(String(cString: name))
+        })
+        return self
+    }
+}
+
+/// The page names in a row, as text: Plex's tab bar. (The plain view switcher wants an
+/// icon for every page.)
+final class ViewSwitcher: Widget {
+    init(_ stack: ViewStack) {
+        super.init(adw_inline_view_switcher_new()!)
+        adw_inline_view_switcher_set_stack(widget.cast(), stack.widget.cast())
+        adw_inline_view_switcher_set_display_mode(widget.cast(), ADW_INLINE_VIEW_SWITCHER_LABELS)
+        gtk_widget_add_css_class(widget, "flat")
+    }
+}

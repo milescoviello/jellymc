@@ -55,13 +55,15 @@ final class HomePage {
             built = [:]
             for row in homeRows {
                 var more: (@MainActor () -> Void)?
-                if let id = row.libraryId {
-                    more = { [weak self] in self?.shell.openLibrary(id) }
+                if let browse = row.seeAll {
+                    more = { [weak self] in self?.shell.open(browse) }
                 }
-                let kind = row.kind
+                let shell = shell
                 let card = CardRow(
                     title: row.title, style: row.style, more: more,
-                    activate: { [weak self] item in self?.activate(item, from: kind) }
+                    // Plex: a card opens its page, and play is there.
+                    activate: { [weak shell] item in shell?.open(item) },
+                    menu: { [weak shell] item in shell.flatMap { ItemMenu.make(item, shell: $0) } }
                 )
                 built[row.id] = card
                 rows.append(card.root)
@@ -70,16 +72,6 @@ final class HomePage {
         }
         for row in homeRows {
             built[row.id]?.show(row.items, client: client)
-        }
-    }
-
-    /// Continue Watching and Next Up play straight away; anything else opens its page.
-    private func activate(_ item: BaseItem, from kind: HomeRow.Kind) {
-        switch kind {
-        case .resume, .nextUp:
-            shell.window.play(item)
-        case .latest:
-            shell.open(item)
         }
     }
 }

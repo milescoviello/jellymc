@@ -113,9 +113,15 @@ enum Ticks {
     }
 
     /// "1h 42m" or "42m": a runtime on a detail page.
+    /// As Plex writes it: "1 hr 45 min", "2 hr", "42 min".
     static func runtime(_ seconds: Double) -> String {
         let minutes = Int((seconds / 60).rounded())
-        if minutes >= 60 { return "\(minutes / 60)h \(minutes % 60)m" }
-        return "\(max(1, minutes))m"
+        guard minutes >= 60 else { return "\(max(1, minutes)) min" }
+        return minutes % 60 == 0 ? "\(minutes / 60) hr" : "\(minutes / 60) hr \(minutes % 60) min"
+    }
+
+    /// What is left: "12 min left", "1 hr 3 min left".
+    static func remaining(_ seconds: Double) -> String {
+        "\(runtime(seconds)) left"
     }
 }

@@ -13,6 +13,14 @@ enum Artwork {
         return nil
     }
 
+    /// 2:3, beside a detail page's title: an episode shows its show's poster.
+    static func poster(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
+        if item.type == .episode, let seriesId = item.seriesId, let tag = item.seriesPrimaryImageTag {
+            return client.imageURL(itemId: seriesId, tag: tag, maxWidth: width)
+        }
+        return primary(item, client, width: width)
+    }
+
     /// 16:9: an episode's still, or a film's thumb or backdrop.
     static func landscape(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
         if item.type == .episode, let tag = item.imageTags?["Primary"] {

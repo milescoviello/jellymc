@@ -481,6 +481,12 @@ final class Grid: Widget {
         gtk_grid_attach(widget.cast(), child.widget, column, row, width, height)
         return self
     }
+
+    func removeAll() {
+        while let child = gtk_widget_get_first_child(widget) {
+            gtk_grid_remove(widget.cast(), child)
+        }
+    }
 }
 
 final class Separator: Widget {
@@ -617,6 +623,27 @@ final class Picture: Widget {
     func fit(_ fit: GtkContentFit) -> Self {
         gtk_picture_set_content_fit(widget.cast(), fit)
         return self
+    }
+}
+
+/// A picture exactly this size, whatever its image's: a plain picture's natural size is
+/// its image's, and a box gives it that. An overlay is its main child's size, here an
+/// empty one, so the picture laid over it gets just that.
+final class FixedPicture: Widget {
+    let picture = Picture()
+    private let sizer = Bin()
+
+    init(width: Int32, height: Int32) {
+        super.init(gtk_overlay_new()!)
+        gtk_overlay_set_child(widget.cast(), sizer.widget)
+        gtk_overlay_add_overlay(widget.cast(), picture.widget)
+        gtk_overlay_set_clip_overlay(widget.cast(), picture.widget, 1)
+        gtk_widget_set_overflow(widget, GTK_OVERFLOW_HIDDEN)
+        sizer.size(width: width, height: height)
+    }
+
+    func resize(width: Int32, height: Int32) {
+        sizer.size(width: width, height: height)
     }
 }
 

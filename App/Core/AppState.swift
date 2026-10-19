@@ -235,6 +235,27 @@ final class AppState {
         dataGeneration += 1
     }
 
+    // MARK: - What a card's menu does, in both apps
+
+    /// Marks watched or not, then has every page catch up.
+    func setPlayed(_ item: BaseItem, _ played: Bool) async {
+        guard let client else { return }
+        _ = try? await client.setPlayed(played, itemId: item.id)
+        await changedHere()
+    }
+
+    /// Plex's "Remove from Continue Watching": the place is forgotten, not the item.
+    func removeFromContinueWatching(_ item: BaseItem) async {
+        guard let client else { return }
+        try? await client.setPosition(0, played: item.isPlayed, lastPlayed: item.userData?.lastPlayedDate ?? Date(), itemId: item.id)
+        await changedHere()
+    }
+
+    private func changedHere() async {
+        if let client { await home.load(client, force: true) }
+        dataGeneration += 1
+    }
+
     // MARK: - From the server
 
     /// What other devices can ask of this one (GeneralCommandType names; Play and PlayState

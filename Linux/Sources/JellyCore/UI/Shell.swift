@@ -115,6 +115,11 @@ final class Shell {
         }
     }
 
+    /// A row's "See All", or a genre: one sort or filter of a library.
+    func open(_ browse: Browse) {
+        content.push(NavigationPage(BrowsePage(shell: self, browse: browse).root, title: browse.title))
+    }
+
     func openLibrary(_ id: String) {
         select(id)
     }

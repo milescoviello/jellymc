@@ -122,6 +122,18 @@ struct UserItemData: Codable, Sendable, Equatable {
     var unplayedItemCount: Int?
 }
 
+extension UserItemData {
+    /// As the server leaves it after marking watched or not: no place kept either way.
+    func marked(played: Bool) -> UserItemData {
+        var data = self
+        data.played = played
+        data.playbackPositionTicks = 0
+        data.unplayedItemCount = played ? 0 : data.unplayedItemCount
+        data.playedPercentage = played ? 100 : nil
+        return data
+    }
+}
+
 struct NameIdPair: Codable, Sendable, Equatable, Hashable {
     var name: String?
     var id: String?
@@ -151,6 +163,27 @@ struct TrickplayInfo: Codable, Sendable, Equatable {
     var thumbnailCount: Int
     var interval: Int
     var bandwidth: Int?
+}
+
+/// One of the server's picks for a film library, with what it was picked from.
+struct Recommendation: Codable, Sendable, Equatable {
+    var items: [BaseItem]?
+    /// SimilarToRecentlyPlayed, SimilarToLikedItem, HasDirectorFromRecentlyPlayed,
+    /// HasActorFromRecentlyPlayed, HasLikedDirector, HasLikedActor.
+    var recommendationType: String?
+    var baselineItemName: String?
+    var categoryId: String?
+
+    /// Plex's name for the same row.
+    var title: String? {
+        guard let name = baselineItemName, !name.isEmpty else { return nil }
+        switch recommendationType {
+        case "SimilarToRecentlyPlayed", "SimilarToLikedItem": return "Because You Watched \(name)"
+        case "HasDirectorFromRecentlyPlayed", "HasLikedDirector": return "Top Movies by \(name)"
+        case "HasActorFromRecentlyPlayed", "HasLikedActor": return "Top Movies Starring \(name)"
+        default: return nil
+        }
+    }
 }
 
 struct ExternalURL: Codable, Sendable, Equatable {
@@ -340,6 +373,8 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
         case .episode?:
             return [seriesName, episodeLabel].compactMap { $0 }.joined(separator: " · ")
         case .season?:
+            // "8 episodes", as Plex's season cards say.
+            if let count = childCount ?? recursiveItemCount { return "\(count) episode\(count == 1 ? "" : "s")" }
             return seriesName
         case .person?:
             return role

@@ -1,27 +1,33 @@
 import CGtk
 import Foundation
 
-/// A film, a series and its seasons, an episode, a collection, a person: artwork, what it is,
-/// how to play it, and what goes with it.
+/// Plex's pre-play screen: a film, a show and its seasons, a season and its episodes, an
+/// episode, a collection, a person. Artwork and what it is, how to play it, and what goes
+/// with it.
 @MainActor
 final class ItemPage {
     private(set) var root: Widget = Bin()
     private unowned let shell: Shell
     private let model: ItemModel
     private let backdrop = Picture()
+    private let poster = FixedPicture(width: 220, height: 330)
     private let logo = Picture().fit(GTK_CONTENT_FIT_CONTAIN)
+    private let parent = Button("", "flat", "heading")
     private let titleLabel = Label("", "title-1").wrap()
+    private let episodeLine = Label("", "title-4").wrap()
     private let meta = Label("", "dim-label").wrap()
-    private let genres = Label("", "dim-label", "caption").wrap()
-    private let tagline = Label("", "heading").wrap()
-    private let overview = Label("").wrap().selectable().maxWidthChars(110)
+    private let ratings = Box.horizontal(spacing: 14)
+    private let genres = Label("", "dim-label").wrap()
     private let actions = Box.horizontal(spacing: 10)
     private let tracks = Box.horizontal(spacing: 10)
-    private let seasonBar = Box.horizontal(spacing: 0).css("linked")
+    private let tagline = Label("", "heading").wrap()
+    private let overview = Label("").wrap().selectable().maxWidthChars(110)
+    private let credits = Grid(rowSpacing: 4, columnSpacing: 18)
+    private let seasons = Box.vertical(spacing: 0)
     private let episodes = ListBox()
     private let children = Box.vertical(spacing: 0)
-    private let info = Box.vertical(spacing: 12)
     private let extra = Box.vertical(spacing: 30)
+    private let info = Box.vertical(spacing: 12)
     private var audioChoice: Int?
     private var subtitleChoice: Int??
     private var versionChoice: String?
@@ -34,33 +40,40 @@ final class ItemPage {
         self.shell = shell
         model = ItemModel(id: item.id, placeholder: item)
 
-        backdrop.size(height: 420).hexpand()
-        logo.size(width: 380, height: 120).halign(GTK_ALIGN_START)
+        backdrop.size(height: 520).hexpand()
+        poster.css("detail-poster").valign(GTK_ALIGN_END)
+        logo.size(width: 380, height: 110).halign(GTK_ALIGN_START)
+        parent.halign(GTK_ALIGN_START)
         let shade = Box.vertical().css("hero-shade").hexpand().vexpand().canTarget(false)
-        let heading = Box.vertical(spacing: 10) {
+        let heading = Box.vertical(spacing: 8) {
+            parent
             logo
             titleLabel
+            episodeLine
             meta
+            ratings
             genres
-            actions.margins(top: 8)
+            actions.margins(top: 10)
             tracks
-        }.valign(GTK_ALIGN_END).margins(bottom: 24, start: 36, end: 36)
-        let hero = Overlay(backdrop).add(shade).add(heading)
-        hero.size(height: 420)
+        }.valign(GTK_ALIGN_END).hexpand()
+        let hero = Overlay(backdrop).add(shade).add(Box.horizontal(spacing: 32) {
+            poster
+            heading
+        }.valign(GTK_ALIGN_END).margins(bottom: 24, start: 36, end: 36))
+        hero.size(height: 520)
 
-        let body = Box.vertical(spacing: 24) {
+        let body = Box.vertical(spacing: 26) {
             hero
-            Box.vertical(spacing: 8) {
+            Box.vertical(spacing: 10) {
                 tagline
                 overview
+                credits.margins(top: 6)
             }.margins(start: 36, end: 36)
-            Box.vertical(spacing: 12) {
-                seasonBar.halign(GTK_ALIGN_START)
-                episodes
-            }.margins(start: 36, end: 36)
-            children.margins(start: 36, end: 36)
-            info.margins(start: 36, end: 36)
-            extra.margins(bottom: 36)
+            seasons
+            episodes.margins(start: 36, end: 36)
+            children
+            extra
+            info.margins(bottom: 36, start: 36, end: 36)
         }
         let header = HeaderBar().showsTitle(false)
         let toolbar = ToolbarView(content: ScrolledWindow(body).vexpand()).top(header).extendsContentToTop()
@@ -68,10 +81,12 @@ final class ItemPage {
         root = toolbar
         root.keep(self)
 
+        parent.onClicked { [weak self] in self?.openParent() }
         root.observe { [weak self] in self?.render() }
         if let client = shell.state.client {
             Task { await model.load(client) }
         }
+        // Back from the player, or changed elsewhere: progress and watched marks.
         let generation = shell.state.dataGeneration
         root.observe { [weak self] in
             guard let self, self.shell.state.dataGeneration != generation, let client = self.shell.state.client else { return }
@@ -84,30 +99,58 @@ final class ItemPage {
     private func render() {
         guard let item = model.item, let client = shell.state.client else { return }
         backdrop.load(Artwork.backdrop(item, client, width: 1920) ?? Artwork.primary(item, client, width: 1280))
-        if let url = Artwork.logo(item, client, width: 420) {
-            logo.load(url)
+        let isEpisode = item.type == .episode
+        if isEpisode {
+            poster.resize(width: 300, height: 169)
+            poster.picture.load(Artwork.primary(item, client, width: 600))
+        } else {
+            poster.resize(width: 220, height: 330)
+            poster.picture.load(Artwork.poster(item, client, width: 440))
+        }
+        poster.visible(item.type != .person || item.imageTags?["Primary"] != nil)
+
+        // An episode or season leads back to its show.
+        if (isEpisode || item.type == .season), let show = item.seriesName {
+            parent.label = show
+            parent.visible(true)
+        } else {
+            parent.visible(false)
+        }
+        let logoURL = isEpisode || item.type == .season ? nil : Artwork.logo(item, client, width: 420)
+        if let logoURL {
+            logo.load(logoURL)
             logo.visible(true)
             titleLabel.visible(false)
         } else {
             logo.visible(false)
             titleLabel.visible(true)
         }
-        titleLabel.text = item.type == .episode ? "\(item.seriesName ?? "") — \(item.title)" : item.title
-        meta.text = Presentation.metaLine(item)
-        genres.text = (item.genres ?? []).prefix(5).joined(separator: " · ")
+        titleLabel.text = isEpisode ? item.title : item.title
+        episodeLine.text = isEpisode ? [item.seasonName, item.indexNumber.map { "Episode \($0)" }].compactMap { $0 }.joined(separator: " · ") : ""
+        episodeLine.visible(isEpisode)
+        meta.text = Presentation.metaLine(item, episodeLabel: !isEpisode)
+        ratings.removeAll()
+        for rating in Presentation.ratings(item) { ratings.append(Label(rating, "rating")) }
+        ratings.visible(!Presentation.ratings(item).isEmpty)
+        genres.text = (item.genres ?? []).prefix(5).joined(separator: ", ")
         genres.visible(!(item.genres ?? []).isEmpty)
         tagline.text = item.taglines?.first ?? ""
         tagline.visible(item.taglines?.first != nil)
         overview.text = item.overview ?? ""
         overview.visible(item.overview != nil)
+        credits.removeAll()
+        for (row, credit) in Presentation.credits(item).enumerated() {
+            credits.attach(Label(credit.title, "credit-title").halign(GTK_ALIGN_START), column: 0, row: Int32(row))
+            credits.attach(Label(credit.names).wrap().halign(GTK_ALIGN_START), column: 1, row: Int32(row))
+        }
 
         renderActions(item)
         renderTracks(item)
-        renderSeasons()
+        renderSeasons(client)
         renderEpisodes(client)
         renderChildren(item, client)
-        renderInfo(item)
         renderExtras(item, client)
+        renderInfo(item)
     }
 
     private func renderActions(_ item: BaseItem) {
@@ -119,43 +162,48 @@ final class ItemPage {
                 self?.play(playable)
             })
             if resume > 0 {
-                actions.append(Button("From the Start", icon: "media-skip-backward-symbolic", "pill") { [weak self] in
+                actions.append(Button(icon: "media-skip-backward-symbolic", "circular") { [weak self] in
                     self?.play(playable, from: 0)
-                })
+                }.tooltip("Play from Beginning"))
             }
         }
-        if item.type != .person {
-            let played = Button(icon: item.isPlayed ? "object-select-symbolic" : "object-select-symbolic", "circular", item.isPlayed ? "accent" : "flat") { [weak self] in
+        if let trailer = item.remoteTrailers?.first?.url, let url = URL(string: trailer) {
+            actions.append(Button(icon: "video-x-generic-symbolic", "circular") {
+                gtk_show_uri(Desktop.window?.cast(), url.absoluteString, guint32(GDK_CURRENT_TIME))
+            }.tooltip("Play Trailer"))
+        } else if let local = model.extras.first(where: { $0.type == .trailer }) {
+            actions.append(Button(icon: "video-x-generic-symbolic", "circular") { [weak self] in
+                self?.shell.window.play(local)
+            }.tooltip("Play Trailer"))
+        }
+        if item.type != .person, item.type != .boxSet {
+            let played = Button(icon: "object-select-symbolic", "circular") { [weak self] in
                 Task { await self?.model.togglePlayed() }
             }
-            played.tooltip(item.isPlayed ? "Mark Unplayed" : "Mark Played")
+            played.tooltip(item.isPlayed ? "Mark as Unwatched" : "Mark as Watched")
             if item.isPlayed { played.css("played-on") }
             actions.append(played)
         }
-        let favourite = Button(icon: item.isFavorite ? "starred-symbolic" : "non-starred-symbolic", "circular", "flat") { [weak self] in
+        let favourite = Button(icon: item.isFavorite ? "starred-symbolic" : "non-starred-symbolic", "circular") { [weak self] in
             Task { await self?.model.toggleFavorite() }
         }
         favourite.tooltip(item.isFavorite ? "Remove from Favourites" : "Add to Favourites")
+        if item.isFavorite { favourite.css("played-on") }
         actions.append(favourite)
         if item.type?.isVideo == true, item.mediaSources != nil {
             actions.append(downloadButton(for: item))
         }
-        if item.type == .series || item.type == .season, !model.episodes.isEmpty {
+        if item.type == .season, !model.episodes.isEmpty {
             let episodes = model.episodes
             let downloads = shell.state.downloads
-            actions.append(Button("Download Season", icon: "folder-download-symbolic", "pill", "flat") {
+            actions.append(Button(icon: "folder-download-symbolic", "circular") {
                 Task { await downloads.download(episodes, for: .mpv) }
                 Desktop.main?.toast("Downloading \(episodes.count) episode\(episodes.count == 1 ? "" : "s")")
-            })
-        }
-        if let trailer = item.remoteTrailers?.first?.url, let url = URL(string: trailer) {
-            actions.append(Button("Trailer", icon: "video-x-generic-symbolic", "pill", "flat") {
-                gtk_show_uri(Desktop.window?.cast(), url.absoluteString, guint32(GDK_CURRENT_TIME))
-            })
+            }.tooltip("Download Season"))
         }
     }
 
-    /// Audio, subtitle and version pickers, for what the play button starts.
+    /// Version, audio and subtitle pickers, for what the play button starts.
     private func renderTracks(_ item: BaseItem) {
         tracks.removeAll()
         guard model.playable?.id == item.id, let sources = item.mediaSources, let source = sources.first(where: { $0.id == versionChoice }) ?? sources.first else {
@@ -167,34 +215,33 @@ final class ItemPage {
         let audio = audioChoice ?? initial.audio
         let subtitle = subtitleChoice ?? initial.subtitle
 
-        if sources.count > 1 {
-            tracks.append(MenuButton(icon: "media-optical-symbolic", label: source.name ?? "Version", "flat") {
-                Menu([[.choice("Version", options: sources.map { ($0.id, $0.name ?? $0.id) }, selected: source.id) { [weak self] id in
+        if let video = source.videoStream {
+            let label = sources.count > 1 ? (source.name ?? video.label) : video.label
+            tracks.append(MenuButton(icon: "video-display-symbolic", label: label, "flat") {
+                Menu([[.choice("Version", options: sources.map { ($0.id, $0.name ?? $0.videoStream?.label ?? $0.id) }, selected: source.id) { [weak self] id in
                     self?.versionChoice = id
                     self?.audioChoice = nil
                     self?.subtitleChoice = nil
                     self?.render()
                 }]])
-            })
+            }.tooltip("Video"))
         }
-        if source.audioStreams.count > 1 {
+        if !source.audioStreams.isEmpty {
             let current = source.audioStreams.first { $0.index == audio }?.label ?? "Audio"
             tracks.append(MenuButton(icon: "audio-volume-high-symbolic", label: current, "flat") {
                 Menu([[.choice("Audio", options: source.audioStreams.map { (String($0.index), $0.label) }, selected: audio.map(String.init)) { [weak self] id in
                     self?.audioChoice = Int(id)
                     self?.render()
                 }]])
-            })
+            }.tooltip("Audio"))
         }
-        if !source.subtitleStreams.isEmpty {
-            let current = subtitle.flatMap { index in source.subtitleStreams.first { $0.index == index }?.label } ?? "Subtitles Off"
-            tracks.append(MenuButton(icon: "media-view-subtitles-symbolic", label: current, "flat") {
-                Menu([[.choice("Subtitles", options: [("off", "Off")] + source.subtitleStreams.map { (String($0.index), $0.label) }, selected: subtitle.map(String.init) ?? "off") { [weak self] id in
-                    self?.subtitleChoice = .some(Int(id))
-                    self?.render()
-                }]])
-            })
-        }
+        let current = subtitle.flatMap { index in source.subtitleStreams.first { $0.index == index }?.label } ?? "None"
+        tracks.append(MenuButton(icon: "media-view-subtitles-symbolic", label: current, "flat") {
+            Menu([[.choice("Subtitles", options: [("off", "None")] + source.subtitleStreams.map { (String($0.index), $0.label) }, selected: subtitle.map(String.init) ?? "off") { [weak self] id in
+                self?.subtitleChoice = .some(Int(id))
+                self?.render()
+            }]])
+        }.tooltip("Subtitles"))
     }
 
     /// Download, its progress, or Remove: one button that says where the file is.
@@ -202,20 +249,20 @@ final class ItemPage {
         let downloads = shell.state.downloads
         switch downloads.record(for: item.id)?.state {
         case .done?:
-            let button = Button("Downloaded", icon: "emblem-ok-symbolic", "pill", "flat") {
+            let button = Button(icon: "emblem-ok-symbolic", "circular", "played-on") {
                 Dialogs.alert("Remove the download?", body: item.title, responses: [("cancel", "Cancel", ADW_RESPONSE_DEFAULT), ("remove", "Remove", ADW_RESPONSE_DESTRUCTIVE)]) { response in
                     if response == "remove" { downloads.remove(item.id) }
                 }
             }
-            return button.tooltip("Saved on this computer. Click to remove.")
+            return button.tooltip("Downloaded. Click to remove.")
         case .queued?, .downloading?:
             let percent = Int((downloads.record(for: item.id)?.progress ?? 0) * 100)
-            return Button("\(percent)%", icon: "process-stop-symbolic", "pill", "flat") { downloads.remove(item.id) }
+            return Button("\(percent)%", icon: "process-stop-symbolic", "pill") { downloads.remove(item.id) }
                 .tooltip("Downloading. Click to cancel.")
         case .failed?:
-            return Button("Retry Download", icon: "view-refresh-symbolic", "pill", "flat") { downloads.retry(item.id) }
+            return Button(icon: "view-refresh-symbolic", "circular") { downloads.retry(item.id) }.tooltip("Retry Download")
         case nil:
-            return Button("Download", icon: "folder-download-symbolic", "pill", "flat") { [weak self] in self?.download(item) }
+            return Button(icon: "folder-download-symbolic", "circular") { [weak self] in self?.download(item) }.tooltip("Download")
         }
     }
 
@@ -224,39 +271,24 @@ final class ItemPage {
         Task { await downloads.download(item, for: .mpv) }
     }
 
-    private func renderSeasons() {
-        let ids = model.seasons.map(\.id)
-        guard ids != shownSeasons else {
-            highlightSeason()
-            return
-        }
-        shownSeasons = ids
-        seasonBar.removeAll()
-        seasonBar.visible(model.seasons.count > 0)
-        var first: ToggleButton?
-        for season in model.seasons {
-            let button = ToggleButton(season.title) { [weak self] active in
-                if active { self?.model.selectedSeasonId = season.id }
-            }
-            button.name("season-\(season.id)")
-            if let first { button.group(with: first) } else { first = button }
-            seasonBar.append(button)
-        }
-        highlightSeason()
+    /// A show's seasons, as Plex shows them: a row of posters.
+    private func renderSeasons(_ client: JellyfinClient) {
+        let list = model.seasons
+        let key = list.map { "\($0.id):\($0.userData?.unplayedItemCount ?? -1)" }
+        guard key != shownSeasons else { return }
+        shownSeasons = key
+        seasons.removeAll()
+        guard !list.isEmpty else { return }
+        let row = CardRow(
+            title: "\(list.count) Season\(list.count == 1 ? "" : "s")", style: .poster,
+            activate: { [weak self] season in self?.shell.open(season) },
+            menu: { [weak self] season in self.flatMap { ItemMenu.make(season, shell: $0.shell) } }
+        )
+        row.show(list, client: client)
+        seasons.append(row.root)
     }
 
-    private func highlightSeason() {
-        var child = gtk_widget_get_first_child(seasonBar.widget)
-        while let widget = child {
-            let name = String(cString: gtk_widget_get_name(widget))
-            let active = name == "season-\(model.selectedSeasonId ?? "")"
-            if active, gtk_toggle_button_get_active(UnsafeMutableRawPointer(widget).assumingMemoryBound(to: GtkToggleButton.self)) == 0 {
-                gtk_toggle_button_set_active(UnsafeMutableRawPointer(widget).assumingMemoryBound(to: GtkToggleButton.self), 1)
-            }
-            child = gtk_widget_get_next_sibling(widget)
-        }
-    }
-
+    /// A season's episodes: still, number and title, length, summary, progress.
     private func renderEpisodes(_ client: JellyfinClient) {
         let list = model.episodes
         let key = list.map { "\($0.id):\($0.isPlayed):\($0.userData?.playbackPositionTicks ?? 0)" }
@@ -266,38 +298,51 @@ final class ItemPage {
         episodes.visible(!list.isEmpty)
         for episode in list {
             let still = Picture()
-            still.size(width: 220, height: 124).css("card-art")
-            still.load(Artwork.primary(episode, client, width: 440))
+            still.size(width: 240, height: 135).css("card-art")
+            still.load(Artwork.primary(episode, client, width: 480))
             let progress = ProgressBar().css("card-progress")
             progress.fraction = episode.progress ?? 0
             progress.visible(episode.progress != nil)
+            let unwatched = Presentation.unwatched(episode) == .mark
+            let corner = DrawingArea(width: 22, height: 22) { cairo, width, height in
+                cairo.color(red: 0.898, green: 0.627, blue: 0.051)
+                cairo.move(0, 0)
+                cairo.line(width, 0)
+                cairo.line(width, height)
+                cairo.close()
+                cairo.fill()
+            }.halign(GTK_ALIGN_END).valign(GTK_ALIGN_START).visible(unwatched).canTarget(false)
+            let art = Overlay(still)
+                .add(progress.valign(GTK_ALIGN_END).margins(bottom: 6, start: 8, end: 8))
+                .add(corner)
+            art.clipped().css("card-art")
             let number = episode.indexNumber.map { "\($0). " } ?? ""
             let titleRow = Box.horizontal(spacing: 8) {
                 Label(number + episode.title, "heading").ellipsize()
                 Spacer()
                 Label(episode.runtime.map(Ticks.runtime) ?? "", "dim-label", "caption")
             }
-            if episode.isPlayed {
-                titleRow.append(Icon("object-select-symbolic").css("accent"))
-            }
             let row = Box.horizontal(spacing: 18) {
-                Overlay(still).add(progress.valign(GTK_ALIGN_END).margins(bottom: 6, start: 8, end: 8))
+                art
                 Box.vertical(spacing: 6) {
                     titleRow
                     Label(episode.overview ?? "", "dim-label").wrap().lines(3).ellipsize()
                 }.valign(GTK_ALIGN_CENTER).hexpand()
             }.margin(10)
             row.contextMenu { [weak self] in
-                Menu([[
-                    .action("Play") { self?.play(episode) },
-                    .action("Play from the Start") { self?.play(episode, from: 0) },
-                    .action(episode.isPlayed ? "Mark Unplayed" : "Mark Played") {
-                        Task { await self?.model.setEpisodePlayed(episode, !episode.isPlayed) }
+                guard let self else { return nil }
+                return Menu([[
+                    .action(episode.resumeSeconds > 0 ? "Resume" : "Play") { self.play(episode) },
+                    .action("Play from Beginning") { self.play(episode, from: 0) },
+                    .action("More Info") { self.shell.open(episode) },
+                ], [
+                    .action(episode.isPlayed ? "Mark as Unwatched" : "Mark as Watched") {
+                        Task { await self.model.setEpisodePlayed(episode, !episode.isPlayed) }
                     },
-                    .action("Episode Details") { self?.shell.open(episode) },
                 ]])
             }
-            episodes.append(row) { [weak self] in self?.play(episode) }
+            // Plex: an episode in the list opens its page; play is there, or on the menu.
+            episodes.append(row) { [weak self] in self?.shell.open(episode) }
         }
     }
 
@@ -308,42 +353,59 @@ final class ItemPage {
         shownChildren = key
         children.removeAll()
         guard !list.isEmpty else { return }
-        let row = CardRow(title: item.type == .person ? "Filmography" : "In This Collection", style: .poster) { [weak self] child in
-            self?.shell.open(child)
-        }
+        let row = CardRow(
+            title: item.type == .person ? "Filmography" : "\(list.count) Item\(list.count == 1 ? "" : "s")", style: .poster,
+            activate: { [weak self] child in self?.shell.open(child) },
+            menu: { [weak self] child in self.flatMap { ItemMenu.make(child, shell: $0.shell) } }
+        )
         row.show(list, client: client)
-        children.append(row.root.margins(start: -24, end: -24))
+        children.append(row.root)
+    }
+
+    private func renderExtras(_ item: BaseItem, _ client: JellyfinClient) {
+        let people = Presentation.castAndCrew(item)
+        let key = people.map(\.id).joined() + "|" + model.extras.map(\.id).joined() + "|" + model.similar.map(\.id).joined()
+        guard key != shownExtras else { return }
+        shownExtras = key
+        extra.removeAll()
+        if !people.isEmpty {
+            extra.append(CastRow(people: people, client: client) { [weak self] person in self?.shell.open(person) }.root)
+        }
+        if !model.extras.isEmpty {
+            let row = CardRow(title: "Extras", style: .landscape, activate: { [weak self] extra in self?.shell.window.play(extra) })
+            row.show(model.extras, client: client)
+            extra.append(row.root)
+        }
+        if !model.similar.isEmpty {
+            let row = CardRow(
+                title: "More Like This", style: .poster,
+                activate: { [weak self] other in self?.shell.open(other) },
+                menu: { [weak self] other in self.flatMap { ItemMenu.make(other, shell: $0.shell) } }
+            )
+            row.show(model.similar, client: client)
+            extra.append(row.root)
+        }
     }
 
     private func renderInfo(_ item: BaseItem) {
         info.removeAll()
         guard let source = item.mediaSources?.first(where: { $0.id == versionChoice }) ?? item.mediaSources?.first else { return }
-        let group = PreferencesGroup("Media")
+        let group = PreferencesGroup("Media Info")
         for row in Presentation.mediaRows(source) {
             group.add(ActionRow(row.title, subtitle: row.value))
         }
         info.append(group)
     }
 
-    private func renderExtras(_ item: BaseItem, _ client: JellyfinClient) {
-        let people = (item.people ?? []).prefix(30)
-        let key = people.map(\.id).joined() + "|" + model.similar.map(\.id).joined()
-        guard key != shownExtras else { return }
-        shownExtras = key
-        extra.removeAll()
-        if !people.isEmpty {
-            let row = CardRow(title: "Cast & Crew", style: .poster) { [weak self] person in self?.shell.open(person) }
-            row.show(people.map(BaseItem.init(person:)), client: client)
-            extra.append(row.root)
-        }
-        if !model.similar.isEmpty {
-            let row = CardRow(title: "More Like This", style: .poster) { [weak self] other in self?.shell.open(other) }
-            row.show(model.similar, client: client)
-            extra.append(row.root)
-        }
-    }
+    // MARK: - Going places
 
-    // MARK: - Playing
+    private func openParent() {
+        guard let item = model.item, let seriesId = item.seriesId else { return }
+        var show = BaseItem(id: seriesId)
+        show.type = .series
+        show.name = item.seriesName
+        shell.open(show)
+    }
 
     private func play(_ playable: BaseItem, from start: Double? = nil) {
         let isThis = playable.id == model.item?.id

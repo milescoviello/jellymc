@@ -143,20 +143,23 @@ final class JellyfinClient: Sendable {
         return page.items
     }
 
-    func resume(limit: Int = 24, mediaTypes: String = "Video") async throws -> [BaseItem] {
-        let page: ItemsPage<BaseItem> = try await get("UserItems/Resume", query: userQuery([
+    func resume(parentId: String? = nil, limit: Int = 24, mediaTypes: String = "Video") async throws -> [BaseItem] {
+        var query = userQuery([
             "limit": String(limit), "mediaTypes": mediaTypes, "fields": Self.listFields,
             "enableImageTypes": Self.imageTypes, "imageTypeLimit": "1",
-        ]))
+        ])
+        if let parentId { query["parentId"] = parentId }
+        let page: ItemsPage<BaseItem> = try await get("UserItems/Resume", query: query)
         return page.items
     }
 
-    func nextUp(seriesId: String? = nil, limit: Int = 24) async throws -> [BaseItem] {
+    func nextUp(seriesId: String? = nil, parentId: String? = nil, limit: Int = 24) async throws -> [BaseItem] {
         var query = userQuery([
             "limit": String(limit), "fields": Self.listFields, "enableImageTypes": Self.imageTypes,
             "imageTypeLimit": "1", "enableResumable": "false", "enableRewatching": "false",
         ])
         if let seriesId { query["seriesId"] = seriesId }
+        if let parentId { query["parentId"] = parentId }
         let page: ItemsPage<BaseItem> = try await get("Shows/NextUp", query: query)
         return page.items
     }
@@ -190,6 +193,31 @@ final class JellyfinClient: Sendable {
         if let seasonId { query["seasonId"] = seasonId }
         let page: ItemsPage<BaseItem> = try await get("Shows/\(seriesId)/Episodes", query: query)
         return page.items
+    }
+
+    /// The server's own picks for a film library: like what was watched or liked, or with
+    /// its director or actors.
+    func recommendations(parentId: String, categories: Int = 3, itemsEach: Int = 12) async throws -> [Recommendation] {
+        try await get("Movies/Recommendations", query: userQuery([
+            "parentId": parentId, "categoryLimit": String(categories), "itemLimit": String(itemsEach),
+            "fields": Self.listFields,
+        ]))
+    }
+
+    /// A library's genres, by name.
+    func genres(parentId: String, includeItemTypes: [ItemKind]) async throws -> [BaseItem] {
+        var query = userQuery(["parentId": parentId, "sortBy": "SortName", "sortOrder": "Ascending", "enableImages": "false"])
+        if !includeItemTypes.isEmpty { query["includeItemTypes"] = includeItemTypes.map(\.rawValue).joined(separator: ",") }
+        let page: ItemsPage<BaseItem> = try await get("Genres", query: query)
+        return page.items
+    }
+
+    /// Behind-the-scenes, featurettes and the like, and the trailers that came with the
+    /// file: Plex's Extras.
+    func extras(for id: String) async throws -> [BaseItem] {
+        async let features: [BaseItem] = get("Items/\(id)/SpecialFeatures", query: userQuery())
+        async let trailers: [BaseItem] = get("Items/\(id)/LocalTrailers", query: userQuery())
+        return ((try? await trailers) ?? []) + ((try? await features) ?? [])
     }
 
     func similar(to id: String, limit: Int = 12) async throws -> [BaseItem] {
@@ -420,23 +448,32 @@ final class JellyfinClient: Sendable {
 
 /// `GET /Items`'s filters, for library pages and search.
 struct ItemQuery: Sendable, Equatable {
-    enum Sort: String, Sendable, CaseIterable {
+    /// Plex's sorts, as far as Jellyfin has them.
+    enum Sort: String, Codable, Sendable, CaseIterable {
         case name = "SortName"
-        case dateAdded = "DateCreated"
+        case year = "ProductionYear"
         case premiere = "PremiereDate"
         case rating = "CommunityRating"
-        case runtime = "Runtime"
+        case criticRating = "CriticRating"
+        case officialRating = "OfficialRating"
+        case dateAdded = "DateCreated"
         case lastPlayed = "DatePlayed"
+        case runtime = "Runtime"
+        case playCount = "PlayCount"
         case random = "Random"
 
         var title: String {
             switch self {
-            case .name: return "Name"
-            case .dateAdded: return "Date Added"
+            case .name: return "Title"
+            case .year: return "Year"
             case .premiere: return "Release Date"
-            case .rating: return "Rating"
-            case .runtime: return "Runtime"
-            case .lastPlayed: return "Last Played"
+            case .rating: return "Audience Rating"
+            case .criticRating: return "Critic Rating"
+            case .officialRating: return "Content Rating"
+            case .dateAdded: return "Date Added"
+            case .lastPlayed: return "Date Viewed"
+            case .runtime: return "Duration"
+            case .playCount: return "Plays"
             case .random: return "Random"
             }
         }
@@ -445,7 +482,7 @@ struct ItemQuery: Sendable, Equatable {
         var defaultDescending: Bool { self != .name }
     }
 
-    enum Filter: String, Sendable, CaseIterable {
+    enum Filter: String, Codable, Sendable, CaseIterable {
         case unplayed = "IsUnplayed"
         case played = "IsPlayed"
         case favorite = "IsFavorite"
@@ -469,6 +506,14 @@ struct ItemQuery: Sendable, Equatable {
     var filters: [Filter] = []
     var genres: [String] = []
     var personIds: [String] = []
+    var years: [Int] = []
+    var officialRatings: [String] = []
+    /// Only items released by now: "Recently Released" is not next year's.
+    var releasedBy: Date?
+    var is4K: Bool?
+    var excludeItemIds: [String] = []
+    var nameStartsWith: String?
+    var nameLessThan: String?
     var searchTerm: String?
     var startIndex = 0
     var limit = 100
@@ -495,6 +540,13 @@ struct ItemQuery: Sendable, Equatable {
         if !filters.isEmpty { query["filters"] = filters.map(\.rawValue).joined(separator: ",") }
         if !genres.isEmpty { query["genres"] = genres.joined(separator: "|") }
         if !personIds.isEmpty { query["personIds"] = personIds.joined(separator: ",") }
+        if !years.isEmpty { query["years"] = years.map(String.init).joined(separator: ",") }
+        if !officialRatings.isEmpty { query["officialRatings"] = officialRatings.joined(separator: "|") }
+        if let releasedBy { query["maxPremiereDate"] = ISO8601DateFormatter().string(from: releasedBy) }
+        if let is4K { query["is4K"] = is4K ? "true" : "false" }
+        if !excludeItemIds.isEmpty { query["excludeItemIds"] = excludeItemIds.joined(separator: ",") }
+        if let nameStartsWith { query["nameStartsWith"] = nameStartsWith }
+        if let nameLessThan { query["nameLessThan"] = nameLessThan }
         return query
     }
 }

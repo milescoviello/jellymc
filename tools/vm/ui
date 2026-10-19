@@ -4,6 +4,8 @@
 #   tools/vm/ui shot NAME          screenshot to $JELLYMC_SHOTS/NAME.png
 #   tools/vm/ui click X Y          a left click at that pixel of the 1280x800 screen
 #   tools/vm/ui move X Y           the pointer there, no click (hover)
+#   tools/vm/ui rclick X Y         a right click there (context menus)
+#   tools/vm/ui wheel X Y N        N notches of the scroll wheel there (negative: up)
 #   tools/vm/ui keys esc tab ret   QEMU key names
 #   tools/vm/ui type 'text'
 #
@@ -29,6 +31,39 @@ def cmd(name, **args):
 cmd("qmp_capabilities")
 cmd("input-send-event", events=[{"type": "abs", "data": {"axis": "x", "value": int(x * 0x7FFF / 1279)}},
                                 {"type": "abs", "data": {"axis": "y", "value": int(y * 0x7FFF / 799)}}])
+PY
+        ;;
+    rclick) ssh root@100.105.58.62 python3 - "$VMID" "${1:?x}" "${2:?y}" <<'PY'
+import json, socket, sys, time
+vmid, x, y = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+s = socket.socket(socket.AF_UNIX); s.connect(f"/var/run/qemu-server/{vmid}.qmp"); f = s.makefile("rw"); f.readline()
+def cmd(name, **args):
+    f.write(json.dumps({"execute": name, **({"arguments": args} if args else {})}) + "\n"); f.flush()
+    while "return" not in (r := json.loads(f.readline())) and "error" not in r: pass
+cmd("qmp_capabilities")
+cmd("input-send-event", events=[{"type": "abs", "data": {"axis": "x", "value": int(x * 0x7FFF / 1279)}},
+                                {"type": "abs", "data": {"axis": "y", "value": int(y * 0x7FFF / 799)}}])
+time.sleep(0.15)
+cmd("input-send-event", events=[{"type": "btn", "data": {"down": True, "button": "right"}}])
+time.sleep(0.08)
+cmd("input-send-event", events=[{"type": "btn", "data": {"down": False, "button": "right"}}])
+PY
+        ;;
+    wheel) ssh root@100.105.58.62 python3 - "$VMID" "${1:?x}" "${2:?y}" "${3:?notches}" <<'PY'
+import json, socket, sys, time
+vmid, x, y, n = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+s = socket.socket(socket.AF_UNIX); s.connect(f"/var/run/qemu-server/{vmid}.qmp"); f = s.makefile("rw"); f.readline()
+def cmd(name, **args):
+    f.write(json.dumps({"execute": name, **({"arguments": args} if args else {})}) + "\n"); f.flush()
+    while "return" not in (r := json.loads(f.readline())) and "error" not in r: pass
+cmd("qmp_capabilities")
+cmd("input-send-event", events=[{"type": "abs", "data": {"axis": "x", "value": int(x * 0x7FFF / 1279)}},
+                                {"type": "abs", "data": {"axis": "y", "value": int(y * 0x7FFF / 799)}}])
+button = "wheel-down" if n > 0 else "wheel-up"
+for _ in range(abs(n)):
+    cmd("input-send-event", events=[{"type": "btn", "data": {"down": True, "button": button}}])
+    cmd("input-send-event", events=[{"type": "btn", "data": {"down": False, "button": button}}])
+    time.sleep(0.05)
 PY
         ;;
     keys) "$DM/desktop/vmctl" keys "$VMID" "$@" >/dev/null ;;

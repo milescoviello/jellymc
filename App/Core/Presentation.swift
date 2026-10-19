@@ -2,10 +2,11 @@ import Foundation
 
 /// What a detail page says about an item, worded once for both apps.
 enum Presentation {
-    /// "2010 · PG-13 · ★ 7.4 · 1h 45m · ends at 22:15" — or a series' run and seasons.
-    static func metaLine(_ item: BaseItem, now: Date = Date()) -> String {
+    /// Plex's line under the title: "2010 · 1h 45m · PG-13", and when it would end; a
+    /// series' run and its seasons. The ratings have a line of their own.
+    static func metaLine(_ item: BaseItem, now: Date = Date(), episodeLabel: Bool = true) -> String {
         var parts: [String] = []
-        if let label = item.episodeLabel { parts.append(label) }
+        if episodeLabel, let label = item.episodeLabel { parts.append(label) }
         if let year = item.productionYear {
             if item.type == .series, item.status == "Continuing" {
                 parts.append("\(year)–")
@@ -13,18 +14,68 @@ enum Presentation {
                 parts.append(String(year))
             }
         }
-        if let rating = item.officialRating { parts.append(rating) }
-        if let score = item.communityRating { parts.append(String(format: "★ %.1f", score)) }
-        if let runtime = item.runtime, item.type != .series {
-            parts.append(Ticks.runtime(runtime))
-            if item.type?.isVideo == true {
-                parts.append("ends at \(clock(now.addingTimeInterval(runtime - item.resumeSeconds)))")
-            }
-        }
+        if let runtime = item.runtime, item.type != .series { parts.append(Ticks.runtime(runtime)) }
         if item.type == .series, let count = item.childCount {
-            parts.append("\(count) season\(count == 1 ? "" : "s")")
+            parts.append("\(count) Season\(count == 1 ? "" : "s")")
+        }
+        if let rating = item.officialRating { parts.append(rating) }
+        if let runtime = item.runtime, item.type?.isVideo == true {
+            parts.append("Ends at \(clock(now.addingTimeInterval(runtime - item.resumeSeconds)))")
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// The audience's score and the critics': "★ 7.4", "🍅 85%".
+    static func ratings(_ item: BaseItem) -> [String] {
+        var ratings: [String] = []
+        if let score = item.communityRating, score > 0 { ratings.append(String(format: "★ %.1f", score)) }
+        if let critics = item.criticRating, critics > 0 { ratings.append("\(critics >= 60 ? "🍅" : "🤢") \(Int(critics))%") }
+        return ratings
+    }
+
+    /// Plex's credit lines under the summary: who directed, who wrote, which studio.
+    static func credits(_ item: BaseItem) -> [(title: String, names: String)] {
+        let people = item.people ?? []
+        func names(_ type: String) -> String {
+            people.filter { $0.type == type }.compactMap(\.name).prefix(4).joined(separator: ", ")
+        }
+        var lines: [(String, String)] = []
+        let directors = names("Director")
+        if !directors.isEmpty { lines.append(("Directed by", directors)) }
+        let writers = names("Writer")
+        if !writers.isEmpty { lines.append(("Written by", writers)) }
+        let studios = (item.studios ?? []).compactMap(\.name).prefix(3).joined(separator: ", ")
+        if !studios.isEmpty { lines.append(("Studio", studios)) }
+        return lines
+    }
+
+    /// Cast first, in billing order, then the crew: Plex's Cast & Crew row.
+    static func castAndCrew(_ item: BaseItem) -> [Person] {
+        let people = item.people ?? []
+        let cast = people.filter { $0.type == "Actor" || $0.type == "GuestStar" }
+        let crew = people.filter { $0.type != "Actor" && $0.type != "GuestStar" }
+        return Array((cast + crew).prefix(40))
+    }
+
+    /// What a card's corner says about how much is left to watch: nothing once watched, a
+    /// count of unwatched episodes on a show, Plex's unwatched mark on a film or episode.
+    enum Unwatched: Equatable {
+        case none
+        case mark
+        case count(Int)
+    }
+
+    static func unwatched(_ item: BaseItem) -> Unwatched {
+        if item.isPlayed { return .none }
+        switch item.type {
+        case .series?, .season?, .boxSet?:
+            guard let count = item.userData?.unplayedItemCount, count > 0 else { return .none }
+            return .count(count)
+        case .movie?, .episode?, .video?:
+            return (item.userData?.playbackPositionTicks ?? 0) > 0 ? .none : .mark
+        default:
+            return .none
+        }
     }
 
     /// The play button's words: "Resume 42:10", "Play S1:E3", "Play".
