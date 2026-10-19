@@ -67,7 +67,7 @@ struct PlayerView: View {
         }
     }
 
-    private func start(_ item: BaseItem, from start: Double?, audio: Int?, subtitle: Int?, version: String?) {
+    private func start(_ item: BaseItem, from start: Double?, audio: Int?, subtitle: Int?, version: String?, autoplayed: Int = 0) {
         guard let client = state.client else { return }
         session?.stop()
         let session = PlaybackSession(
@@ -76,10 +76,11 @@ struct PlayerView: View {
             engine: engine,
             preferences: state.playbackPreferences(network: reachability.network),
             segmentActions: state.preferences.segmentActions,
-            autoplayNext: state.preferences.autoplayNext
+            autoplayNext: state.preferences.autoplayNext,
+            autoplayed: autoplayed
         )
-        session.onPlayNext = { next in
-            self.start(next, from: 0, audio: nil, subtitle: nil, version: nil)
+        session.onPlayNext = { next, autoplayed in
+            self.start(next, from: 0, audio: nil, subtitle: nil, version: nil, autoplayed: autoplayed)
         }
         session.onFinished = { close() }
         self.session = session
@@ -143,6 +144,23 @@ private struct Overlays: View {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                 .padding(.trailing, 24)
                 .padding(.bottom, 110)
+            }
+
+            if session.isAskingStillWatching {
+                VStack(spacing: 14) {
+                    Text("Are you still watching?").font(.title3.bold())
+                    HStack {
+                        Button("Continue Watching") { session.keepWatching() }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.plexGold)
+                            .foregroundStyle(.black)
+                        Button("Stop") { session.end() }
+                            .buttonStyle(.bordered)
+                    }
+                }
+                .padding(24)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             if let error = session.error {

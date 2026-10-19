@@ -716,3 +716,67 @@ struct PlayButtonTests {
         #expect(Presentation.playLabel(for: episode, on: show) == "Play S1:E3")
     }
 }
+
+@MainActor
+struct StillWatchingTests {
+    private final class CountingEngine: PlayerEngine {
+        let kind = PlayerKind.mpv
+        var onEvent: (@MainActor (PlayerEvent) -> Void)?
+        var pauses = 0
+        var plays = 0
+        func load(_ plan: PlaybackPlan) {}
+        func play() { plays += 1 }
+        func pause() { pauses += 1 }
+        func seek(to seconds: Double) {}
+        func setRate(_ rate: Double) {}
+        func selectAudio(_ streamIndex: Int, in plan: PlaybackPlan) -> Bool { true }
+        func selectSubtitle(_ streamIndex: Int?, in plan: PlaybackPlan) -> Bool { true }
+        func stop() {}
+    }
+
+    private let nowhere = JellyfinClient(
+        baseURL: URL(string: "http://127.0.0.1:9")!,
+        device: DeviceIdentity(deviceName: "Test", deviceId: "device-1", version: "0.1.0"),
+        token: "t", userId: "u"
+    )
+
+    private func plan() -> PlaybackPlan {
+        PlaybackPlan(
+            itemId: "e", source: MediaSource(id: "ms"), playSessionId: nil, method: .directPlay,
+            url: URL(fileURLWithPath: "/nonexistent/e.mkv"), startSeconds: 0, audioIndex: nil, subtitleIndex: nil,
+            externalSubtitles: [], transcodeReasons: [], httpHeaders: [:]
+        )
+    }
+
+    @Test func asksAfterThreeInARowAndCountsOnlyWhatNobodyStarted() async {
+        var episode = BaseItem(id: "e")
+        episode.type = .episode
+        let engine = CountingEngine()
+        let third = PlaybackSession(item: episode, client: nowhere, engine: engine, preferences: PlaybackPreferences(), autoplayed: 3)
+        await third.start(at: 0, local: plan())
+        #expect(third.isAskingStillWatching)
+        // The pause comes with the first frame, not before it.
+        #expect(engine.pauses == 0)
+        engine.onEvent?(.position(0.1, duration: 330))
+        #expect(engine.pauses == 1)
+        engine.onEvent?(.position(0.2, duration: 330))
+        #expect(engine.pauses == 1)
+        third.keepWatching()
+        #expect(!third.isAskingStillWatching)
+        #expect(engine.plays == 1)
+        third.stop()
+
+        let second = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), autoplayed: 2)
+        await second.start(at: 0, local: plan())
+        #expect(!second.isAskingStillWatching)
+        var handedOn: [Int] = []
+        second.onPlayNext = { _, count in handedOn.append(count) }
+        second.playNext(BaseItem(id: "next"), automatic: true)
+        #expect(handedOn == [3])
+        let chosen = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), autoplayed: 2)
+        await chosen.start(at: 0, local: plan())
+        chosen.onPlayNext = { _, count in handedOn.append(count) }
+        chosen.playNext(BaseItem(id: "next"))
+        #expect(handedOn == [3, 0])
+    }
+}

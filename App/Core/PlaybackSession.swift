@@ -66,7 +66,16 @@ final class PlaybackSession {
     private(set) var hasEnded = false
 
     /// Set by the screen: open this item as the next playback.
-    @ObservationIgnored var onPlayNext: (@MainActor (BaseItem) -> Void)?
+    /// Set by the screen: play this next. The count is how many episodes in a row will have
+    /// started on their own, for the next session's "Still watching?".
+    @ObservationIgnored var onPlayNext: (@MainActor (BaseItem, Int) -> Void)?
+    /// Plex asks after three episodes in a row that nobody started.
+    static let stillWatchingAfter = 3
+    /// Paused at the start, asking whether anyone is still watching.
+    private(set) var isAskingStillWatching = false
+    @ObservationIgnored private let autoplayed: Int
+    @ObservationIgnored private var hasAskedStillWatching = false
+    @ObservationIgnored private var pausesWhenPlaying = false
     /// Set by the screen: playback is over and the player should close.
     @ObservationIgnored var onFinished: (@MainActor () -> Void)?
 
@@ -91,8 +100,10 @@ final class PlaybackSession {
         engine: PlayerEngine,
         preferences: PlaybackPreferences,
         segmentActions: [MediaSegment.Kind: SegmentAction] = [:],
-        autoplayNext: Bool = true
+        autoplayNext: Bool = true,
+        autoplayed: Int = 0
     ) {
+        self.autoplayed = autoplayed
         self.item = item
         self.client = client
         self.engine = engine
@@ -168,6 +179,14 @@ final class PlaybackSession {
         position = plan.startSeconds
         engine.load(plan)
         started = true
+        // Once a session: a track switch reopens the file, and should not ask again. The
+        // pause waits for the first frame: an engine paused while it opens the file shows
+        // no picture, and may report nothing at all.
+        if autoplayed >= Self.stillWatchingAfter, !hasAskedStillWatching {
+            hasAskedStillWatching = true
+            isAskingStillWatching = true
+            pausesWhenPlaying = true
+        }
         let report = PlaybackReport(plan: plan, position: plan.startSeconds, isPaused: false)
         Task { await client.reportStart(report) }
         startReporting()
@@ -288,11 +307,19 @@ final class PlaybackSession {
         reload(audioIndex: plan.audioIndex, subtitleIndex: plan.subtitleIndex, forceTranscode: true)
     }
 
-    func playNext(_ item: BaseItem) {
+    /// `automatic` when nobody asked: the countdown ran out, or the episode ended.
+    func playNext(_ item: BaseItem, automatic: Bool = false) {
         countdownTask?.cancel()
         countdown = nil
         stop()
-        onPlayNext?(item)
+        onPlayNext?(item, automatic ? autoplayed + 1 : 0)
+    }
+
+    /// The answer to "Still watching?": go on.
+    func keepWatching() {
+        isAskingStillWatching = false
+        pausesWhenPlaying = false
+        engine.play()
     }
 
     func cancelCountdown() {
@@ -326,6 +353,10 @@ final class PlaybackSession {
     private func handle(_ event: PlayerEvent) {
         switch event {
         case let .position(seconds, duration):
+            if pausesWhenPlaying, isAskingStillWatching {
+                pausesWhenPlaying = false
+                engine.pause()
+            }
             position = seconds
             if let duration, duration > 0 { self.duration = duration }
             isBuffering = false
@@ -340,7 +371,7 @@ final class PlaybackSession {
         case .ended:
             hasEnded = true
             if let next, autoplayNext, !countdownDismissed {
-                playNext(next)
+                playNext(next, automatic: true)
             } else {
                 stop()
                 onFinished?()
@@ -401,7 +432,7 @@ final class PlaybackSession {
                 self.countdown = remaining
             }
             guard !Task.isCancelled, let self else { return }
-            self.playNext(next)
+            self.playNext(next, automatic: true)
         }
     }
 

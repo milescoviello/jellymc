@@ -28,6 +28,7 @@ final class PlayerPage {
     private let poster = FixedPicture(width: 40, height: 60)
     private let skipButton = Button("Skip", "osd-pill")
     private let upNext = Box.vertical(spacing: 10).css("up-next")
+    private let stillWatching = Box.vertical(spacing: 14).css("error-box")
     private let upNextTitle = Label("", "heading").wrap()
     private let upNextCount = Label("", "dim-label")
     private let spinner = Spinner().size(56)
@@ -138,6 +139,18 @@ final class PlayerPage {
         })
         upNext.size(width: 320).halign(GTK_ALIGN_END).valign(GTK_ALIGN_END).margins(bottom: 120, end: 32).visible(false)
 
+        // Plex's "Are you still watching?", after episodes that played on their own.
+        let keepGoing = Button("Continue Watching", "suggested-action", "pill")
+        let stop = Button("Stop", "pill")
+        stillWatching.append(Label("Are you still watching?", "title-3"))
+        stillWatching.append(Box.horizontal(spacing: 8) {
+            keepGoing
+            stop
+        }.halign(GTK_ALIGN_CENTER))
+        stillWatching.halign(GTK_ALIGN_CENTER).valign(GTK_ALIGN_CENTER).visible(false)
+        keepGoing.onClicked { [weak self] in self?.session?.keepWatching() }
+        stop.onClicked { [weak self] in self?.window.closePlayer() }
+
         skipButton.halign(GTK_ALIGN_END).valign(GTK_ALIGN_END).margins(bottom: 120, end: 32).visible(false)
         spinner.halign(GTK_ALIGN_CENTER).valign(GTK_ALIGN_CENTER).canTarget(false)
         stats.halign(GTK_ALIGN_START).valign(GTK_ALIGN_START).margins(top: 90, start: 24).visible(false)
@@ -160,6 +173,7 @@ final class PlayerPage {
             .add(stats)
             .add(skipButton)
             .add(upNext)
+            .add(stillWatching)
             .add(errorBox)
         overlay.css("player").focusable(true)
         root = overlay
@@ -206,17 +220,21 @@ final class PlayerPage {
 
     // MARK: - Sessions
 
-    func start(_ item: BaseItem, from start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil, mediaSourceId: String? = nil) {
+    func start(
+        _ item: BaseItem, from start: Double? = nil, audioIndex: Int? = nil, subtitleIndex: Int? = nil,
+        mediaSourceId: String? = nil, autoplayed: Int = 0
+    ) {
         session?.stop()
         let state = window.state
         let session = PlaybackSession(
             item: item, client: client, engine: engine,
             preferences: window.playbackPreferences,
             segmentActions: state.preferences.segmentActions,
-            autoplayNext: state.preferences.autoplayNext
+            autoplayNext: state.preferences.autoplayNext,
+            autoplayed: autoplayed
         )
         self.session = session
-        session.onPlayNext = { [weak self] next in self?.start(next, from: 0) }
+        session.onPlayNext = { [weak self] next, autoplayed in self?.start(next, from: 0, autoplayed: autoplayed) }
         session.onFinished = { [weak self] in self?.window.closePlayer() }
         connectMediaControls(session)
         root.observe { [weak self, weak session] in
@@ -296,6 +314,7 @@ final class PlayerPage {
             errorBox.visible(false)
         }
 
+        stillWatching.visible(session.isAskingStillWatching)
         if showsStats { stats.text = statsText(session) }
         if session.isPaused { reveal(autohide: false) }
 
