@@ -328,6 +328,8 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
     var runTimeTicks: Int64?
     var genres: [String]?
     var studios: [NameIdPair]?
+    /// Where it was made, as countries: what Automatic audio takes the original language from.
+    var productionLocations: [String]?
     var people: [Person]?
     var seriesId: String?
     var seriesName: String?

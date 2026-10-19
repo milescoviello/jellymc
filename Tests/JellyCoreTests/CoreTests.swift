@@ -291,6 +291,45 @@ struct PreferencesTests {
         #expect(preferences.initialTracks(for: source()) == (audio: 2, subtitle: 3))
     }
 
+    /// A film made in English whose file flags a dub, and the dub's subtitles, as default.
+    private func dubbedFilm() -> (MediaSource, BaseItem) {
+        func make(_ type: MediaStream.Kind, _ index: Int, _ language: String, isDefault: Bool = false) -> MediaStream {
+            var stream = MediaStream(type: type, index: index)
+            stream.language = language
+            stream.isDefault = isDefault
+            return stream
+        }
+        var source = MediaSource(id: "m")
+        source.mediaStreams = [
+            make(.video, 0, "und"), make(.audio, 1, "rus", isDefault: true), make(.audio, 2, "eng"),
+            make(.subtitle, 3, "rus", isDefault: true), make(.subtitle, 4, "eng"),
+        ]
+        source.defaultAudioStreamIndex = 1
+        source.defaultSubtitleStreamIndex = 3
+        var item = BaseItem(id: "film")
+        item.productionLocations = ["United States of America"]
+        return (source, item)
+    }
+
+    @Test func automaticAudioIsTheOriginalLanguageNotAFlaggedDub() {
+        let (source, item) = dubbedFilm()
+        let preferences = Preferences()
+        #expect(preferences.initialTracks(for: source, item: item) == (audio: 2, subtitle: nil))
+        // Knowing nothing of where it was made, the file's own choice stands.
+        #expect(preferences.initialTracks(for: source) == (audio: 1, subtitle: 3))
+        // A language chosen in Settings always wins.
+        var russian = Preferences()
+        russian.preferredAudioLanguage = "rus"
+        #expect(russian.initialTracks(for: source, item: item).audio == 1)
+    }
+
+    @Test func aFileWhoseDefaultIsTheOriginalKeepsItsSubtitles() {
+        var (source, item) = dubbedFilm()
+        item.productionLocations = ["Russia"]
+        #expect(Preferences().initialTracks(for: source, item: item) == (audio: 1, subtitle: 3))
+        _ = source
+    }
+
     @Test func neverMeansNone() {
         var preferences = Preferences()
         preferences.subtitleMode = .never

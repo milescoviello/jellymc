@@ -119,11 +119,20 @@ struct Preferences: Codable, Sendable, Equatable {
     }
 
     /// The audio and subtitle tracks to start with, by these preferences.
-    func initialTracks(for source: MediaSource) -> (audio: Int?, subtitle: Int?) {
-        let audio = source.audioStreams.first { $0.language == preferredAudioLanguage }
-            ?? source.audioStreams.first { $0.index == source.defaultAudioStreamIndex }
+    ///
+    /// With no audio language chosen, a film starts in the language it was made in, when
+    /// it has a track in it: a file can flag a dub as its default. Then the file's default
+    /// subtitles, which go with its default audio, are not shown either.
+    func initialTracks(for source: MediaSource, item: BaseItem? = nil) -> (audio: Int?, subtitle: Int?) {
+        let flagged = source.audioStreams.first { $0.index == source.defaultAudioStreamIndex }
             ?? source.audioStreams.first { $0.isDefault == true }
+        let original = preferredAudioLanguage == nil ? item.map(Self.originalLanguages) ?? [] : []
+        let audio = source.audioStreams.first { $0.language == preferredAudioLanguage }
+            ?? (flagged.flatMap { original.contains($0.language ?? "") ? $0 : nil })
+            ?? source.audioStreams.first { original.contains($0.language ?? "") }
+            ?? flagged
             ?? source.audioStreams.first
+        let followsFile = flagged == nil || audio?.index == flagged?.index
         let subtitles = source.subtitleStreams
         let wanted = preferredSubtitleLanguage
         let subtitle: MediaStream?
@@ -141,10 +150,35 @@ struct Preferences: Codable, Sendable, Equatable {
                 subtitle = subtitles.first { $0.language == wanted && $0.isForced != true } ?? subtitles.first { $0.language == wanted }
             } else {
                 subtitle = subtitles.first { $0.isForced == true && ($0.language == audio?.language || $0.language == wanted) }
-                    ?? subtitles.first { $0.index == source.defaultSubtitleStreamIndex && $0.isDefault == true }
+                    ?? (followsFile ? subtitles.first { $0.index == source.defaultSubtitleStreamIndex && $0.isDefault == true } : nil)
             }
         }
         return (audio?.index, subtitle?.index)
+    }
+
+    /// The languages of where it was made, as files tag their tracks (both ISO 639-2 forms).
+    static func originalLanguages(_ item: BaseItem) -> Set<String> {
+        guard let country = item.productionLocations?.first?.lowercased() else { return [] }
+        let languages: [(countries: [String], codes: Set<String>)] = [
+            (["united states of america", "united states", "usa", "united kingdom", "uk", "canada", "australia", "new zealand", "ireland"], ["eng"]),
+            (["japan"], ["jpn"]),
+            (["south korea", "korea", "republic of korea"], ["kor"]),
+            (["china", "hong kong", "taiwan"], ["chi", "zho"]),
+            (["france"], ["fre", "fra"]),
+            (["germany"], ["ger", "deu"]),
+            (["spain", "mexico", "argentina"], ["spa"]),
+            (["italy"], ["ita"]),
+            (["russia", "russian federation"], ["rus"]),
+            (["brazil", "portugal"], ["por"]),
+            (["sweden"], ["swe"]),
+            (["denmark"], ["dan"]),
+            (["norway"], ["nor", "nob"]),
+            (["netherlands"], ["dut", "nld"]),
+            (["poland"], ["pol"]),
+            (["turkey"], ["tur"]),
+            (["thailand"], ["tha"]),
+        ]
+        return languages.first { $0.countries.contains(country) }?.codes ?? []
     }
 }
 

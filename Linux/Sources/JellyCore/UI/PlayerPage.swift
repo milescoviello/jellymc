@@ -268,7 +268,7 @@ final class PlayerPage {
         }
         let tracks: (audio: Int?, subtitle: Int?)
         if audioIndex == nil, subtitleIndex == nil, let source = item.mediaSources?.first(where: { $0.id == mediaSourceId }) ?? item.mediaSources?.first {
-            tracks = state.preferences.initialTracks(for: source)
+            tracks = state.preferences.initialTracks(for: source, item: item)
         } else {
             tracks = (audioIndex, subtitleIndex)
         }
@@ -291,6 +291,8 @@ final class PlayerPage {
             self.keyController = nil
         }
         setCursor(visible: true)
+        // The window was named after what played; it is the app's again.
+        gtk_window_set_title(window.window.cast(), "jellymc")
         Menu.onOpen = nil
         MediaControls.shared.clear()
         inhibitor.release()

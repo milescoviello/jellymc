@@ -9,7 +9,7 @@ struct SettingsView: View {
     @State private var sentLog = false
 
     private static let languages: [(code: String?, name: String)] = [
-        (nil, "Server Default"), ("eng", "English"), ("jpn", "Japanese"), ("spa", "Spanish"), ("fre", "French"),
+        (nil, "Automatic"), ("eng", "English"), ("jpn", "Japanese"), ("spa", "Spanish"), ("fre", "French"),
         ("ger", "German"), ("ita", "Italian"), ("kor", "Korean"), ("chi", "Chinese"),
     ]
 

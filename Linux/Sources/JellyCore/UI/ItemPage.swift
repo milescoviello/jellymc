@@ -253,7 +253,7 @@ final class ItemPage {
             return
         }
         tracks.visible(true)
-        let initial = shell.state.preferences.initialTracks(for: source)
+        let initial = shell.state.preferences.initialTracks(for: source, item: item)
         let audio = audioChoice ?? initial.audio
         let subtitle = subtitleChoice ?? initial.subtitle
 

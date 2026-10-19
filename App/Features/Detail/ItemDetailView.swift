@@ -293,7 +293,7 @@ struct ItemDetailView: View {
             return
         }
         // Resolved here, so a changed audio track does not drop the default subtitles.
-        let initial = state.preferences.initialTracks(for: source)
+        let initial = state.preferences.initialTracks(for: source, item: item)
         let subtitle = subtitleChoice.map { $0 < 0 ? nil : $0 } ?? initial.subtitle
         router.play(playable, from: start, audio: audioChoice ?? initial.audio, subtitle: subtitle, version: versionChoice)
     }
@@ -338,7 +338,7 @@ struct ItemDetailView: View {
     @ViewBuilder
     private func trackPickers(_ item: BaseItem) -> some View {
         if model.playable?.id == item.id, let sources = item.mediaSources, let source = selectedSource(item) {
-            let initial = state.preferences.initialTracks(for: source)
+            let initial = state.preferences.initialTracks(for: source, item: item)
             let audio = audioChoice ?? initial.audio
             let subtitle = subtitleChoice.map { $0 < 0 ? nil : $0 } ?? initial.subtitle
             VStack(alignment: .leading, spacing: 8) {
