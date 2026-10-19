@@ -32,6 +32,7 @@ final class PlayerPage {
     private let errorLabel = Label("").wrap().maxWidthChars(60)
     private var keyController: OpaquePointer?
     private var hideTask: Task<Void, Never>?
+    private var seekTask: Task<Void, Never>?
     private var scrubbing = false
     private var showsStats = false
     private var lastPointer: (Double, Double) = (0, 0)
@@ -193,6 +194,7 @@ final class PlayerPage {
         session?.stop()
         session = nil
         hideTask?.cancel()
+        seekTask?.cancel()
         if let keyController, let window = Desktop.window {
             gtk_widget_remove_controller(window, keyController.cast())
             self.keyController = nil
@@ -429,10 +431,10 @@ final class PlayerPage {
     private func scrub(to value: Double) {
         scrubbing = true
         elapsed.text = Ticks.clock(value)
-        hideTask?.cancel()
         // Seeking on every pixel of a drag would restart a transcode each time; seek once
-        // the drag has rested.
-        hideTask = Task { [weak self] in
+        // the drag has rested. A task of its own: the pointer moving resets the bars'.
+        seekTask?.cancel()
+        seekTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled, let self else { return }
             self.session?.seek(to: value)
