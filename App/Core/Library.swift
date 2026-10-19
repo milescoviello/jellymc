@@ -409,14 +409,47 @@ final class LibraryModel {
     var filter: ItemQuery.Filter? {
         didSet { if filter != oldValue { restart() } }
     }
+    /// Plex's other filters: a genre, a decade, a content rating, a resolution.
+    var genre: String? {
+        didSet { if genre != oldValue { restart() } }
+    }
+    var decade: Int? {
+        didSet { if decade != oldValue { restart() } }
+    }
+    var contentRating: String? {
+        didSet { if contentRating != oldValue { restart() } }
+    }
+    var resolution: Resolution? {
+        didSet { if resolution != oldValue { restart() } }
+    }
+    /// What the filters can be set to, from the server.
+    private(set) var choices = LibraryFilters()
     @ObservationIgnored private var client: JellyfinClient?
     @ObservationIgnored private var generation = 0
+
+    enum Resolution: String, CaseIterable, Sendable {
+        case uhd = "4K", hd = "HD", sd = "SD"
+    }
 
     init(browse: Browse) {
         self.browse = browse
         sort = browse.sort
         descending = browse.isDescending
         filter = browse.filter
+        genre = browse.genre
+    }
+
+    /// How many filters are on, for the button's badge.
+    var activeFilters: Int {
+        [filter != nil, genre != nil && genre != browse.genre, decade != nil, contentRating != nil, resolution != nil].filter { $0 }.count
+    }
+
+    func clearFilters() {
+        filter = nil
+        genre = browse.genre
+        decade = nil
+        contentRating = nil
+        resolution = nil
     }
 
     /// The whole of a library, by title.
@@ -444,7 +477,13 @@ final class LibraryModel {
             items = cached.items
             total = cached.totalRecordCount
         }
+        let browse = browse
+        let filters = Task { () -> LibraryFilters? in
+            guard let id = browse.libraryId else { return nil }
+            return try? await client.filters(parentId: id, includeItemTypes: browse.itemTypes)
+        }
         await fetch(from: 0, replacing: true)
+        if let found = await filters.value { choices = found }
     }
 
     func loadMore() async {
@@ -477,7 +516,8 @@ final class LibraryModel {
 
     private var cacheKey: String {
         let types = browse.itemTypes.map(\.rawValue).joined(separator: ",")
-        return "browse-\(browse.libraryId ?? "all")-\(types)-\(browse.genre ?? "")-\(sort.rawValue)-\(descending)-\(filter?.rawValue ?? "all")"
+        let narrowed = [genre ?? "", decade.map(String.init) ?? "", contentRating ?? "", resolution?.rawValue ?? ""].joined(separator: ",")
+        return "browse-\(browse.libraryId ?? "all")-\(types)-\(narrowed)-\(sort.rawValue)-\(descending)-\(filter?.rawValue ?? "all")"
     }
 
     private func restart() {
@@ -491,7 +531,15 @@ final class LibraryModel {
         query.parentId = browse.libraryId
         query.includeItemTypes = browse.itemTypes
         query.recursive = !browse.itemTypes.isEmpty
-        query.genres = browse.genre.map { [$0] } ?? []
+        query.genres = genre.map { [$0] } ?? []
+        query.years = decade.map { Array($0 ..< $0 + 10) } ?? []
+        query.officialRatings = contentRating.map { [$0] } ?? []
+        switch resolution {
+        case .uhd?: query.is4K = true
+        case .hd?: query.is4K = false; query.isHD = true
+        case .sd?: query.isHD = false
+        case nil: break
+        }
         query.sort = sort
         query.descending = descending
         query.filters = filter.map { [$0] } ?? []

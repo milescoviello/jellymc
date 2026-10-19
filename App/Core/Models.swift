@@ -165,6 +165,18 @@ struct TrickplayInfo: Codable, Sendable, Equatable {
     var bandwidth: Int?
 }
 
+/// What a library's items can be filtered by: `/Items/Filters`.
+struct LibraryFilters: Codable, Sendable, Equatable {
+    var genres: [String]?
+    var officialRatings: [String]?
+    var years: [Int]?
+
+    /// The decades the years fall in, newest first: Plex filters by decade.
+    var decades: [Int] {
+        Array(Set((years ?? []).map { $0 / 10 * 10 })).sorted(by: >)
+    }
+}
+
 /// One of the server's picks for a film library, with what it was picked from.
 struct Recommendation: Codable, Sendable, Equatable {
     var items: [BaseItem]?

@@ -72,17 +72,52 @@ final class BrowseView {
             activate: { [weak shell] item in shell?.open(item) },
             menu: { [weak shell] item in shell.flatMap { ItemMenu.make(item, shell: $0) } }
         )
-        options = MenuButton(icon: "view-sort-descending-symbolic", "flat") {
+        let sorting = MenuButton(icon: "view-sort-descending-symbolic", "flat") {
             Menu([
                 [.choice("Sort By", options: ItemQuery.Sort.allCases.map { ($0.rawValue, $0.title) }, selected: model.sort.rawValue) { id in
                     if let sort = ItemQuery.Sort(rawValue: id) { model.sort = sort }
                 }],
                 [.toggle("Descending", isOn: model.descending) { model.descending = $0 }],
-                [.choice("Show", options: [("all", "All")] + ItemQuery.Filter.allCases.map { ($0.rawValue, $0.title) }, selected: model.filter?.rawValue ?? "all") { id in
-                    model.filter = ItemQuery.Filter(rawValue: id)
-                }],
             ])
-        }.tooltip("Sort and Filter")
+        }.tooltip("Sort")
+        // Plex's filters: watched state, then genre, decade, content rating, resolution.
+        let filtering = MenuButton(icon: "jellymc-filter-symbolic", "flat") {
+            let all = ("all", "All")
+            let choices = model.choices
+            var sections: [[Menu.Item]] = [[
+                .choice("Show", options: [all] + ItemQuery.Filter.allCases.map { ($0.rawValue, $0.title) }, selected: model.filter?.rawValue ?? "all") { id in
+                    model.filter = ItemQuery.Filter(rawValue: id)
+                },
+            ]]
+            var narrow: [Menu.Item] = []
+            if let genres = choices.genres, !genres.isEmpty {
+                narrow.append(.choice("Genre", options: [all] + genres.map { ($0, $0) }, selected: model.genre ?? "all") { id in
+                    model.genre = id == "all" ? nil : id
+                })
+            }
+            if !choices.decades.isEmpty {
+                narrow.append(.choice("Decade", options: [all] + choices.decades.map { (String($0), "\($0)s") }, selected: model.decade.map(String.init) ?? "all") { id in
+                    model.decade = Int(id)
+                })
+            }
+            if let ratings = choices.officialRatings, !ratings.isEmpty {
+                narrow.append(.choice("Content Rating", options: [all] + ratings.map { ($0, $0) }, selected: model.contentRating ?? "all") { id in
+                    model.contentRating = id == "all" ? nil : id
+                })
+            }
+            narrow.append(.choice("Resolution", options: [all] + LibraryModel.Resolution.allCases.map { ($0.rawValue, $0.rawValue) }, selected: model.resolution?.rawValue ?? "all") { id in
+                model.resolution = LibraryModel.Resolution(rawValue: id)
+            })
+            sections.append(narrow)
+            if model.activeFilters > 0 {
+                sections.append([.action("Clear Filters") { model.clearFilters() }])
+            }
+            return Menu(sections)
+        }.tooltip("Filter")
+        options = Box.horizontal(spacing: 0) {
+            filtering
+            sorting
+        }
 
         // "#" for what comes before A, then the letters.
         let letters = ["#"] + (65 ... 90).map { String(UnicodeScalar($0)) }
@@ -114,6 +149,12 @@ final class BrowseView {
         root.observe {
             grid.set(model.items)
             alphabet.visible(model.isAlphabetical && (model.total ?? 0) > 40)
+            // Lit while anything narrows what is shown.
+            if model.activeFilters > 0 {
+                gtk_widget_add_css_class(filtering.widget, "played-on")
+            } else {
+                gtk_widget_remove_css_class(filtering.widget, "played-on")
+            }
             count.text = model.total.map { "\($0) item\($0 == 1 ? "" : "s")" } ?? ""
             if model.items.isEmpty {
                 stack.visibleName = model.isLoading || model.total == nil ? "loading" : "empty"

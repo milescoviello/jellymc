@@ -876,3 +876,32 @@ struct SleepTimerTests {
         #expect(fired == 1)
     }
 }
+
+struct LibraryFilterTests {
+    @Test func decadesAndQueries() throws {
+        let filters = LibraryFilters(genres: ["Animation"], officialRatings: ["PG"], years: [2006, 2008, 2010, 2012, 1999])
+        #expect(filters.decades == [2010, 2000, 1990])
+        var query = ItemQuery()
+        query.years = Array(2000 ..< 2010)
+        query.officialRatings = ["PG", "G"]
+        query.is4K = false
+        query.isHD = true
+        let parameters = query.parameters
+        #expect(parameters["years"] == "2000,2001,2002,2003,2004,2005,2006,2007,2008,2009")
+        #expect(parameters["officialRatings"] == "PG|G")
+        #expect(parameters["is4K"] == "false")
+        #expect(parameters["isHd"] == "true")
+    }
+
+    @Test @MainActor func filtersCountAndClear() {
+        let model = LibraryModel(browse: Browse(title: "Action", libraryId: "l", itemTypes: [.movie], genre: "Action"))
+        #expect(model.activeFilters == 0)
+        model.decade = 1990
+        model.filter = .unplayed
+        model.genre = "Drama"
+        #expect(model.activeFilters == 3)
+        model.clearFilters()
+        #expect(model.activeFilters == 0)
+        #expect(model.genre == "Action")
+    }
+}

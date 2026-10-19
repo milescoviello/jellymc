@@ -204,6 +204,13 @@ final class JellyfinClient: Sendable {
         ]))
     }
 
+    /// The genres, content ratings and years a library's items have.
+    func filters(parentId: String, includeItemTypes: [ItemKind]) async throws -> LibraryFilters {
+        var query = userQuery(["parentId": parentId])
+        if !includeItemTypes.isEmpty { query["includeItemTypes"] = includeItemTypes.map(\.rawValue).joined(separator: ",") }
+        return try await get("Items/Filters", query: query)
+    }
+
     /// A library's genres, by name.
     func genres(parentId: String, includeItemTypes: [ItemKind]) async throws -> [BaseItem] {
         var query = userQuery(["parentId": parentId, "sortBy": "SortName", "sortOrder": "Ascending", "enableImages": "false"])
@@ -549,6 +556,7 @@ struct ItemQuery: Sendable, Equatable {
     /// Only items released by now: "Recently Released" is not next year's.
     var releasedBy: Date?
     var is4K: Bool?
+    var isHD: Bool?
     var excludeItemIds: [String] = []
     var nameStartsWith: String?
     var nameLessThan: String?
@@ -582,6 +590,7 @@ struct ItemQuery: Sendable, Equatable {
         if !officialRatings.isEmpty { query["officialRatings"] = officialRatings.joined(separator: "|") }
         if let releasedBy { query["maxPremiereDate"] = ISO8601DateFormatter().string(from: releasedBy) }
         if let is4K { query["is4K"] = is4K ? "true" : "false" }
+        if let isHD { query["isHd"] = isHD ? "true" : "false" }
         if !excludeItemIds.isEmpty { query["excludeItemIds"] = excludeItemIds.joined(separator: ",") }
         if let nameStartsWith { query["nameStartsWith"] = nameStartsWith }
         if let nameLessThan { query["nameLessThan"] = nameLessThan }

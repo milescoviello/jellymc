@@ -17,6 +17,7 @@ final class MainWindow {
         gtk_window_set_title(window.cast(), "jellymc")
         gtk_window_set_default_size(window.cast(), 1360, 860)
         Style.install()
+        Icons.install()
 
         toasts = ToastOverlay(stack)
         adw_application_window_set_content(window.cast(), toasts.widget)

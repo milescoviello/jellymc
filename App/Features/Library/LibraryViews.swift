@@ -231,17 +231,54 @@ struct BrowseGridView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                // Plex's filters: watched state, genre, decade, content rating, resolution.
+                Menu {
+                    Picker("Show", selection: $model.filter) {
+                        Text("All").tag(ItemQuery.Filter?.none)
+                        ForEach(ItemQuery.Filter.allCases, id: \.self) { Text($0.title).tag(ItemQuery.Filter?.some($0)) }
+                    }
+                    .pickerStyle(.menu)
+                    if let genres = model.choices.genres, !genres.isEmpty {
+                        Picker("Genre", selection: $model.genre) {
+                            Text("All").tag(String?.none)
+                            ForEach(genres, id: \.self) { Text($0).tag(String?.some($0)) }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    if !model.choices.decades.isEmpty {
+                        Picker("Decade", selection: $model.decade) {
+                            Text("All").tag(Int?.none)
+                            ForEach(model.choices.decades, id: \.self) { Text("\(String($0))s").tag(Int?.some($0)) }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    if let ratings = model.choices.officialRatings, !ratings.isEmpty {
+                        Picker("Content Rating", selection: $model.contentRating) {
+                            Text("All").tag(String?.none)
+                            ForEach(ratings, id: \.self) { Text($0).tag(String?.some($0)) }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    Picker("Resolution", selection: $model.resolution) {
+                        Text("All").tag(LibraryModel.Resolution?.none)
+                        ForEach(LibraryModel.Resolution.allCases, id: \.self) { Text($0.rawValue).tag(LibraryModel.Resolution?.some($0)) }
+                    }
+                    .pickerStyle(.menu)
+                    if model.activeFilters > 0 {
+                        Button("Clear Filters", role: .destructive) { model.clearFilters() }
+                    }
+                } label: {
+                    Image(systemName: model.activeFilters > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Picker("Sort By", selection: $model.sort) {
                         ForEach(ItemQuery.Sort.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     Toggle("Descending", isOn: $model.descending)
-                    Picker("Show", selection: $model.filter) {
-                        Text("All").tag(ItemQuery.Filter?.none)
-                        ForEach(ItemQuery.Filter.allCases, id: \.self) { Text($0.title).tag(ItemQuery.Filter?.some($0)) }
-                    }
                 } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Image(systemName: "arrow.up.arrow.down.circle")
                 }
             }
         }
