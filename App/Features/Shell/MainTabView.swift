@@ -123,7 +123,10 @@ extension View {
             ItemDetailView(item: route.item)
         }
         .navigationDestination(for: LibraryRoute.self) { route in
-            LibraryGridView(library: route.library)
+            LibraryView(library: route.library)
+        }
+        .navigationDestination(for: Browse.self) { browse in
+            BrowsePageView(browse: browse)
         }
     }
 }

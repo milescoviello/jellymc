@@ -9,6 +9,8 @@ struct ArtworkView: View {
     let url: URL?
     var cornerRadius: CGFloat = 10
     var placeholder: String = "film"
+    /// Shown on the tile when there is no picture: Plex puts the title there.
+    var title: String?
 
     var body: some View {
         Color.clear
@@ -20,9 +22,17 @@ struct ArtworkView: View {
                     default:
                         ZStack {
                             Rectangle().fill(.quaternary)
-                            Image(systemName: placeholder)
-                                .font(.title2)
-                                .foregroundStyle(.tertiary)
+                            if let title, url == nil {
+                                Text(title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .multilineTextAlignment(.center)
+                                    .foregroundStyle(.secondary)
+                                    .padding(8)
+                            } else {
+                                Image(systemName: placeholder)
+                                    .font(.title2)
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
                     }
                 }
@@ -55,9 +65,68 @@ extension CardStyle {
     }
 }
 
+/// Plex's gold, for marks and the like.
+extension Color {
+    static let plexGold = Color(red: 0.898, green: 0.627, blue: 0.051)
+}
+
+/// Plex's corner on what has not been watched: a gold triangle.
+private struct UnwatchedCorner: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// A card's picture with Plex's marks on it: progress, the unwatched corner or count.
+struct CardArt: View {
+    @Environment(AppState.self) private var state
+    let item: BaseItem
+    let style: CardStyle
+    let width: CGFloat
+
+    var body: some View {
+        ArtworkView(url: url(width: Int(width * 3)), placeholder: style.placeholder, title: item.title)
+            .frame(width: width, height: width / style.aspect)
+            .overlay(alignment: .bottom) {
+                if let progress = item.progress {
+                    ProgressView(value: progress)
+                        .tint(.plexGold)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 6)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                switch Presentation.unwatched(item) {
+                case .mark:
+                    UnwatchedCorner().fill(Color.plexGold).frame(width: 22, height: 22)
+                        .clipShape(UnevenRoundedRectangle(topTrailingRadius: 10, style: .continuous))
+                case let .count(number):
+                    Text(number > 99 ? "99+" : String(number))
+                        .font(.caption2.weight(.heavy))
+                        .foregroundStyle(.black.opacity(0.87))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.plexGold, in: Capsule())
+                        .padding(6)
+                case .none:
+                    EmptyView()
+                }
+            }
+    }
+
+    private func url(width: Int) -> URL? {
+        guard let client = state.client else { return nil }
+        return style == .landscape ? Artwork.landscape(item, client, width: width) : Artwork.primary(item, client, width: width)
+    }
+}
+
 /// A poster, still or cover with its title under it.
 struct CardView: View {
-    @Environment(AppState.self) private var state
     let item: BaseItem
     let style: CardStyle
     var width: CGFloat?
@@ -65,24 +134,7 @@ struct CardView: View {
     var body: some View {
         let width = width ?? style.width
         VStack(alignment: .leading, spacing: 6) {
-            ArtworkView(url: url(width: Int(width * 3)), placeholder: style.placeholder)
-                .frame(width: width, height: width / style.aspect)
-                .overlay(alignment: .bottom) {
-                    if let progress = item.progress {
-                        ProgressView(value: progress)
-                            .tint(.accentColor)
-                            .padding(.horizontal, 8)
-                            .padding(.bottom, 6)
-                    }
-                }
-                .overlay(alignment: .topTrailing) {
-                    if item.isPlayed, item.type != .series, item.type != .boxSet {
-                        Image(systemName: "checkmark.circle.fill")
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, Color.accentColor)
-                            .padding(6)
-                    }
-                }
+            CardArt(item: item, style: style, width: width)
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
@@ -105,29 +157,96 @@ struct CardView: View {
         }
         return item.subtitle ?? ""
     }
+}
 
-    private func url(width: Int) -> URL? {
-        guard let client = state.client else { return nil }
-        return style == .landscape ? Artwork.landscape(item, client, width: width) : Artwork.primary(item, client, width: width)
+/// A card that opens its item's page, Plex's way: play is on the page and in the menu.
+struct CardLink: View {
+    let item: BaseItem
+    let style: CardStyle
+    var width: CGFloat?
+
+    var body: some View {
+        NavigationLink(value: ItemRoute(item: item)) {
+            CardView(item: item, style: style, width: width)
+        }
+        .buttonStyle(.plain)
+        .contextMenu { ItemMenu(item: item) }
     }
 }
 
-/// A titled, sideways-scrolling row of cards. Cards play or open, as the row says.
-struct CardRowView: View {
+/// A card's long-press menu, as Plex has it: play, watched, go to the show.
+struct ItemMenu: View {
+    @Environment(AppState.self) private var state
     @Environment(PlayerRouter.self) private var router
+    let item: BaseItem
+
+    var body: some View {
+        if item.type?.isVideo == true {
+            if item.resumeSeconds > 0 {
+                Button { router.play(item) } label: { Label("Resume", systemImage: "play.fill") }
+                Button { router.play(item, from: 0) } label: { Label("Play from Beginning", systemImage: "backward.end.fill") }
+            } else {
+                Button { router.play(item) } label: { Label("Play", systemImage: "play.fill") }
+            }
+        }
+        if item.type != .person, item.type != .boxSet {
+            Button {
+                Task { await state.setPlayed(item, !item.isPlayed) }
+            } label: {
+                Label(item.isPlayed ? "Mark as Unwatched" : "Mark as Watched", systemImage: item.isPlayed ? "circle" : "checkmark.circle")
+            }
+        }
+        if item.resumeSeconds > 0 {
+            Button {
+                Task { await state.removeFromContinueWatching(item) }
+            } label: {
+                Label("Remove from Continue Watching", systemImage: "minus.circle")
+            }
+        }
+        if item.type == .episode, let seriesId = item.seriesId {
+            NavigationLink(value: ItemRoute(item: Self.show(seriesId, item))) {
+                Label("Go to Show", systemImage: "tv")
+            }
+            if let seasonId = item.seasonId {
+                NavigationLink(value: ItemRoute(item: Self.season(seasonId, item))) {
+                    Label("Go to Season", systemImage: "square.stack")
+                }
+            }
+        }
+    }
+
+    static func show(_ id: String, _ episode: BaseItem) -> BaseItem {
+        var show = BaseItem(id: id)
+        show.type = .series
+        show.name = episode.seriesName
+        return show
+    }
+
+    static func season(_ id: String, _ episode: BaseItem) -> BaseItem {
+        var season = BaseItem(id: id)
+        season.type = .season
+        season.name = episode.seasonName
+        season.seriesId = episode.seriesId
+        season.seriesName = episode.seriesName
+        return season
+    }
+}
+
+/// A titled, sideways-scrolling row of cards: Plex's hubs.
+struct CardRowView: View {
     let title: String
     let style: CardStyle
     let items: [BaseItem]
-    var playsDirectly = false
-    var library: BaseItem?
+    /// What "See All" opens, if anything.
+    var seeAll: Browse?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(title).font(.title3.bold())
                 Spacer()
-                if let library {
-                    NavigationLink(value: LibraryRoute(library: library)) {
+                if let seeAll {
+                    NavigationLink(value: seeAll) {
                         Text("See All").font(.subheadline)
                     }
                 }
@@ -136,22 +255,25 @@ struct CardRowView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(items) { item in
-                        if playsDirectly {
-                            Button { router.play(item) } label: { CardView(item: item, style: style) }
-                                .buttonStyle(.plain)
-                                .contextMenu {
-                                    NavigationLink(value: ItemRoute(item: item)) {
-                                        Label("Details", systemImage: "info.circle")
-                                    }
-                                }
-                        } else {
-                            NavigationLink(value: ItemRoute(item: item)) { CardView(item: item, style: style) }
-                                .buttonStyle(.plain)
-                        }
+                        CardLink(item: item, style: style)
                     }
                 }
                 .padding(.horizontal)
             }
         }
+    }
+}
+
+/// Plex's hubs, top to bottom: Home, and a library's Recommended tab.
+struct HubList: View {
+    let rows: [HomeRow]
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 28) {
+            ForEach(rows) { row in
+                CardRowView(title: row.title, style: row.style, items: row.items, seeAll: row.seeAll)
+            }
+        }
+        .padding(.vertical)
     }
 }
