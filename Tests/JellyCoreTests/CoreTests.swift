@@ -307,3 +307,42 @@ struct TrickplayTests {
         #expect(end.tileIndex == 2)
     }
 }
+
+struct CaptionsTests {
+    @Test func readsWebVTTAndSRT() {
+        let vtt = """
+        WEBVTT
+
+        1
+        00:00:02.000 --> 00:00:06.000 line:90%
+        <i>This is</i> a plain subtitle.
+
+        00:01:10.500 --> 00:01:12.000
+        {\\an8}Two
+        lines
+        """
+        let captions = Captions(parsing: vtt)
+        #expect(captions.cues.count == 2)
+        #expect(captions.text(at: 1) == nil)
+        #expect(captions.text(at: 3) == "This is a plain subtitle.")
+        #expect(captions.text(at: 71) == "Two\nlines")
+
+        let srt = "1\r\n00:00:02,000 --> 00:00:06,000\r\nComma decimals\r\n\r\n"
+        #expect(Captions(parsing: srt).text(at: 2.5) == "Comma decimals")
+    }
+
+    @Test func timestamps() {
+        #expect(Captions.seconds("01:02:03.456") == 3723.456)
+        #expect(Captions.seconds("02:03.5") == 123.5)
+        #expect(Captions.seconds("nonsense") == nil)
+    }
+
+    @Test func asksTheServerForWebVTT() {
+        let subtitle = ExternalSubtitle(
+            streamIndex: 0,
+            url: URL(string: "http://jelly.lan:8096/Videos/x/y/Subtitles/0/0/Stream.subrip?ApiKey=k")!,
+            title: "English", language: "eng", codec: "subrip"
+        )
+        #expect(subtitle.webVTTURL.absoluteString == "http://jelly.lan:8096/Videos/x/y/Subtitles/0/0/Stream.vtt?ApiKey=k")
+    }
+}

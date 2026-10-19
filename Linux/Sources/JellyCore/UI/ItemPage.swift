@@ -88,7 +88,7 @@ final class ItemPage {
             titleLabel.visible(true)
         }
         titleLabel.text = item.type == .episode ? "\(item.seriesName ?? "") — \(item.title)" : item.title
-        meta.text = metaLine(item)
+        meta.text = Presentation.metaLine(item)
         genres.text = (item.genres ?? []).prefix(5).joined(separator: " · ")
         genres.visible(!(item.genres ?? []).isEmpty)
         tagline.text = item.taglines?.first ?? ""
@@ -105,41 +105,11 @@ final class ItemPage {
         renderExtras(item, client)
     }
 
-    private func metaLine(_ item: BaseItem) -> String {
-        var parts: [String] = []
-        if let label = item.episodeLabel { parts.append(label) }
-        if let year = item.productionYear {
-            if item.type == .series, let status = item.status {
-                parts.append(status == "Continuing" ? "\(year)–" : "\(year)")
-            } else {
-                parts.append(String(year))
-            }
-        }
-        if let rating = item.officialRating { parts.append(rating) }
-        if let score = item.communityRating { parts.append(String(format: "★ %.1f", score)) }
-        if let runtime = item.runtime, item.type != .series {
-            parts.append(Ticks.runtime(runtime))
-            let remaining = runtime - item.resumeSeconds
-            let ends = Date().addingTimeInterval(remaining)
-            let formatter = DateFormatter()
-            formatter.dateFormat = "HH:mm"
-            parts.append("ends at \(formatter.string(from: ends))")
-        }
-        if item.type == .series, let count = item.childCount { parts.append("\(count) season\(count == 1 ? "" : "s")") }
-        if item.type == .musicAlbum, let artist = item.albumArtist { parts.insert(artist, at: 0) }
-        return parts.joined(separator: "  ·  ")
-    }
-
     private func renderActions(_ item: BaseItem) {
         actions.removeAll()
         if let playable = model.playable {
             let resume = playable.resumeSeconds
-            let label: String
-            if item.type == .series || item.type == .season, let episode = playable.episodeLabel {
-                label = resume > 0 ? "Resume \(episode)" : "Play \(episode)"
-            } else {
-                label = resume > 0 ? "Resume \(Ticks.clock(resume))" : "Play"
-            }
+            let label = Presentation.playLabel(for: playable, on: item)
             actions.append(Button(label, icon: "media-playback-start-symbolic", "suggested-action", "pill") { [weak self] in
                 self?.play(playable)
             })
@@ -327,22 +297,9 @@ final class ItemPage {
         info.removeAll()
         guard let source = item.mediaSources?.first(where: { $0.id == versionChoice }) ?? item.mediaSources?.first else { return }
         let group = PreferencesGroup("Media")
-        if let video = source.videoStream {
-            var parts = [video.codec?.uppercased(), video.width.flatMap { width in video.height.map { "\(width)×\($0)" } }]
-            parts.append(video.videoRangeType.flatMap { $0 == "SDR" ? nil : $0 })
-            parts.append(video.bitDepth.map { "\($0)-bit" })
-            group.add(ActionRow("Video", subtitle: parts.compactMap { $0 }.joined(separator: " · ")))
+        for row in Presentation.mediaRows(source) {
+            group.add(ActionRow(row.title, subtitle: row.value))
         }
-        for audio in source.audioStreams {
-            group.add(ActionRow("Audio", subtitle: audio.label))
-        }
-        for subtitle in source.subtitleStreams {
-            group.add(ActionRow("Subtitles", subtitle: subtitle.label + (subtitle.isExternal == true ? " (external)" : "")))
-        }
-        var file: [String] = [source.container?.uppercased() ?? ""]
-        if let size = source.size { file.append(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) }
-        if let bitrate = source.bitrate { file.append(String(format: "%.1f Mbps", Double(bitrate) / 1_000_000)) }
-        group.add(ActionRow("File", subtitle: file.filter { !$0.isEmpty }.joined(separator: " · ")))
         info.append(group)
     }
 
@@ -354,10 +311,7 @@ final class ItemPage {
         extra.removeAll()
         if !people.isEmpty {
             let row = CardRow(title: "Cast & Crew", style: .poster) { [weak self] person in self?.shell.open(person) }
-            let asItems = people.map { person in
-                BaseItem(id: person.id, name: person.name, type: .person, imageTags: person.primaryImageTag.map { ["Primary": $0] }, roleLabel: person.role ?? person.type)
-            }
-            row.show(asItems, client: client)
+            row.show(people.map(BaseItem.init(person:)), client: client)
             extra.append(row.root)
         }
         if !model.similar.isEmpty {
@@ -378,16 +332,5 @@ final class ItemPage {
             subtitleIndex: subtitle ?? nil,
             mediaSourceId: isThis ? versionChoice : nil
         )
-    }
-}
-
-extension BaseItem {
-    /// A person shown as a card: the role is the card's second line.
-    init(id: String, name: String?, type: ItemKind, imageTags: [String: String]?, roleLabel: String?) {
-        self.init(id: id)
-        self.name = name
-        self.type = type
-        self.imageTags = imageTags
-        self.role = roleLabel
     }
 }

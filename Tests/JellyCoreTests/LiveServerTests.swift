@@ -34,7 +34,7 @@ struct LiveServerTests {
     private func plan(_ item: BaseItem, _ player: PlayerKind, _ client: JellyfinClient, subtitle: Int? = -1) async throws -> PlaybackPlan {
         let request = PlaybackInfoRequest(
             userId: client.userId, maxStreamingBitrate: 120_000_000, startTimeTicks: 0,
-            audioStreamIndex: nil, subtitleStreamIndex: subtitle,
+            audioStreamIndex: nil, subtitleStreamIndex: subtitle, mediaSourceId: item.mediaSources?.first?.id ?? item.id,
             deviceProfile: DeviceProfiles.profile(for: player)
         )
         let response = try await client.playbackInfo(itemId: item.id, request: request)
@@ -55,9 +55,12 @@ struct LiveServerTests {
         let bunny = try await plan(try await movie("Big Buck Bunny", client), .avPlayer, client)
         #expect(bunny.method == .directPlay)
 
-        // H.264 and AC-3 in Matroska: only the container is wrong, so the server remuxes.
+        // H.264 and AC-3 in Matroska: only the container is wrong, so the server remuxes —
+        // though it marks the source SupportsDirectStream: false and calls it a transcode.
         let elephants = try await plan(try await movie("Elephants Dream", client), .avPlayer, client)
-        #expect(elephants.method == .directStream, "\(elephants.transcodeReasons)")
+        #expect(elephants.method != .directPlay)
+        #expect(elephants.videoIsCopied, "\(elephants.transcodeReasons)")
+        #expect(elephants.methodTitle == "Remux")
         #expect(elephants.url.absoluteString.contains(".m3u8"))
         #expect(elephants.url.absoluteString.contains("ApiKey="))
     }
@@ -68,6 +71,8 @@ struct LiveServerTests {
         let ass = try #require(sintel.mediaSources?.first?.subtitleStreams.first { $0.codec == "ass" })
         let plan = try await plan(sintel, .avPlayer, client, subtitle: ass.index)
         #expect(plan.method == .transcode)
+        #expect(!plan.videoIsCopied)
+        #expect(plan.url.absoluteString.contains("SubtitleStreamIndex=\(ass.index)"), "\(plan.url)")
         #expect(plan.url.absoluteString.contains("SubtitleMethod=Encode"), "\(plan.url)")
     }
 

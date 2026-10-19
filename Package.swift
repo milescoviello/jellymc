@@ -71,6 +71,13 @@ let package = Package(
                 "Paths.swift",
                 "Diagnostics.swift",
                 "ResponseCache.swift",
+                "Artwork.swift",
+                "Captions.swift",
+                "Presentation.swift",
+                "AppState.swift",
+                "DeviceInfo.swift",
+                "Keychain.swift",
+                "Library.swift",
             ]
         ),
         .testTarget(
