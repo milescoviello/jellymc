@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=jellymc
+GenericName=Media Player
+Comment=Watch your Jellyfin films and shows
+Exec=jellymc
+Icon=com.milescoviello.jellymc
+Terminal=false
+Categories=AudioVideo;Video;Player;TV;
+Keywords=Jellyfin;Plex;Movies;Shows;TV;Video;
+StartupNotify=true
+StartupWMClass=com.milescoviello.jellymc
+SingleMainWindow=true
