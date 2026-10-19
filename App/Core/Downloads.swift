@@ -106,6 +106,13 @@ enum DownloadPlanner {
         }
     }
 
+    /// About how big a conversion will be. The server streams one as it encodes, with no
+    /// length, so progress is the bytes so far against its bitrate times its runtime.
+    static func expectedBytes(for record: DownloadRecord) -> Int64? {
+        guard case let .converted(bitrate) = record.quality, let runtime = record.item.runtime, runtime > 0 else { return nil }
+        return Int64(Double(bitrate) / 8 * runtime)
+    }
+
     /// Every text subtitle in the source, which the server extracts as WebVTT whether it
     /// is embedded or beside the file. Image subtitles cannot be kept this way.
     static func subtitleURLs(for record: DownloadRecord, client: JellyfinClient) -> [(MediaStream, URL)] {
@@ -270,8 +277,16 @@ final class DownloadStore {
     }
 
     private func progressed(_ id: String, _ progress: Double, _ bytes: Int64?) {
+        guard let record = records[id] else { return }
+        var progress = progress
+        if progress <= 0, let bytes, let expected = DownloadPlanner.expectedBytes(for: record) {
+            progress = min(0.99, Double(bytes) / Double(expected))
+        }
         // A percent at a time: every screen showing the download redraws on a change.
-        guard let old = records[id]?.progress, progress - old >= 0.01 || progress >= 1 || old == 0 else { return }
+        // With no length and no estimate, the bytes are all there is to show.
+        let old = record.progress
+        let grown = (bytes ?? 0) - (record.bytes ?? 0) >= 5_000_000
+        guard progress - old >= 0.01 || progress >= 1 || (progress <= 0 && grown) else { return }
         records[id]?.progress = progress
         if let bytes { records[id]?.bytes = bytes }
     }

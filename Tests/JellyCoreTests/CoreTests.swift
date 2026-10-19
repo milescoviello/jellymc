@@ -393,6 +393,16 @@ struct DownloadPlannerTests {
         #expect(subtitles.map(\.0.index) == [2])
         #expect(subtitles.first?.1.absoluteString.contains("/Subtitles/2/0/Stream.vtt") == true)
     }
+
+    @Test func estimatesAConversionsSize() {
+        var film = item(container: "mkv", video: "hevc", audio: "opus")
+        film.runTimeTicks = Ticks.from(seconds: 3600)
+        var record = DownloadRecord(item: film, mediaSourceId: "ms", quality: .converted(bitrate: 8_000_000), state: .downloading, addedAt: Date())
+        // 8 Mbps for an hour is 3.6 GB.
+        #expect(DownloadPlanner.expectedBytes(for: record) == 3_600_000_000)
+        record.quality = .original
+        #expect(DownloadPlanner.expectedBytes(for: record) == nil)
+    }
 }
 
 @MainActor
