@@ -22,11 +22,11 @@ BLUE = np.array([14, 165, 233], np.float32)
 def art() -> Image.Image:
     y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
     # Navy at the top into black, lit a little behind the mark.
-    top, bottom = np.array([20, 32, 66], np.float32), np.array([5, 6, 10], np.float32)
+    top, bottom = np.array([25, 39, 80], np.float32), np.array([8, 10, 16], np.float32)
     fade = np.clip(y * 1.15, 0, 1)[..., None] ** 0.9
     background = top * (1 - fade) + bottom * fade
     centre = np.sqrt((x - 0.5) ** 2 + (y - 0.48) ** 2)[..., None]
-    background += np.clip(0.35 - centre, 0, None) * np.array([10, 18, 34], np.float32)
+    background += np.clip(0.35 - centre, 0, None) * np.array([13, 23, 43], np.float32)
 
     k = S / 1024
     triangle = [(338 * k, 298 * k), (765 * k, 512 * k), (338 * k, 726 * k)]
@@ -36,7 +36,7 @@ def art() -> Image.Image:
 
     mask = Image.new("L", (S, S), 0)
     ImageDraw.Draw(mask).polygon(triangle, fill=255)
-    glow = np.asarray(mask.filter(ImageFilter.GaussianBlur(S * 0.06)), np.float32)[..., None] / 255 * 0.35
+    glow = np.asarray(mask.filter(ImageFilter.GaussianBlur(S * 0.06)), np.float32)[..., None] / 255 * 0.38
     inside = np.asarray(mask, np.float32)[..., None] / 255
     out = background * (1 - glow) + BLUE * glow
     out = out * (1 - inside) + fill * inside
