@@ -152,7 +152,9 @@ private struct Overlays: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            Color.clear
+            // Fills the screen to place the rest, and takes no taps: under it is the
+            // system player, whose controls must keep getting them.
+            Color.clear.allowsHitTesting(false)
 
             if let segment = session.skippable {
                 Button {
