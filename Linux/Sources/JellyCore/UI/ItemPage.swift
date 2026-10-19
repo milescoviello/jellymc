@@ -98,16 +98,18 @@ final class ItemPage {
 
     private func render() {
         guard let item = model.item, let client = shell.state.client else { return }
-        backdrop.load(Artwork.backdrop(item, client, width: 1920) ?? Artwork.primary(item, client, width: 1280))
+        // A collection with no art of its own borrows its first film's, as Plex's does.
+        let lead = model.children.first
+        backdrop.load(Artwork.backdrop(item, client, width: 1920) ?? lead.flatMap { Artwork.backdrop($0, client, width: 1920) } ?? Artwork.primary(item, client, width: 1280))
         let isEpisode = item.type == .episode
+        let posterURL = isEpisode ? Artwork.primary(item, client, width: 600) : Artwork.poster(item, client, width: 440)
         if isEpisode {
             poster.resize(width: 300, height: 169)
-            poster.picture.load(Artwork.primary(item, client, width: 600))
         } else {
             poster.resize(width: 220, height: 330)
-            poster.picture.load(Artwork.poster(item, client, width: 440))
         }
-        poster.visible(item.type != .person || item.imageTags?["Primary"] != nil)
+        poster.picture.load(posterURL)
+        poster.visible(posterURL != nil)
 
         // An episode or season leads back to its show.
         if (isEpisode || item.type == .season), let show = item.seriesName {

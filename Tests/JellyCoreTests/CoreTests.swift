@@ -695,3 +695,24 @@ struct PlexLayoutTests {
         #expect(LibraryModel(browse: Browse(title: "All", libraryId: "lib", itemTypes: [.movie])).isAlphabetical)
     }
 }
+
+struct PlayButtonTests {
+    @Test func saysWhatItPlays() {
+        var film = BaseItem(id: "f")
+        film.type = .movie
+        film.name = "Sintel"
+        var collection = BaseItem(id: "c")
+        collection.type = .boxSet
+        #expect(Presentation.playLabel(for: film, on: collection) == "Play Sintel")
+        #expect(Presentation.playLabel(for: film, on: film) == "Play")
+        film.userData = UserItemData(playbackPositionTicks: Ticks.from(seconds: 90))
+        #expect(Presentation.playLabel(for: film, on: film) == "Resume 1:30")
+        var episode = BaseItem(id: "e")
+        episode.type = .episode
+        episode.parentIndexNumber = 1
+        episode.indexNumber = 3
+        var show = BaseItem(id: "s")
+        show.type = .series
+        #expect(Presentation.playLabel(for: episode, on: show) == "Play S1:E3")
+    }
+}

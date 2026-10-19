@@ -81,7 +81,12 @@ struct ItemDetailView: View {
         let height: CGFloat = sizeClass == .regular ? 520 : 420
         let isEpisode = item.type == .episode
         ZStack(alignment: .bottomLeading) {
-            ArtworkView(url: client.flatMap { Artwork.backdrop(item, $0, width: 1600) ?? Artwork.primary(item, $0, width: 1000) }, cornerRadius: 0)
+            // A collection with no art of its own borrows its first film's, as Plex's does.
+            ArtworkView(url: client.flatMap { client in
+                Artwork.backdrop(item, client, width: 1600)
+                    ?? model.children.first.flatMap { Artwork.backdrop($0, client, width: 1600) }
+                    ?? Artwork.primary(item, client, width: 1000)
+            }, cornerRadius: 0)
                 .frame(height: height)
                 .frame(maxWidth: .infinity)
             LinearGradient(
@@ -90,7 +95,7 @@ struct ItemDetailView: View {
             )
             .frame(height: height)
             HStack(alignment: .bottom, spacing: 16) {
-                if item.type != .person || item.imageTags?["Primary"] != nil {
+                if client.flatMap({ Artwork.poster(item, $0, width: 10) }) != nil {
                     let width: CGFloat = isEpisode ? 150 : (sizeClass == .regular ? 160 : 110)
                     ArtworkView(url: client.flatMap { isEpisode ? Artwork.primary(item, $0, width: 450) : Artwork.poster(item, $0, width: 480) }, cornerRadius: 8, title: item.title)
                         .frame(width: width, height: isEpisode ? width * 9 / 16 : width * 1.5)

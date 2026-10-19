@@ -84,6 +84,9 @@ enum Presentation {
         if page.type == .series || page.type == .season, let episode = playable.episodeLabel {
             return resume > 0 ? "Resume \(episode)" : "Play \(episode)"
         }
+        if page.type == .boxSet {
+            return resume > 0 ? "Resume \(playable.title)" : "Play \(playable.title)"
+        }
         return resume > 0 ? "Resume \(Ticks.clock(resume))" : "Play"
     }
 

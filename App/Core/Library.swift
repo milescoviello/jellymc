@@ -597,6 +597,11 @@ final class ItemModel {
                 .max { ($0.userData?.lastPlayedDate ?? .distantPast) < ($1.userData?.lastPlayedDate ?? .distantPast) }
             return started ?? episodes.first { !$0.isPlayed } ?? episodes.first
         }
+        if item.type == .boxSet {
+            // The first film not yet seen, in the collection's order.
+            let films = children.filter { $0.type?.isVideo == true }
+            return films.first { !$0.isPlayed } ?? films.first
+        }
         return item.type?.isVideo == true ? item : nil
     }
 
