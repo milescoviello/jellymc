@@ -1190,3 +1190,16 @@ extension AppLockTests {
         #expect(lock.isLocked)
     }
 }
+
+extension AppLockTests {
+    @Test func aDesktopWindowLosingFocusIsAwayButNotHidden() {
+        let fixture = Fixture()
+        let lock = fixture.lock()
+        lock.setPIN("2580")
+        lock.wentAway()
+        #expect(!lock.isShown)
+        fixture.clock.addTimeInterval(61)
+        lock.becameActive()
+        #expect(lock.isLocked)
+    }
+}

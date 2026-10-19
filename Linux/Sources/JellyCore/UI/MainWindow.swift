@@ -9,7 +9,11 @@ final class MainWindow {
     let window: UnsafeMutablePointer<GtkWidget>
     let reachability = Reachability()
     private let stack = Stack()
+    /// The app, or the PIN over all of it.
+    private let top = Stack()
     private let toasts: ToastOverlay
+    private var lockPage: LockPage?
+    private var lockKeys: OpaquePointer?
     private var shell: Shell?
     private var player: PlayerPage?
 
@@ -20,7 +24,8 @@ final class MainWindow {
         Style.install()
         Icons.install()
 
-        toasts = ToastOverlay(stack)
+        top.add(stack, name: "app")
+        toasts = ToastOverlay(top)
         adw_application_window_set_content(window.cast(), toasts.widget)
 
         let starting = Box.vertical {
@@ -42,6 +47,8 @@ final class MainWindow {
             }
         }
 
+        installLock()
+
         reachability.onNetworkChange = { [weak self] in
             guard let self else { return }
             Task { await self.state.reconnect() }
@@ -50,6 +57,56 @@ final class MainWindow {
 
         gtk_window_present(window.cast())
         Task { await state.restore() }
+    }
+
+    // MARK: - PIN
+
+    /// The PIN over the whole window: when the app opens, and when the window comes back to
+    /// the front after being away longer than Settings says. Signed out there is nothing to
+    /// hide; while a video plays nothing locks.
+    private func installLock() {
+        top.observe { [weak self] in
+            guard let self else { return }
+            self.setLocked(self.state.lock.isLocked && self.state.phase != .signedOut)
+        }
+        Signal.connect(window, "notify::is-active", pointer: { [weak self] _ in
+            guard let self else { return }
+            let playing = PlaybackSession.current != nil
+            if gtk_window_is_active(self.window.cast()) != 0 {
+                self.state.lock.becameActive(playing: playing)
+            } else {
+                self.state.lock.wentAway()
+            }
+        })
+    }
+
+    private func setLocked(_ locked: Bool) {
+        if locked, lockPage == nil {
+            let page = LockPage(state: state)
+            lockPage = page
+            top.add(page.root, name: "lock")
+            top.visibleName = "lock"
+            // Every key goes to the PIN while it is up, before the shell's and the player's.
+            let controller = gtk_event_controller_key_new()!
+            gtk_event_controller_set_propagation_phase(controller, GTK_PHASE_CAPTURE)
+            Signal.connect(controller, "key-pressed", key: { [weak self] keyval, _, modifiers in
+                guard let self, let page = self.lockPage else { return false }
+                let control = modifiers.rawValue & GDK_CONTROL_MASK.rawValue != 0
+                if control, Int32(keyval) == GDK_KEY_q { return false }
+                // A dialog over the lock (Forgot PIN) types for itself.
+                if adw_application_window_get_visible_dialog(self.window.cast()) != nil { return false }
+                _ = page.key(keyval)
+                return true
+            })
+            gtk_widget_add_controller(window, controller)
+            lockKeys = controller
+        } else if !locked, let page = lockPage {
+            lockPage = nil
+            top.visibleName = "app"
+            top.remove(page.root)
+            if let lockKeys { gtk_widget_remove_controller(window, lockKeys.cast()) }
+            lockKeys = nil
+        }
     }
 
     func toast(_ message: String) {

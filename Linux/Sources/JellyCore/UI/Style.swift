@@ -64,5 +64,11 @@ enum Style {
     .seek-preview picture { border-radius: 6px; }
     .seek-preview-time { font-feature-settings: "tnum"; font-weight: 700; }
     .error-box { background-color: alpha(black, 0.8); color: white; border-radius: 14px; padding: 20px; }
+    .pin-dot { min-width: 14px; min-height: 14px; border-radius: 999px; border: 1.5px solid alpha(currentColor, 0.7); }
+    .pin-dot.filled { background-color: currentColor; }
+    .pin-key { min-width: 64px; min-height: 64px; font-size: 1.6em; font-weight: 400; }
+    image.accent { color: #e5a00d; }
+    @keyframes pin-shake { 0% { margin-left: 0; } 20% { margin-left: 18px; } 40% { margin-left: 0; margin-right: 18px; } 60% { margin-right: 0; margin-left: 12px; } 80% { margin-left: 0; margin-right: 8px; } 100% { margin-right: 0; } }
+    .pin-shake { animation: pin-shake 0.4s ease-out; }
     """
 }

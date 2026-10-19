@@ -69,6 +69,24 @@ final class SettingsPage {
             }
         }
 
+        // The PIN asked for when the app opens. Each change rebuilds the page, which shows
+        // what is true after it.
+        let lock = state.lock
+        let pin = PreferencesGroup("PIN", description: "Asked for when jellymc opens, and when you come back to it after a while away. Forgot it? The lock screen takes your Jellyfin password instead.")
+        pin.add(SwitchRow("Require PIN", isOn: lock.isEnabled) { on in
+            PINSetup.present(on ? .new : .turnOff, state: state) { _ in shell.select("settings") }
+        })
+        if lock.isEnabled {
+            pin.add(ActionRow("Change PIN", icon: "dialog-password-symbolic") {
+                PINSetup.present(.change, state: state) { _ in shell.select("settings") }
+            }.chevron())
+            let delays = AppLock.Delay.allCases
+            pin.add(ComboRow("Ask Again", options: delays.map(\.title), selected: delays.firstIndex(of: lock.settings.delay) ?? 0) { index in
+                lock.setDelay(delays[index])
+            })
+        }
+        page.add(pin)
+
         // Playback
         let playback = PreferencesGroup("Playback")
         let bitrates = PlaybackPreferences.bitrateChoices

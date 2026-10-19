@@ -154,6 +154,13 @@ final class AppLock {
         if leftAt == nil { leftAt = now() }
     }
 
+    /// A desktop window losing the focus: away, with nothing to hide (no app switcher
+    /// shows it).
+    func wentAway() {
+        guard isEnabled else { return }
+        if leftAt == nil { leftAt = now() }
+    }
+
     /// In front again: locked if it was away long enough.
     func becameActive(playing: Bool = false) {
         defer {
