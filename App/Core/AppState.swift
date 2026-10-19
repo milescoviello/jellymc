@@ -39,6 +39,10 @@ final class AppState {
     let search = SearchModel()
     let downloads = DownloadStore()
 
+    @ObservationIgnored private var isReconnecting = false
+    @ObservationIgnored private var retry: Task<Void, Never>?
+    @ObservationIgnored private var retryDelay: Double = 15
+
     init() {
         preferences = Preferences.load()
         device = DeviceIdentity(deviceName: DeviceInfo.name, deviceId: DeviceInfo.id, version: DeviceInfo.appVersion)
@@ -65,7 +69,11 @@ final class AppState {
     /// Tries each known address in order and keeps the first that answers. Called at
     /// start and whenever the network changes: home Wi-Fi to cellular, a VPN coming up.
     func reconnect() async {
-        guard var stored = session else { return }
+        guard var stored = session, !isReconnecting else { return }
+        isReconnecting = true
+        defer { isReconnecting = false }
+        retry?.cancel()
+        retry = nil
         for address in stored.addresses {
             guard let url = URL(string: address) else { continue }
             let probe = JellyfinClient(baseURL: url, device: device)
@@ -90,15 +98,34 @@ final class AppState {
             self.client = client
             self.session = stored
             Self.persist(stored)
+            let wasOffline = isOffline
             isOffline = false
+            retryDelay = 15
             downloads.connect(client)
             await Outbox.shared.flush(client)
+            // What was shown came from the cache; the server's is newer, and has whatever
+            // was watched offline.
+            if wasOffline { Task { await home.load(client, force: true) } }
             await Diagnostics.shared.record("session", "connected to \(info.serverName ?? "server") \(info.version ?? "") at \(address)")
             await client.registerCapabilities(playableMediaTypes: ["Video"], commands: ["Play", "Playstate", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"])
             return
         }
         isOffline = true
-        await Diagnostics.shared.record("session", "no address answered; offline")
+        await Diagnostics.shared.record("session", "no address answered; offline, trying again in \(Int(retryDelay)) s")
+        scheduleRetry()
+    }
+
+    /// The network can be fine while the server is not: restarting, or the machine asleep.
+    /// So an offline app keeps asking, less often the longer it has been, up to every five
+    /// minutes.
+    private func scheduleRetry() {
+        let delay = retryDelay
+        retryDelay = min(retryDelay * 2, 300)
+        retry = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled, let self, self.isOffline else { return }
+            await self.reconnect()
+        }
     }
 
     /// Checks the address, signs in, and keeps the session.
@@ -167,6 +194,9 @@ final class AppState {
 
     func signOut(tellServer: Bool = true) async {
         if tellServer { await client?.logout() }
+        retry?.cancel()
+        retry = nil
+        isOffline = false
         Task.detached { Keychain.clear() }
         ResponseCache.clear()
         session = nil
