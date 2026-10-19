@@ -1069,7 +1069,7 @@ struct OfflineHomeTests {
         func record(_ id: String, position: Int64 = 0, done: Bool = true) -> DownloadRecord {
             var item = BaseItem(id: id)
             item.type = .movie
-            item.userData = UserItemData(playbackPositionTicks: position)
+            item.userData = UserItemData(playbackPositionTicks: Ticks.from(seconds: Double(position)))
             return DownloadRecord(item: item, mediaSourceId: "ms", quality: .original, state: done ? .done : .downloading, addedAt: Date())
         }
         let rows = HomeModel.offlineRows([record("a", position: 100), record("b"), record("c", done: false)])

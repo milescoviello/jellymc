@@ -380,7 +380,18 @@ final class Outbox {
         var date: Date
     }
 
-    static let shared = Outbox(file: Paths.root.appendingPathComponent("outbox.json"))
+    /// The device's outbox. Under the test runner a throwaway one: a test that plays an
+    /// item would otherwise leave places for made-up items in the real file, to be sent
+    /// to the real server.
+    static let shared = Outbox(file: isTesting
+        ? FileManager.default.temporaryDirectory.appendingPathComponent("outbox-tests-\(ProcessInfo.processInfo.processIdentifier).json")
+        : Paths.root.appendingPathComponent("outbox.json"))
+
+    private static var isTesting: Bool {
+        let process = ProcessInfo.processInfo
+        return process.environment["XCTestConfigurationFilePath"] != nil
+            || process.processName.hasSuffix(".xctest") || process.processName.hasSuffix("PackageTests")
+    }
 
     private(set) var entries: [Entry] = []
     private let file: URL
