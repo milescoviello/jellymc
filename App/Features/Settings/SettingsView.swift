@@ -71,6 +71,8 @@ struct SettingsView: View {
                 }
             }
 
+            HomeLibrariesSection()
+
             Section {
                 ForEach([MediaSegment.Kind.intro, .recap, .preview, .outro, .commercial], id: \.self) { kind in
                     Picker(kind == .outro ? "Credits" : kind.rawValue, selection: Binding(
@@ -141,5 +143,42 @@ struct DiagnosticsView: View {
             ShareLink(item: text)
         }
         .task { text = await Diagnostics.shared.text() }
+    }
+}
+
+/// Which libraries have a Recently Added row on Home: Plex's Pin to Home, kept on the
+/// server so every app shows the same.
+private struct HomeLibrariesSection: View {
+    @Environment(AppState.self) private var state
+    @State private var loaded = false
+
+    var body: some View {
+        let home = state.home
+        let libraries = home.libraries.filter(HomeModel.showsLatest)
+        if !libraries.isEmpty {
+            Section {
+                if loaded {
+                    ForEach(libraries) { library in
+                        Toggle(library.title, isOn: Binding(
+                            get: { !home.hiddenFromHome.contains(library.id) },
+                            set: { shown in
+                                guard let client = state.client else { return }
+                                Task { await home.setOnHome(library, shown, client: client) }
+                            }
+                        ))
+                    }
+                } else {
+                    ProgressView()
+                }
+            } header: {
+                Text("Home")
+            } footer: {
+                Text("Libraries with a Recently Added row on Home. Kept on the server, so every app shows the same.")
+            }
+            .task {
+                if let client = state.client { await home.loadHomeSettings(client) }
+                loaded = true
+            }
+        }
     }
 }

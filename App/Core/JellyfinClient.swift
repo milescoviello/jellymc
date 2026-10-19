@@ -112,6 +112,23 @@ final class JellyfinClient: Sendable {
         try await get("Users/Me")
     }
 
+    /// Changes some of the user's own settings and keeps the rest as they are. The server
+    /// replaces the whole configuration on a write, so it is read in full, as JSON, and only
+    /// the keys asked for change: language choices and the like this app has no model of
+    /// stay put.
+    func updateConfiguration(_ changes: [String: Any]) async throws {
+        guard let userId else { throw JellyfinError(kind: .http(401), message: "Not signed in.") }
+        let me = try await perform(try makeRequest("GET", "Users/Me", query: [:]))
+        guard var configuration = (try JSONSerialization.jsonObject(with: me) as? [String: Any])?["Configuration"] as? [String: Any] else {
+            throw JellyfinError(kind: .decoding, message: "The server sent no settings to change.")
+        }
+        for (key, value) in changes { configuration[key] = value }
+        var request = try makeRequest("POST", "Users/Configuration", query: ["userId": userId])
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: configuration)
+        _ = try await perform(request)
+    }
+
     func logout() async {
         try? await sendNoContent("POST", "Sessions/Logout")
     }

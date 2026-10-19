@@ -51,6 +51,24 @@ final class SettingsPage {
         addresses.add(add)
         page.add(addresses)
 
+        // Home: which libraries have a row there, kept on the server (Plex's Pin to Home).
+        let homeGroup = PreferencesGroup("Home", description: "Libraries with a Recently Added row on Home. Kept on the server, so every app shows the same.")
+        let home = state.home
+        let libraries = home.libraries.filter(HomeModel.showsLatest)
+        if !libraries.isEmpty { page.add(homeGroup) }
+        // The switches are made once the server has said how they stand: made before, each
+        // would start on.
+        if let client = state.client {
+            Task {
+                await home.loadHomeSettings(client)
+                for library in libraries {
+                    homeGroup.add(SwitchRow(library.title, isOn: !home.hiddenFromHome.contains(library.id)) { shown in
+                        Task { await home.setOnHome(library, shown, client: client) }
+                    })
+                }
+            }
+        }
+
         // Playback
         let playback = PreferencesGroup("Playback")
         let bitrates = PlaybackPreferences.bitrateChoices

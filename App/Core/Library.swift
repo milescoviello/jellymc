@@ -128,6 +128,29 @@ final class HomeModel {
         loaded = false
     }
 
+    /// The server's own Home settings for each library, as Plex's Pin to Home: whether its
+    /// Recently Added row shows on Home.
+    private(set) var hiddenFromHome: Set<String> = []
+
+    func loadHomeSettings(_ client: JellyfinClient) async {
+        guard let user = try? await client.currentUser() else { return }
+        hiddenFromHome = Set(user.configuration?.latestItemsExcludes ?? [])
+    }
+
+    /// Shows a library's row on Home or not, on the server, so every app sees it.
+    func setOnHome(_ library: BaseItem, _ shown: Bool, client: JellyfinClient) async {
+        var hidden = hiddenFromHome
+        if shown { hidden.remove(library.id) } else { hidden.insert(library.id) }
+        guard hidden != hiddenFromHome else { return }
+        do {
+            try await client.updateConfiguration(["LatestItemsExcludes": Array(hidden).sorted()])
+            hiddenFromHome = hidden
+            await load(client, force: true)
+        } catch {
+            await Diagnostics.shared.record("home", "could not change Home: \(error.localizedDescription)")
+        }
+    }
+
     /// Updates an item wherever it appears after its played or favourite state changed.
     func replace(_ item: BaseItem) {
         rows = rows.map { row in
