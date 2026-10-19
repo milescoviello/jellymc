@@ -28,6 +28,9 @@ final class PlayerPage {
     private let poster = FixedPicture(width: 40, height: 60)
     /// Kept across episodes: a timer set on one carries on into the next.
     private let sleepTimer = SleepTimer()
+    private var chaptersButton: MenuButton!
+    /// The chapter starts the seek bar's ticks are for, so they are set once per file.
+    private var markedChapters: [Double] = []
     private let skipButton = Button("Skip", "osd-pill")
     private let upNext = Box.vertical(spacing: 10).css("up-next")
     private let stillWatching = Box.vertical(spacing: 14).css("error-box")
@@ -73,6 +76,8 @@ final class PlayerPage {
         audio.tooltip("Audio")
         let subtitles = MenuButton(icon: "media-view-subtitles-symbolic", "flat", "circular") { [weak self] in self?.subtitleMenu() ?? Menu([]) }
         subtitles.tooltip("Subtitles")
+        chaptersButton = MenuButton(icon: "jellymc-chapters-symbolic", "flat", "circular") { [weak self] in self?.chapterMenu() ?? Menu([]) }
+        chaptersButton.tooltip("Chapters (, and .)")
         let speed = MenuButton(icon: "speedometer-symbolic", "flat", "circular") { [weak self] in self?.speedMenu() ?? Menu([]) }
         speed.tooltip("Speed")
         let info = Button(icon: "dialog-information-symbolic", "flat", "circular")
@@ -114,6 +119,7 @@ final class PlayerPage {
                 end: Box.horizontal(spacing: 4) {
                     muteButton
                     volume
+                    chaptersButton
                     audio
                     subtitles
                     speed
@@ -302,6 +308,13 @@ final class PlayerPage {
 
         let duration = max(session.duration, 1)
         gtk_range_set_range(seek.widget.cast(), 0, duration)
+        let starts = session.chapters.map(\.start).filter { $0 > 0 }
+        if starts != markedChapters {
+            markedChapters = starts
+            gtk_scale_clear_marks(seek.widget.cast())
+            for start in starts { gtk_scale_add_mark(seek.widget.cast(), start, GTK_POS_TOP, nil) }
+        }
+        chaptersButton.visible(!session.chapters.isEmpty)
         if !scrubbing { seek.value = session.position }
         elapsed.text = Ticks.clock(session.position)
         remaining.text = "-" + Ticks.clock(max(0, session.duration - session.position))
@@ -419,6 +432,19 @@ final class PlayerPage {
     }
 
     /// Plex's playback settings: quality, speed, the delays, the sleep timer.
+    /// Plex's chapter list: each one by name and time; the one playing is marked.
+    private func chapterMenu() -> Menu {
+        guard let session else { return Menu([]) }
+        let current = session.currentChapter
+        let options = session.chapters.enumerated().map { index, chapter in
+            (String(index), "\(Ticks.clock(chapter.start))  \(chapter.name.isEmpty ? "Chapter \(index + 1)" : chapter.name)")
+        }
+        return Menu([[.radio(options: options, selected: current.map(String.init)) { id in
+            guard let index = Int(id), index < session.chapters.count else { return }
+            session.seek(to: session.chapters[index].start)
+        }]])
+    }
+
     private func speedMenu() -> Menu {
         guard let session else { return Menu([]) }
         let quality: Menu.Item = .choice(
@@ -552,6 +578,10 @@ final class PlayerPage {
             if session.skippable != nil { session.skipSegment() } else { return false }
         case GDK_KEY_n:
             if let next = session.next { session.playNext(next) }
+        case GDK_KEY_period:
+            session.skipChapter(forward: true)
+        case GDK_KEY_comma:
+            session.skipChapter(forward: false)
         case GDK_KEY_Escape:
             if window.isFullscreen { window.toggleFullscreen() } else { window.closePlayer() }
         case GDK_KEY_q:

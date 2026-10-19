@@ -17,6 +17,9 @@ struct Menu {
         /// A submenu of radio items; the chosen option's id comes back.
         case choice(String, options: [(id: String, label: String)], selected: String?, @MainActor (String) -> Void)
         case submenu(String, [[Item]])
+        /// A choice's options laid out in the menu itself, as radio items: a menu that is
+        /// only the one choice.
+        case radio(options: [(id: String, label: String)], selected: String?, @MainActor (String) -> Void)
     }
 
     var sections: [[Item]]
@@ -125,6 +128,23 @@ struct Menu {
             }
             g_menu_append_submenu(menu, title, submenu.rawPointer.assumingMemoryBound(to: GMenuModel.self))
             g_object_unref(submenu.rawPointer)
+
+        case let .radio(options, selected, handler):
+            let action = g_simple_action_new_stateful(name, cgtk_type_string(), g_variant_new_string(selected ?? ""))!
+            Signal.connect(action, "activate", pointer: { parameter in
+                guard let parameter else { return }
+                let id = String(cString: g_variant_get_string(OpaquePointer(parameter), nil))
+                g_simple_action_set_state(action, g_variant_new_string(id))
+                handler(id)
+            })
+            g_action_map_add_action(map, action.opaque)
+            g_object_unref(action.rawPointer)
+            for option in options {
+                let entry = g_menu_item_new(option.label, nil)!
+                g_menu_item_set_action_and_target_value(entry, "menu.\(name)", g_variant_new_string(option.id))
+                g_menu_append_item(menu, entry)
+                g_object_unref(entry.rawPointer)
+            }
 
         case let .submenu(title, sections):
             let submenu = model(for: sections, group: group, counter: &counter)

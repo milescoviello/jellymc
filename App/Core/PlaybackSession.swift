@@ -57,6 +57,8 @@ final class PlaybackSession {
     private(set) var segments: [MediaSegment] = []
     /// The thumbnails the server made for this source, once known.
     @ObservationIgnored private(set) var trickplay: TrickplayInfo?
+    /// The item's chapters, once the full item is here.
+    private var chapterList: [Chapter] = []
     /// The segment under the playhead whose skip button should show.
     private(set) var skippable: MediaSegment?
     /// The episode that follows, once known.
@@ -211,7 +213,8 @@ final class PlaybackSession {
     private func loadSegmentsAndNext() async {
         // An item from a list comes without its trickplay; the full one has it.
         var detailed = item
-        if detailed.trickplay == nil, let full = try? await client.item(item.id) { detailed = full }
+        if detailed.trickplay == nil || detailed.chapters == nil, let full = try? await client.item(item.id) { detailed = full }
+        chapterList = detailed.chapters ?? []
         if let source = plan?.source.id { trickplay = TrickplayFrame.info(for: detailed, mediaSourceId: source) }
         if let segments = try? await client.mediaSegments(itemId: item.id) {
             self.segments = segments.sorted { $0.startTicks < $1.startTicks }
@@ -222,6 +225,38 @@ final class PlaybackSession {
            let episodes = try? await client.episodes(seriesId: seriesId, seasonId: nil),
            let index = episodes.firstIndex(where: { $0.id == item.id }), index + 1 < episodes.count {
             next = episodes[index + 1]
+        }
+    }
+
+    // MARK: - Chapters
+
+    /// The item's chapters with where each starts, in order; none when the file has only the
+    /// one the server makes up for the whole film.
+    var chapters: [(start: Double, name: String)] {
+        let list = chapterList
+            .map { (start: Ticks.seconds($0.startPositionTicks), name: $0.name ?? "") }
+            .sorted { $0.start < $1.start }
+        return list.count > 1 ? list : []
+    }
+
+    /// The chapter playing now.
+    var currentChapter: Int? {
+        chapters.lastIndex { $0.start <= position + 0.5 }
+    }
+
+    /// The next chapter, or the previous: the start of this one first, unless it began only
+    /// a moment ago, as players do.
+    func skipChapter(forward: Bool) {
+        let list = chapters
+        guard !list.isEmpty else { return }
+        let current = currentChapter ?? -1
+        if forward {
+            guard current + 1 < list.count else { return }
+            seek(to: list[current + 1].start)
+        } else if current >= 0, position - list[current].start > 3 {
+            seek(to: list[current].start)
+        } else {
+            seek(to: list[max(0, current - 1)].start)
         }
     }
 

@@ -59,6 +59,20 @@ struct PlayerView: View {
             // Plex's playback settings; speed is in the system player's own menu.
             if let session {
                 Menu {
+                    if !session.chapters.isEmpty {
+                        // Plex's chapter list: choosing one goes there.
+                        Picker("Chapters", selection: Binding(
+                            get: { session.currentChapter ?? -1 },
+                            set: { index in
+                                if session.chapters.indices.contains(index) { session.seek(to: session.chapters[index].start) }
+                            }
+                        )) {
+                            ForEach(Array(session.chapters.enumerated()), id: \.offset) { index, chapter in
+                                Text("\(Ticks.clock(chapter.start))  \(chapter.name.isEmpty ? "Chapter \(index + 1)" : chapter.name)").tag(index)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
                     Picker("Quality", selection: Binding(get: { session.maxBitrate }, set: { session.setMaxBitrate($0) })) {
                         ForEach(PlaybackPreferences.bitrateChoices, id: \.bits) { Text($0.title).tag($0.bits) }
                     }

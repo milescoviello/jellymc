@@ -55,6 +55,7 @@ enum Style {
     .player-play { min-width: 52px; min-height: 52px; }
     .player-play image { -gtk-icon-size: 28px; }
     .player-bottom scale highlight { background-color: #e5a00d; }
+    .player-bottom scale marks indicator { min-height: 8px; min-width: 3px; color: #e5a00d; }
     .player-time { font-feature-settings: "tnum"; color: alpha(white, 0.85); }
     .osd-pill { background-color: alpha(#141414, 0.88); color: white; border-radius: 999px; padding: 10px 22px; font-weight: 700; }
     .up-next { background-color: alpha(#141414, 0.94); color: white; border-radius: 14px; padding: 14px; }

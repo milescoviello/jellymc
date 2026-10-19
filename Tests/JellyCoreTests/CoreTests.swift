@@ -980,3 +980,55 @@ struct RecentSearchTests {
         #expect(SearchModel(recentFile: file).recent.isEmpty)
     }
 }
+
+@MainActor
+struct ChapterTests {
+    private final class SeekingEngine: PlayerEngine {
+        let kind = PlayerKind.mpv
+        var onEvent: (@MainActor (PlayerEvent) -> Void)?
+        var seeks: [Double] = []
+        func load(_ plan: PlaybackPlan) {}
+        func play() {}
+        func pause() {}
+        func seek(to seconds: Double) { seeks.append(seconds) }
+        func setRate(_ rate: Double) {}
+        func selectAudio(_ streamIndex: Int, in plan: PlaybackPlan) -> Bool { true }
+        func selectSubtitle(_ streamIndex: Int?, in plan: PlaybackPlan) -> Bool { true }
+        func stop() {}
+    }
+
+    @Test func nextAndPreviousLikeAPlayer() async throws {
+        let nowhere = JellyfinClient(
+            baseURL: URL(string: "http://127.0.0.1:9")!,
+            device: DeviceIdentity(deviceName: "Test", deviceId: "device-1", version: "0.1.0"),
+            token: "t", userId: "u"
+        )
+        var film = BaseItem(id: "f")
+        film.runTimeTicks = Ticks.from(seconds: 600)
+        film.trickplay = [:]
+        film.chapters = [0, 100, 300].map { Chapter(startPositionTicks: Ticks.from(seconds: $0), name: "At \(Int($0))") }
+        let engine = SeekingEngine()
+        let session = PlaybackSession(item: film, client: nowhere, engine: engine, preferences: PlaybackPreferences())
+        let plan = PlaybackPlan(
+            itemId: "f", source: MediaSource(id: "ms"), playSessionId: nil, method: .directPlay,
+            url: URL(fileURLWithPath: "/nonexistent/f.mkv"), startSeconds: 0, audioIndex: nil, subtitleIndex: nil,
+            externalSubtitles: [], transcodeReasons: [], httpHeaders: [:]
+        )
+        await session.start(at: 0, local: plan)
+        for _ in 0 ..< 150 where session.chapters.isEmpty {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(session.chapters.map(\.start) == [0, 100, 300])
+        engine.onEvent?(.position(150, duration: 600))
+        #expect(session.currentChapter == 1)
+        session.skipChapter(forward: true)
+        #expect(engine.seeks.last == 300)
+        // Well into chapter 2: back goes to its start; just after, to the one before.
+        engine.onEvent?(.position(150, duration: 600))
+        session.skipChapter(forward: false)
+        #expect(engine.seeks.last == 100)
+        engine.onEvent?(.position(101, duration: 600))
+        session.skipChapter(forward: false)
+        #expect(engine.seeks.last == 0)
+    }
+}
