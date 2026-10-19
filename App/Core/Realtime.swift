@@ -98,9 +98,8 @@ final class Realtime {
     var onMessage: (@MainActor (ServerMessage) -> Void)?
     private(set) var isConnected = false
 
-    private let session = URLSession(configuration: .default)
     private var client: JellyfinClient?
-    private var task: URLSessionWebSocketTask?
+    private var socket: SocketTransport?
     /// Bumped by every open and close, so a socket's late callbacks are told apart.
     private var generation = 0
     private var keepAlive: Task<Void, Never>?
@@ -123,45 +122,37 @@ final class Realtime {
         guard let client, let url = client.socketURL else { return }
         generation += 1
         let generation = generation
-        var request = URLRequest(url: url)
-        request.setValue(client.authorization, forHTTPHeaderField: "Authorization")
-        let task = session.webSocketTask(with: request)
-        self.task = task
-        task.resume()
-        Task { await self.listen(task, generation) }
+        let socket = SocketTransport(url: url, authorization: client.authorization)
+        self.socket = socket
+        socket.onText = { [weak self] text in
+            guard let self, generation == self.generation else { return }
+            self.received(text)
+        }
+        socket.onClose = { [weak self] reason in
+            guard let self, generation == self.generation else { return }
+            self.dropped(reason)
+        }
+        socket.open()
     }
 
-    private func listen(_ task: URLSessionWebSocketTask, _ generation: Int) async {
-        while generation == self.generation {
-            let message: URLSessionWebSocketTask.Message
-            do {
-                message = try await task.receive()
-            } catch {
-                guard generation == self.generation else { return }
-                // Failed already: cancelling it now is what Linux's URLSession crashes on.
-                self.task = nil
-                isConnected = false
-                keepAlive?.cancel()
-                await Diagnostics.shared.record("realtime", "socket closed (\(error.localizedDescription)); again in \(Int(delay)) s")
-                scheduleReopen()
-                return
-            }
-            guard generation == self.generation else { return }
-            if !isConnected {
-                isConnected = true
-                delay = 5
-                await Diagnostics.shared.record("realtime", "socket open")
-            }
-            let data: Data
-            switch message {
-            case let .string(text): data = Data(text.utf8)
-            case let .data(bytes): data = bytes
-            @unknown default: continue
-            }
-            guard let parsed = ServerMessage.decode(data) else { continue }
-            if case let .forceKeepAlive(seconds) = parsed { startKeepAlive(every: max(5, Double(seconds) / 2)) }
-            onMessage?(parsed)
+    private func received(_ text: String) {
+        if !isConnected {
+            isConnected = true
+            delay = 5
+            Task { await Diagnostics.shared.record("realtime", "socket open") }
         }
+        guard let parsed = ServerMessage.decode(Data(text.utf8)) else { return }
+        if case let .forceKeepAlive(seconds) = parsed { startKeepAlive(every: max(5, Double(seconds) / 2)) }
+        onMessage?(parsed)
+    }
+
+    private func dropped(_ reason: String) {
+        socket = nil
+        isConnected = false
+        keepAlive?.cancel()
+        let wait = delay
+        Task { await Diagnostics.shared.record("realtime", "socket closed (\(reason)); again in \(Int(wait)) s") }
+        scheduleReopen()
     }
 
     private func startKeepAlive(every seconds: Double) {
@@ -169,8 +160,8 @@ final class Realtime {
         keepAlive = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                guard !Task.isCancelled, let task = self?.task else { return }
-                try? await task.send(.string(#"{"MessageType":"KeepAlive"}"#))
+                guard !Task.isCancelled, let socket = self?.socket else { return }
+                socket.send(#"{"MessageType":"KeepAlive"}"#)
             }
         }
     }
@@ -190,7 +181,7 @@ final class Realtime {
         isConnected = false
         keepAlive?.cancel()
         reopen?.cancel()
-        if let task, task.state == .running { task.cancel(with: .goingAway, reason: nil) }
-        task = nil
+        socket?.close()
+        socket = nil
     }
 }

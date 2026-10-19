@@ -1,0 +1,5 @@
+module CSoup [system] {
+    header "CSoup.h"
+    link "soup-3.0"
+    export *
+}

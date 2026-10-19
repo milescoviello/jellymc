@@ -23,6 +23,7 @@ import PackageDescription
 let appleOnly = [
     "Keychain.swift",
     "Reachability.swift",
+    "SocketTransport.swift",
 ].map { "Core/\($0)" }
 
 let package = Package(
@@ -31,9 +32,10 @@ let package = Package(
         .systemLibrary(name: "CGtk", path: "Linux/Modules/CGtk", pkgConfig: "gtk4 libadwaita-1"),
         .systemLibrary(name: "CSecret", path: "Linux/Modules/CSecret", pkgConfig: "libsecret-1"),
         .systemLibrary(name: "CMpv", path: "Linux/Modules/CMpv", pkgConfig: "mpv egl epoxy gtk4"),
+        .systemLibrary(name: "CSoup", path: "Linux/Modules/CSoup", pkgConfig: "libsoup-3.0"),
         .target(
             name: "JellyCore",
-            dependencies: ["CGtk", "CSecret", "CMpv"],
+            dependencies: ["CGtk", "CSecret", "CMpv", "CSoup"],
             path: "Linux/Sources/JellyCore",
             exclude: appleOnly
         ),
@@ -80,6 +82,7 @@ let package = Package(
                 "Downloader.swift",
                 "MP4.swift",
                 "Realtime.swift",
+                "SocketTransport.swift",
                 "SleepTimer.swift",
                 "AppState.swift",
                 "DeviceInfo.swift",

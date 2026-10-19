@@ -13,7 +13,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     binutils git gnupg2 libc6-dev libcurl4-openssl-dev libedit2 libpython3-dev libsqlite3-0 \
     libstdc++-14-dev libxml2-dev libncurses-dev libz3-dev pkg-config tzdata unzip zlib1g-dev \
-    libgtk-4-dev libadwaita-1-dev libmpv-dev libsecret-1-dev libegl-dev \
+    libgtk-4-dev libadwaita-1-dev libmpv-dev libsecret-1-dev libegl-dev libsoup-3.0-dev \
     docker.io ffmpeg jq curl rsync mpv >/dev/null
 sudo usermod -aG docker "$USER"
 
