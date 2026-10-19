@@ -33,6 +33,9 @@ final class PlayerPage {
     private let stillWatching = Box.vertical(spacing: 14).css("error-box")
     private let upNextTitle = Label("", "heading").wrap()
     private let upNextCount = Label("", "dim-label")
+    /// Plex shows the next one's picture, with a countdown along its foot.
+    private let upNextArt = FixedPicture(width: 292, height: 164)
+    private let upNextProgress = ProgressBar()
     private let spinner = Spinner().size(56)
     private let stats = Label("", "stats").selectable()
     private let errorBox = Box.vertical(spacing: 12).css("error-box")
@@ -135,6 +138,8 @@ final class PlayerPage {
         let playNow = Button("Play Now", "suggested-action", "pill")
         let cancel = Button("Cancel", "pill")
         upNext.append(Label("Up Next", "caption-heading", "dim-label"))
+        upNextArt.css("card-art")
+        upNext.append(Overlay(upNextArt).add(upNextProgress.css("card-progress").valign(GTK_ALIGN_END).margins(bottom: 6, start: 8, end: 8)))
         upNext.append(upNextTitle)
         upNext.append(upNextCount)
         upNext.append(Box.horizontal(spacing: 8) {
@@ -315,8 +320,12 @@ final class PlayerPage {
         }
 
         if let countdown = session.countdown, let next = session.next {
-            upNextTitle.text = [next.episodeLabel, next.name].compactMap { $0 }.joined(separator: " · ")
+            upNextTitle.text = next.type == .episode
+                ? [next.episodeLabel, next.name].compactMap { $0 }.joined(separator: " · ")
+                : next.title
             upNextCount.text = "Starting in \(countdown) s"
+            upNextArt.picture.load(Artwork.landscape(next, client, width: 584))
+            upNextProgress.fraction = Double(10 - countdown) / 10
             upNext.visible(true)
         } else {
             upNext.visible(false)

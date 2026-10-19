@@ -133,6 +133,7 @@ struct PlayerView: View {
 
 /// The skip button, the countdown to the next episode, and errors, from the session.
 private struct Overlays: View {
+    @Environment(AppState.self) private var state
     let session: PlaybackSession
 
     var body: some View {
@@ -157,7 +158,16 @@ private struct Overlays: View {
             if let countdown = session.countdown, let next = session.next {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Up Next").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text([next.episodeLabel, next.name].compactMap { $0 }.joined(separator: " · "))
+                    // Plex shows the next one's picture, with the countdown along its foot.
+                    ArtworkView(url: state.client.flatMap { Artwork.landscape(next, $0, width: 600) }, cornerRadius: 8, title: next.title)
+                        .frame(width: 288, height: 162)
+                        .overlay(alignment: .bottom) {
+                            ProgressView(value: Double(10 - countdown), total: 10)
+                                .tint(.plexGold)
+                                .padding(.horizontal, 8)
+                                .padding(.bottom, 6)
+                        }
+                    Text(next.type == .episode ? [next.episodeLabel, next.name].compactMap { $0 }.joined(separator: " · ") : next.title)
                         .font(.headline)
                         .lineLimit(2)
                     Text("Starting in \(countdown) s").font(.subheadline).foregroundStyle(.secondary)
