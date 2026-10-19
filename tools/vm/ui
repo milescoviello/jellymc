@@ -3,6 +3,7 @@
 #
 #   tools/vm/ui shot NAME          screenshot to $JELLYMC_SHOTS/NAME.png
 #   tools/vm/ui click X Y          a left click at that pixel of the 1280x800 screen
+#   tools/vm/ui move X Y           the pointer there, no click (hover)
 #   tools/vm/ui keys esc tab ret   QEMU key names
 #   tools/vm/ui type 'text'
 #
@@ -17,6 +18,19 @@ case "$step" in
     # A key first: the VM blanks its display when idle, and shift changes nothing.
     shot) mkdir -p "$SHOTS"; "$DM/desktop/vmctl" keys "$VMID" shift >/dev/null; sleep 1; "$DM/desktop/vmctl" shot "$VMID" "$SHOTS/${1:?name}.png" >/dev/null; echo "$SHOTS/$1.png" ;;
     click) ssh root@100.105.58.62 python3 /root/distro-matrix-desktop/click.py "$VMID" "${1:?x}" "${2:?y}" 1280 800 ;;
+    # click.py's absolute QMP event without its button press; it stays distro-matrix's.
+    move) ssh root@100.105.58.62 python3 - "$VMID" "${1:?x}" "${2:?y}" <<'PY'
+import json, socket, sys
+vmid, x, y = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+s = socket.socket(socket.AF_UNIX); s.connect(f"/var/run/qemu-server/{vmid}.qmp"); f = s.makefile("rw"); f.readline()
+def cmd(name, **args):
+    f.write(json.dumps({"execute": name, **({"arguments": args} if args else {})}) + "\n"); f.flush()
+    while "return" not in (r := json.loads(f.readline())) and "error" not in r: pass
+cmd("qmp_capabilities")
+cmd("input-send-event", events=[{"type": "abs", "data": {"axis": "x", "value": int(x * 0x7FFF / 1279)}},
+                                {"type": "abs", "data": {"axis": "y", "value": int(y * 0x7FFF / 799)}}])
+PY
+        ;;
     keys) "$DM/desktop/vmctl" keys "$VMID" "$@" >/dev/null ;;
     type) "$DM/desktop/vmctl" type "$VMID" "$*" >/dev/null ;;
     *) echo "unknown step $step" >&2; exit 2 ;;

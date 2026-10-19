@@ -513,3 +513,46 @@ struct MP4Tests {
         #expect(MP4.retag(&truncated, in: 0 ..< truncated.count).isEmpty)
     }
 }
+
+@MainActor
+struct SessionPreviewTests {
+    /// An engine that plays nothing: the session only needs somewhere to send the file.
+    private final class StillEngine: PlayerEngine {
+        let kind = PlayerKind.mpv
+        var onEvent: (@MainActor (PlayerEvent) -> Void)?
+        func load(_ plan: PlaybackPlan) {}
+        func play() {}
+        func pause() {}
+        func seek(to seconds: Double) {}
+        func setRate(_ rate: Double) {}
+        func selectAudio(_ streamIndex: Int, in plan: PlaybackPlan) -> Bool { true }
+        func selectSubtitle(_ streamIndex: Int?, in plan: PlaybackPlan) -> Bool { true }
+        func stop() {}
+    }
+
+    @Test func previewsComeFromThePlayingSourcesTiles() async throws {
+        // Nothing listens there: the session falls back on the item it was given.
+        let nowhere = JellyfinClient(
+            baseURL: URL(string: "http://127.0.0.1:9")!,
+            device: DeviceIdentity(deviceName: "Test", deviceId: "device-1", version: "0.1.0"),
+            token: "secret-token", userId: "user-1"
+        )
+        var film = BaseItem(id: "film")
+        film.trickplay = ["ms": ["320": TrickplayInfo(width: 320, height: 180, tileWidth: 10, tileHeight: 10, thumbnailCount: 250, interval: 10_000)]]
+        let session = PlaybackSession(item: film, client: nowhere, engine: StillEngine(), preferences: PlaybackPreferences())
+        let plan = PlaybackPlan(
+            itemId: "film", source: MediaSource(id: "ms"), playSessionId: nil, method: .directPlay,
+            url: URL(fileURLWithPath: "/nonexistent/film.mkv"), startSeconds: 0, audioIndex: nil, subtitleIndex: nil,
+            externalSubtitles: [], transcodeReasons: [], httpHeaders: [:]
+        )
+        #expect(session.preview(at: 10) == nil)
+        await session.start(at: 0, local: plan)
+        for _ in 0 ..< 150 where session.trickplay == nil {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let preview = try #require(session.preview(at: 1230))
+        #expect(preview.frame == TrickplayFrame(tileIndex: 1, x: 960, y: 360, width: 320, height: 180))
+        #expect(preview.tile.absoluteString.contains("/Videos/film/Trickplay/320/1.jpg?mediaSourceId=ms"))
+        #expect(preview.tile.absoluteString.contains("ApiKey=secret-token"))
+    }
+}

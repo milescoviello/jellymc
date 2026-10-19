@@ -33,7 +33,11 @@ final class PlayerPage {
     private var keyController: OpaquePointer?
     private var hideTask: Task<Void, Never>?
     private var seekTask: Task<Void, Never>?
+    private let seekPreview = SeekPreview()
     private var scrubbing = false
+    /// The bars stay while the pointer is on them: reading the seek preview, aiming at a
+    /// button.
+    private var pointerOnBars = false
     private var showsStats = false
     private var lastPointer: (Double, Double) = (0, 0)
     /// The session's idle inhibitor: no screen saver while a video is open.
@@ -92,6 +96,15 @@ final class PlayerPage {
         }.css("player-bottom")
         bottom = Revealer(bottomBar, transition: GTK_REVEALER_TRANSITION_TYPE_CROSSFADE)
         bottom.valign(GTK_ALIGN_END)
+        for bar in [topBar, bottomBar] {
+            let hover = gtk_event_controller_motion_new()!
+            Signal.connect(hover, "enter", point: { [weak self] _, _ in self?.pointerOnBars = true })
+            Signal.connect(hover, "leave") { [weak self] in
+                self?.pointerOnBars = false
+                self?.reveal()
+            }
+            gtk_widget_add_controller(bar.widget, hover)
+        }
 
         // Up next.
         let playNow = Button("Play Now", "suggested-action", "pill")
@@ -123,6 +136,7 @@ final class PlayerPage {
             .add(spinner)
             .add(top)
             .add(bottom)
+            .add(seekPreview.root)
             .add(stats)
             .add(skipButton)
             .add(upNext)
@@ -148,6 +162,7 @@ final class PlayerPage {
         seek.onUserChange { [weak self] value in self?.scrub(to: value) }
 
         installPointer(overlay)
+        installSeekPreview()
         installKeys()
         if let application = Desktop.application {
             inhibitor = gtk_application_inhibit(application.cast(), window.window.cast(), GTK_APPLICATION_INHIBIT_IDLE, "Playing video")
@@ -363,6 +378,29 @@ final class PlayerPage {
         gtk_widget_add_controller(engine.view.widget, scroll)
     }
 
+    /// The thumbnail and time over the seek bar, following the pointer along it.
+    private func installSeekPreview() {
+        let motion = gtk_event_controller_motion_new()!
+        Signal.connect(motion, "motion", point: { [weak self] x, _ in self?.previewSeek(at: x) })
+        Signal.connect(motion, "leave") { [weak self] in self?.seekPreview.hide() }
+        gtk_widget_add_controller(seek.widget, motion)
+    }
+
+    private func previewSeek(at x: Double) {
+        guard let session, session.duration > 0 else { return }
+        var trough = GdkRectangle()
+        gtk_range_get_range_rect(seek.widget.cast(), &trough)
+        let fraction = max(0, min(1, (x - Double(trough.x)) / Double(max(1, trough.width))))
+        let seconds = fraction * session.duration
+        var point = graphene_point_t(x: Float(x), y: 0)
+        var inPage = graphene_point_t()
+        guard gtk_widget_compute_point(seek.widget, root.widget, &point, &inPage) != 0 else { return }
+        seekPreview.show(
+            seconds: seconds, preview: session.preview(at: seconds), x: Double(inPage.x),
+            bottom: Double(root.height) - Double(inPage.y) + 6, width: Double(root.width)
+        )
+    }
+
     private func installKeys() {
         guard let window = Desktop.window else { return }
         let controller = gtk_event_controller_key_new()!
@@ -451,9 +489,11 @@ final class PlayerPage {
         guard autohide else { return }
         hideTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard !Task.isCancelled, let self, let session = self.session, !session.isPaused, session.error == nil, !self.scrubbing else { return }
+            guard !Task.isCancelled, let self, let session = self.session, !session.isPaused, session.error == nil,
+                  !self.scrubbing, !self.pointerOnBars else { return }
             self.top.isRevealed = false
             self.bottom.isRevealed = false
+            self.seekPreview.hide()
             self.setCursor(visible: false)
         }
     }

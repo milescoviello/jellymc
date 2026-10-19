@@ -30,6 +30,9 @@ enum Style {
     .osd-pill { background-color: alpha(#141414, 0.88); color: white; border-radius: 999px; padding: 10px 22px; font-weight: 700; }
     .up-next { background-color: alpha(#141414, 0.94); color: white; border-radius: 14px; padding: 14px; }
     .stats { background-color: alpha(black, 0.7); color: white; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 0.85em; }
+    .seek-preview { background-color: alpha(#141414, 0.92); color: white; border-radius: 10px; padding: 6px; }
+    .seek-preview picture { border-radius: 6px; }
+    .seek-preview-time { font-feature-settings: "tnum"; font-weight: 700; }
     .error-box { background-color: alpha(black, 0.8); color: white; border-radius: 14px; padding: 20px; }
     """
 }

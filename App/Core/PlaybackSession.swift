@@ -55,6 +55,8 @@ final class PlaybackSession {
     private(set) var isBuffering = true
     private(set) var error: String?
     private(set) var segments: [MediaSegment] = []
+    /// The thumbnails the server made for this source, once known.
+    @ObservationIgnored private(set) var trickplay: TrickplayInfo?
     /// The segment under the playhead whose skip button should show.
     private(set) var skippable: MediaSegment?
     /// The episode that follows, once known.
@@ -168,6 +170,10 @@ final class PlaybackSession {
     }
 
     private func loadSegmentsAndNext() async {
+        // An item from a list comes without its trickplay; the full one has it.
+        var detailed = item
+        if detailed.trickplay == nil, let full = try? await client.item(item.id) { detailed = full }
+        if let source = plan?.source.id { trickplay = TrickplayFrame.info(for: detailed, mediaSourceId: source) }
         if let segments = try? await client.mediaSegments(itemId: item.id) {
             self.segments = segments.sorted { $0.startTicks < $1.startTicks }
         }
@@ -176,6 +182,15 @@ final class PlaybackSession {
            let index = episodes.firstIndex(where: { $0.id == item.id }), index + 1 < episodes.count {
             next = episodes[index + 1]
         }
+    }
+
+    /// The server's thumbnail for a moment, for a preview over the seek bar: the tile
+    /// image to fetch, and where the thumbnail is in it. Nil when the server made none.
+    func preview(at seconds: Double) -> TrickplayPreview? {
+        guard let info = trickplay, let source = plan?.source.id, let frame = TrickplayFrame(info: info, seconds: seconds),
+              let url = client.trickplayTileURL(itemId: item.id, width: info.width, index: frame.tileIndex, mediaSourceId: source)
+        else { return nil }
+        return TrickplayPreview(tile: url, frame: frame)
     }
 
     // MARK: - Controls
@@ -400,6 +415,11 @@ final class PlaybackSession {
         let client = client
         Task { await client.reportProgress(report) }
     }
+}
+
+struct TrickplayPreview: Sendable, Equatable {
+    var tile: URL
+    var frame: TrickplayFrame
 }
 
 /// Where a moment's thumbnail is in the server's trickplay tiles.
