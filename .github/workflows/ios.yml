@@ -18,6 +18,12 @@ on:
 permissions:
     contents: write
 
+# A newer push makes an older build pointless, and an older one finishing last would
+# put itself back over the newer one in `latest`.
+concurrency:
+    group: ios-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
     build:
         runs-on: macos-26
@@ -99,6 +105,12 @@ jobs:
                   # Notes built in a variable: a literal newline inside the YAML
                   # block scalar has to stay indented, and an unindented
                   # continuation line silently invalidates the whole workflow.
+                  # Never over a newer build: a run that was queued long can finish last.
+                  CURRENT=$(gh release view latest --repo "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null | sed -n 's/^Build \([0-9]*\) .*/\1/p')
+                  if [ -n "$CURRENT" ] && [ "$CURRENT" -gt "${{ github.run_number }}" ]; then
+                    echo "latest is already build $CURRENT; not replacing it with ${{ github.run_number }}"
+                    exit 0
+                  fi
                   printf 'Ad-hoc signed. Install with `xtool install Jellymc.ipa`.\n\nBuild %s · commit %s\n' \
                     "${{ github.run_number }}" "${GITHUB_SHA:0:7}" > "$RUNNER_TEMP/notes.md"
                   gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
