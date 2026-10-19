@@ -32,7 +32,7 @@ struct Browse: Codable, Sendable, Equatable, Hashable {
 struct HomeRow: Identifiable, Codable, Sendable, Equatable {
     enum Kind: String, Codable, Sendable {
         case continueWatching, recentlyAdded, recentlyReleased, topRated, recentlyViewed
-        case startWatching, rediscover, newEpisodes, genre, recommended
+        case startWatching, rediscover, newEpisodes, genre, recommended, watchlist
     }
 
     var id: String
@@ -97,6 +97,7 @@ final class HomeModel {
             libraries = views
             async let resume = client.resume()
             async let nextUp = client.nextUp()
+            async let watchlist = Hubs.watchlist(client)
             // The server's own Home settings: a library can be kept out of "Latest".
             let excluded = Set((try? await user)?.configuration?.latestItemsExcludes ?? [])
             var perLibrary: [(Int, [HomeRow])] = []
@@ -111,6 +112,8 @@ final class HomeModel {
             if !continuing.isEmpty {
                 rows.append(HomeRow(id: "continue", kind: .continueWatching, title: "Continue Watching", style: .landscape, items: continuing))
             }
+            // Plex's Watchlist is what was marked to watch; here, the favourites not yet seen.
+            if let watchlist = await watchlist { rows.append(watchlist) }
             rows += perLibrary.sorted { $0.0 < $1.0 }.flatMap(\.1)
             guard load == latestLoad else { return }
             self.rows = rows
@@ -201,6 +204,22 @@ enum Hubs {
         }
         let next = nextUp.filter { item in seen.insert(item.seriesId ?? item.id).inserted }
         return started + next
+    }
+
+    /// Films and shows marked as favourites and not finished, newest marked first.
+    static func watchlist(_ client: JellyfinClient) async -> HomeRow? {
+        var query = ItemQuery()
+        query.recursive = true
+        query.includeItemTypes = [.movie, .series]
+        query.filters = [.favorite]
+        query.sort = .dateAdded
+        query.descending = true
+        query.limit = 30
+        guard let items = try? await client.items(query).items.filter({ !$0.isPlayed }), !items.isEmpty else { return nil }
+        return HomeRow(
+            id: "watchlist", kind: .watchlist, title: "Watchlist", style: .poster, items: items,
+            seeAll: Browse(title: "Watchlist", libraryId: nil, itemTypes: [.movie, .series], sort: .dateAdded, filter: .favorite)
+        )
     }
 
     /// Home's row for one library, as Plex's Home has it: what was added. The rest is in
@@ -540,6 +559,18 @@ final class LibraryModel {
         query.limit = 0
         query.nameLessThan = letter
         return (try? await client.items(query))?.totalRecordCount
+    }
+
+    /// Plex's Shuffle on a library: items from all of it in a random order, the first to
+    /// play and the rest queued. A show is its episodes, shuffled across the show.
+    func shuffled(limit: Int = 100) async -> [BaseItem] {
+        guard let client else { return [] }
+        var query = baseQuery()
+        query.sort = .random
+        query.limit = limit
+        if browse.itemTypes == [.series] { query.includeItemTypes = [.episode] }
+        if browse.itemTypes == [.boxSet] || browse.itemTypes == [.playlist] { return [] }
+        return (try? await client.items(query).items.filter { $0.type?.isVideo == true }) ?? []
     }
 
     /// Pages in until `index` is loaded, for a jump.

@@ -114,7 +114,17 @@ final class BrowseView {
             }
             return Menu(sections)
         }.tooltip("Filter")
+        let shuffle = Button(icon: "media-playlist-shuffle-symbolic", "flat") { [weak shell] in
+            guard let shell else { return }
+            Task {
+                let order = await model.shuffled()
+                guard let first = order.first else { return }
+                shell.window.play(first, from: 0, queue: Array(order.dropFirst()))
+            }
+        }.tooltip("Shuffle")
+        shuffle.visible(model.kinds != [.boxSet] && model.kinds != [.playlist])
         options = Box.horizontal(spacing: 0) {
+            shuffle
             filtering
             sorting
         }

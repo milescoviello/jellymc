@@ -178,6 +178,7 @@ struct BrowsePageView: View {
 /// an A–Z index down the side while sorted by title.
 struct BrowseGridView: View {
     @Environment(AppState.self) private var state
+    @Environment(PlayerRouter.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var model: LibraryModel
 
@@ -233,6 +234,20 @@ struct BrowseGridView: View {
             }
         }
         .toolbar {
+            if model.kinds != [.boxSet], model.kinds != [.playlist] {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            let order = await model.shuffled()
+                            guard let first = order.first else { return }
+                            router.play(first, from: 0, queue: Array(order.dropFirst()))
+                        }
+                    } label: {
+                        Image(systemName: "shuffle")
+                    }
+                    .accessibilityLabel("Shuffle")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 // Plex's filters: watched state, genre, decade, content rating, resolution.
                 Menu {
