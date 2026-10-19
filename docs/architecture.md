@@ -70,12 +70,6 @@ See [playback.md](playback.md).
 - **iOS:** `AVPlayerViewController`, with our overlay for skip-segment and up-next buttons. PiP (`canStartPictureInPictureAutomaticallyFromInline`), AirPlay and Now Playing come from AVKit.
 - **Linux:** `MpvPlayer` drives libmpv through `mpv_render_context` (OpenGL) inside a `GtkGLArea`. mpv's update callback is posted to the GTK main loop and queues a render. Controls are GTK widgets in an overlay; keyboard shortcuts are mpv-like.
 
-## Music
-
-- **iOS:** AVQueuePlayer, with the next track enqueued for gapless playback. MPNowPlayingInfoCenter for the lock screen and Dynamic Island.
-- **Linux:** libmpv, audio only, with `gapless-audio`, plus MPRIS.
-- The queue is a Core type (`PlayQueue`), persisted so it survives restarts and the weekly re-sign.
-
 ## Platform services
 
 | Service | iOS / iPadOS | Linux (KDE Plasma, Wayland) |

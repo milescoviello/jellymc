@@ -9,7 +9,6 @@
 | UI | SwiftUI: the system's scrolling, swipe-back, tab bar and sheets | GTK 4 + libadwaita, through C interop and the small declarative wrapper the Music app's Linux build already has (`Linux/Sources/JellyCore/GTK`) |
 | Core | `App/Core`: Jellyfin client, models, session, device profiles, playback negotiation and reporting, queues, outbox, caches. Foundation-only, except for a few named Apple-only files. | **The same files**: `Linux/Sources/JellyCore/Core` is a symlink to `App/Core`. Apple-only files are excluded, and each has a Linux file of the same name and shape under `Platform/`. |
 | Video | **AVPlayer** (`AVPlayerViewController`): PiP, AirPlay, Dolby Vision/HDR, Now Playing, all from the system. The server remuxes to HLS (or transcodes) whatever AVPlayer can't open. | **libmpv** through its render API into a `GtkGLArea` (OpenGL via EGL), with VA-API decoding on the Arrow Lake iGPU. Every container, codec and subtitle format, including ASS with fonts. |
-| Music | AVQueuePlayer (gapless, background, lock screen) | libmpv, audio only (gapless with `gapless-audio`) |
 | Secrets | Keychain | libsecret (Secret Service) |
 | Media controls | MPNowPlayingInfoCenter / MPRemoteCommandCenter | MPRIS on D-Bus (Plasma's media applet, media keys, KDE Connect) |
 | Network status | `NWPathMonitor` | GIO `GNetworkMonitor` |
@@ -43,7 +42,7 @@ There are no third-party Swift packages on iOS. On Linux, everything comes from 
 
 | Engine | Where | Strengths | Weaknesses |
 |---|---|---|---|
-| **libmpv** (render API → `GtkGLArea`) | Linux | Widest format support; libass; PGS/VobSub; libplacebo tone-mapping; VA-API; gapless audio | HDR is tone-mapped in-window. Real HDR output needs mpv's own window (`vo=gpu-next`), which is a later item. |
+| **libmpv** (render API → `GtkGLArea`) | Linux | Widest format support; libass; PGS/VobSub; libplacebo tone-mapping; VA-API | HDR is tone-mapped in-window. Real HDR output needs mpv's own window (`vo=gpu-next`), which is a later item. |
 | **AVPlayer** | iOS | PiP, AirPlay, DV/HDR10, Atmos (E-AC-3 JOC) to AirPods, Now Playing, best battery life | No MKV, no ASS/PGS rendering; needs server HLS for the rest |
 | MPVKit (later, optional) | iOS | Direct play of anything | Swift glue plus a large binary; no PiP |
 

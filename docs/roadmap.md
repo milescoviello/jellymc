@@ -7,10 +7,9 @@ Milestones are cumulative. Each one leaves both apps usable. iOS builds come fro
 | **M0** Foundations | Repo layout, `Package.swift` (Linux app + macOS tests), the Xcode project, the CI workflow producing `latest`, a local test server, a Core client that logs in |
 | **M1** Watch | Home (Continue Watching, Next Up, Latest), libraries, details (movie/series/season/episode), search; playback with reporting, resume, track selection, segment skip, up next. AVPlayer on iOS, mpv on Linux. |
 | **M2** iPhone essentials + desktop integration | Downloads and offline (iOS), PiP and AirPlay polish, multiple server addresses, MPRIS and the screen-saver inhibit on Linux, trickplay, roaming settings, Diagnostics |
-| **M3** Music | Albums, artists, playlists, queue, gapless, lyrics, lock screen/MPRIS |
-| **M4** Polish | Performance, iPad layouts, keyboard shortcuts, the papercuts |
-| **M5** Extras | Remote control and hand-off, SyncPlay, admin views, photos; Live TV/Seerr if used |
-| **M6** Maybe | MPVKit engine on iOS, mpv HDR window on Linux, books, CarPlay/widgets (paid account) |
+| **M3** Polish | Performance, iPad layouts, keyboard shortcuts, the papercuts |
+| **M4** Extras | Remote control and hand-off, SyncPlay, admin views; Seerr if used |
+| **M5** Maybe | MPVKit engine on iOS, mpv HDR window on Linux, widgets (paid account) |
 
 ## M0: Foundations
 
@@ -42,4 +41,4 @@ Milestones are cumulative. Each one leaves both apps usable. iOS builds come fro
 | Free certificate: 7-day expiry, 3 apps | Weekly `xtool install` (or adapt the Music app's phone-refresh tool) |
 | GTK + libmpv rendering on Wayland | `GtkGLArea` with the mpv render API is the Celluloid approach; VA-API interop through EGL |
 | Server upgrades | DTOs decode leniently (all optional) and are tested against recorded responses |
-| Scope creep | Milestones are cumulative and each is usable; M5/M6 are à la carte |
+| Scope creep | Milestones are cumulative and each is usable; M4/M5 are à la carte |

@@ -234,8 +234,8 @@ struct MediaSource: Codable, Sendable, Equatable {
     var subtitleStreams: [MediaStream] { streams.filter { $0.type == .subtitle } }
 }
 
-/// Everything the app shows: a film, a series, a season, an episode, an album, a song,
-/// a library. Which fields are present depends on the kind and on the `Fields` asked for.
+/// Everything the app shows: a film, a series, a season, an episode, a collection, a
+/// person, a library. Which fields are present depends on the kind and on the `Fields` asked for.
 struct BaseItem: Codable, Sendable, Equatable, Identifiable {
     var id: String
     var name: String?
@@ -288,16 +288,6 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
     var remoteTrailers: [ExternalURL]?
     var localTrailerCount: Int?
     var specialFeatureCount: Int?
-    var album: String?
-    var albumId: String?
-    var albumArtist: String?
-    var albumArtists: [NameIdPair]?
-    var artists: [String]?
-    var artistItems: [NameIdPair]?
-    var albumPrimaryImageTag: String?
-    var hasLyrics: Bool?
-    var normalizationGain: Double?
-    var albumNormalizationGain: Double?
     var container: String?
     var width: Int?
     var height: Int?
@@ -337,8 +327,6 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
         switch type {
         case .episode?:
             return [seriesName, episodeLabel].compactMap { $0 }.joined(separator: " · ")
-        case .musicAlbum?, .audio?:
-            return albumArtist ?? artists?.first
         case .season?:
             return seriesName
         case .person?:
@@ -406,22 +394,3 @@ struct MediaSegment: Codable, Sendable, Equatable {
     var end: Double { Ticks.seconds(endTicks) }
 }
 
-/// `GET /Audio/{id}/Lyrics`.
-struct Lyrics: Codable, Sendable, Equatable {
-    struct Line: Codable, Sendable, Equatable {
-        var text: String?
-        /// Ticks from the start of the track; nil for unsynced lyrics.
-        var start: Int64?
-    }
-
-    var lyrics: [Line]
-
-    init(lyrics: [Line]) { self.lyrics = lyrics }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        lyrics = try container.decodeIfPresent([Line].self, forKey: .lyrics) ?? []
-    }
-
-    var isSynced: Bool { lyrics.contains { $0.start != nil } }
-}

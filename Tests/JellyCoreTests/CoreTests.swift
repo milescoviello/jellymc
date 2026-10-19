@@ -43,6 +43,8 @@ struct DecodingTests {
     @Test func decodesLibrariesAndServerInfo() throws {
         let views = try JSONCoding.decoder().decode(ItemsPage<BaseItem>.self, from: fixture("user-views"))
         #expect(Set(views.items.compactMap(\.collectionType)) == ["movies", "tvshows", "music"])
+        // The app shows films and shows only.
+        #expect(views.items.filter(HomeModel.isShown).compactMap(\.collectionType).sorted() == ["movies", "tvshows"])
         let info = try JSONCoding.decoder().decode(PublicSystemInfo.self, from: fixture("system-info-public"))
         #expect(info.version?.hasPrefix("12.") == true)
         #expect(info.startupWizardCompleted == true)

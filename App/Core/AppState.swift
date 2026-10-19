@@ -91,7 +91,7 @@ final class AppState {
             Self.persist(stored)
             isOffline = false
             await Diagnostics.shared.record("session", "connected to \(info.serverName ?? "server") \(info.version ?? "") at \(address)")
-            await client.registerCapabilities(playableMediaTypes: ["Video", "Audio"], commands: ["Play", "Playstate", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"])
+            await client.registerCapabilities(playableMediaTypes: ["Video"], commands: ["Play", "Playstate", "SetAudioStreamIndex", "SetSubtitleStreamIndex", "DisplayMessage"])
             return
         }
         isOffline = true

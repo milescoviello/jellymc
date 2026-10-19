@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # A throwaway Jellyfin 12.2 on :8096 for development, with the first-run wizard done and
-# the three test libraries added. Idempotent: rerunning starts the container if it is
+# the two test libraries added. Idempotent: rerunning starts the container if it is
 # stopped and skips the wizard if it has been completed.
 #
 #   tools/testserver/make-media.sh   # once, to generate the media
@@ -65,7 +65,6 @@ add_library() { # name collectionType path
 }
 add_library Movies movies /media/movies
 add_library Shows tvshows /media/shows
-add_library Music music /media/music
 
 curl -fsS -X POST "$URL/Library/Refresh" -H "Authorization: $AUTH_TOKEN"
 echo "library scan started; sign in at $URL as $USER_NAME / $PASSWORD"

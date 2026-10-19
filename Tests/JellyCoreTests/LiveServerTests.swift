@@ -93,7 +93,8 @@ struct LiveServerTests {
     @Test func homeRowsAndSegments() async throws {
         let client = try await signIn()
         let views = try await client.userViews()
-        #expect(views.count == 3)
+        #expect(Set(views.compactMap(\.collectionType)).isSuperset(of: ["movies", "tvshows"]))
+        #expect(views.filter(HomeModel.isShown).allSatisfy { $0.collectionType != "music" })
         for view in views {
             _ = try await client.latest(parentId: view.id)
         }

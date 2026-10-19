@@ -11,8 +11,6 @@ enum CardStyle: String, Codable, Sendable {
     case poster
     /// 16:9 stills: episodes, continue watching.
     case landscape
-    /// 1:1 covers: albums.
-    case square
 }
 
 struct HomeRow: Identifiable, Codable, Sendable, Equatable {
@@ -54,7 +52,7 @@ final class HomeModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            let views = try await client.userViews()
+            let views = try await client.userViews().filter(Self.isShown)
             libraries = views
             async let resume = client.resume()
             async let nextUp = client.nextUp()
@@ -79,7 +77,7 @@ final class HomeModel {
             for (view, items) in latest where !items.isEmpty {
                 rows.append(HomeRow(
                     id: "latest-\(view.id)", kind: .latest, title: "Latest \(view.title)",
-                    style: view.collectionType == "music" ? .square : .poster, items: items, libraryId: view.id
+                    style: .poster, items: items, libraryId: view.id
                 ))
             }
             self.rows = rows
@@ -105,9 +103,14 @@ final class HomeModel {
         }
     }
 
+    /// Films and shows, and collections of them: the app is for watching. Music, books,
+    /// photos and Live TV libraries are left out.
+    nonisolated static func isShown(_ view: BaseItem) -> Bool {
+        ["movies", "tvshows", "boxsets"].contains(view.collectionType)
+    }
+
     static func showsLatest(_ view: BaseItem) -> Bool {
-        ["movies", "tvshows", "music", "homevideos", "musicvideos", nil].contains(view.collectionType)
-            && view.collectionType != "playlists" && view.collectionType != "boxsets" && view.collectionType != "livetv"
+        ["movies", "tvshows"].contains(view.collectionType)
     }
 }
 
@@ -134,26 +137,16 @@ final class LibraryModel {
 
     init(library: BaseItem) {
         self.library = library
-        sort = library.collectionType == "music" ? .name : .name
+        sort = .name
     }
 
-    var style: CardStyle {
-        switch library.collectionType {
-        case "music": return .square
-        case "homevideos", "photos": return .landscape
-        default: return .poster
-        }
-    }
+    var style: CardStyle { .poster }
 
     var kinds: [ItemKind] {
         switch library.collectionType {
         case "movies": return [.movie]
         case "tvshows": return [.series]
-        case "music": return [.musicAlbum]
         case "boxsets": return [.boxSet]
-        case "playlists": return [.playlist]
-        case "musicvideos": return [.musicVideo]
-        case "homevideos": return [.video, .photo]
         default: return []
         }
     }
@@ -211,7 +204,7 @@ final class LibraryModel {
     }
 }
 
-/// A film, series, season, episode, album or folder, with what its page shows.
+/// A film, series, season, episode, collection or person, with what its page shows.
 @MainActor
 @Observable
 final class ItemModel {
@@ -221,7 +214,7 @@ final class ItemModel {
     private(set) var episodes: [BaseItem] = []
     /// For a series: the episode the play button starts.
     private(set) var nextEpisode: BaseItem?
-    /// An album's tracks, a folder's or collection's contents.
+    /// A collection's or folder's contents; a person's films and shows.
     private(set) var children: [BaseItem] = []
     private(set) var similar: [BaseItem] = []
     private(set) var error: String?
@@ -262,36 +255,25 @@ final class ItemModel {
                 if let seriesId = item.seriesId {
                     episodes = (try? await client.episodes(seriesId: seriesId, seasonId: id)) ?? []
                 }
-            case .person?, .musicArtist?:
+            case .person?:
                 var query = ItemQuery()
                 query.recursive = true
                 query.sort = .premiere
                 query.descending = true
                 query.limit = 300
-                if item.type == .person {
-                    query.personIds = [id]
-                    query.includeItemTypes = [.movie, .series]
-                } else {
-                    query.artistIds = [id]
-                    query.includeItemTypes = [.musicAlbum]
-                }
+                query.personIds = [id]
+                query.includeItemTypes = [.movie, .series]
                 children = (try? await client.items(query).items) ?? []
-            case .musicAlbum?, .playlist?, .boxSet?, .folder?, .collectionFolder?:
+            case .boxSet?, .folder?, .collectionFolder?:
                 var query = ItemQuery()
                 query.parentId = id
-                query.sort = item.type == .musicAlbum ? .name : .premiere
+                query.sort = .premiere
                 query.limit = 500
-                if item.type == .musicAlbum {
-                    query.fields = JellyfinClient.listFields + ",MediaSources"
-                }
                 children = (try? await client.items(query).items) ?? []
-                if item.type == .musicAlbum {
-                    children.sort { ($0.parentIndexNumber ?? 0, $0.indexNumber ?? 0) < ($1.parentIndexNumber ?? 0, $1.indexNumber ?? 0) }
-                }
             default:
                 break
             }
-            if [.movie, .series, .musicAlbum].contains(item.type) {
+            if [.movie, .series].contains(item.type) {
                 similar = (try? await client.similar(to: id)) ?? []
             }
         } catch {
@@ -309,7 +291,7 @@ final class ItemModel {
         guard let item else { return nil }
         if item.type == .series { return nextEpisode ?? episodes.first }
         if item.type == .season { return episodes.first { !$0.isPlayed } ?? episodes.first }
-        return item.type?.isVideo == true || item.type == .audio ? item : nil
+        return item.type?.isVideo == true ? item : nil
     }
 
     func togglePlayed() async {
@@ -362,8 +344,7 @@ final class SearchModel {
     var groups: [Group] {
         let order: [(ItemKind, String, CardStyle)] = [
             (.movie, "Movies", .poster), (.series, "Shows", .poster), (.episode, "Episodes", .landscape),
-            (.boxSet, "Collections", .poster), (.musicArtist, "Artists", .square), (.musicAlbum, "Albums", .square),
-            (.audio, "Songs", .square), (.person, "People", .poster),
+            (.boxSet, "Collections", .poster), (.person, "People", .poster),
         ]
         return order.compactMap { kind, title, style in
             let items = results.filter { $0.type == kind }

@@ -25,9 +25,7 @@ struct LibrariesView: View {
         switch collectionType {
         case "movies": return "film"
         case "tvshows": return "tv"
-        case "music": return "music.note"
         case "boxsets": return "square.stack"
-        case "playlists": return "music.note.list"
         case "homevideos", "photos": return "photo.on.rectangle"
         case "livetv": return "antenna.radiowaves.left.and.right"
         default: return "folder"
@@ -126,12 +124,12 @@ struct SearchView: View {
                 } else if search.query.count >= 2 {
                     ContentUnavailableView.search(text: search.query)
                 } else {
-                    ContentUnavailableView("Search Your Library", systemImage: "magnifyingglass", description: Text("Films, shows, episodes, people and music."))
+                    ContentUnavailableView("Search Your Library", systemImage: "magnifyingglass", description: Text("Films, shows, episodes and people."))
                 }
             }
         }
         .navigationTitle("Search")
-        .searchable(text: $search.query, prompt: "Films, shows, people, music")
+        .searchable(text: $search.query, prompt: "Films, shows, people")
         .onAppear { search.client = state.client }
     }
 }

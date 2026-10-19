@@ -21,7 +21,6 @@ final class Card {
         switch style {
         case .poster: return (156, 234)
         case .landscape: return (272, 153)
-        case .square: return (168, 168)
         }
     }
 
@@ -75,7 +74,7 @@ final class Card {
         } else {
             progress.visible(false)
         }
-        played.visible(item.isPlayed && item.type != .series && item.type != .musicAlbum)
+        played.visible(item.isPlayed && item.type != .series && item.type != .boxSet)
     }
 }
 

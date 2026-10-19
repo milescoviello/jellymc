@@ -6,7 +6,6 @@ enum Presentation {
     static func metaLine(_ item: BaseItem, now: Date = Date()) -> String {
         var parts: [String] = []
         if let label = item.episodeLabel { parts.append(label) }
-        if item.type == .musicAlbum, let artist = item.albumArtist { parts.append(artist) }
         if let year = item.productionYear {
             if item.type == .series, item.status == "Continuing" {
                 parts.append("\(year)–")

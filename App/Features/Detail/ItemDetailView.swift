@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A film, a series and its seasons, an episode, an album, a person.
+/// A film, a series and its seasons, an episode, a collection, a person.
 struct ItemDetailView: View {
     @Environment(AppState.self) private var state
     @Environment(PlayerRouter.self) private var router
@@ -132,16 +132,8 @@ struct ItemDetailView: View {
                     .controlSize(.large)
                     .accessibilityLabel("Play from the start")
                 }
-            } else if (item.type == .musicAlbum || item.type == .playlist), let first = model.children.first {
-                Button {
-                    router.play(first)
-                } label: {
-                    Label("Play", systemImage: "play.fill").frame(minWidth: 140)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             }
-            if item.type != .person, item.type != .musicArtist {
+            if item.type != .person {
                 Button {
                     Task { await model.togglePlayed() }
                 } label: {
@@ -264,45 +256,13 @@ struct ItemDetailView: View {
 
     // MARK: - Contents
 
-    @ViewBuilder
     private func childrenSection(_ item: BaseItem) -> some View {
-        if item.type == .musicAlbum || item.type == .playlist {
-            VStack(spacing: 0) {
-                ForEach(model.children) { track in
-                    Button {
-                        router.play(track)
-                    } label: {
-                        HStack(spacing: 14) {
-                            Text(track.indexNumber.map(String.init) ?? "")
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                                .frame(width: 26, alignment: .trailing)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(track.title).lineLimit(1)
-                                if let artists = track.artists, !artists.isEmpty {
-                                    Text(artists.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                            }
-                            Spacer()
-                            Text(track.runtime.map(Ticks.clock) ?? "")
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 10)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    Divider()
-                }
-            }
-        } else {
-            CardRowView(
-                title: item.type == .person ? "Filmography" : "Items",
-                style: item.type == .musicArtist ? .square : .poster,
-                items: model.children
-            )
-            .padding(.horizontal, -16)
-        }
+        CardRowView(
+            title: item.type == .person ? "Filmography" : "In This Collection",
+            style: .poster,
+            items: model.children
+        )
+        .padding(.horizontal, -16)
     }
 
     private func mediaInfo(_ source: MediaSource) -> some View {
@@ -328,7 +288,7 @@ struct ItemDetailView: View {
             )
         }
         if !model.similar.isEmpty {
-            CardRowView(title: "More Like This", style: item.type == .musicAlbum ? .square : .poster, items: model.similar)
+            CardRowView(title: "More Like This", style: .poster, items: model.similar)
         }
     }
 }

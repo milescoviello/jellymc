@@ -1,7 +1,7 @@
 import CGtk
 import Foundation
 
-/// A film, a series and its seasons, an episode, an album, a person: artwork, what it is,
+/// A film, a series and its seasons, an episode, a collection, a person: artwork, what it is,
 /// how to play it, and what goes with it.
 @MainActor
 final class ItemPage {
@@ -118,12 +118,8 @@ final class ItemPage {
                     self?.play(playable, from: 0)
                 })
             }
-        } else if item.type == .musicAlbum || item.type == .playlist, let first = model.children.first {
-            actions.append(Button("Play", icon: "media-playback-start-symbolic", "suggested-action", "pill") { [weak self] in
-                self?.shell.window.play(first)
-            })
         }
-        if item.type != .person, item.type != .musicArtist {
+        if item.type != .person {
             let played = Button(icon: item.isPlayed ? "object-select-symbolic" : "object-select-symbolic", "circular", item.isPlayed ? "accent" : "flat") { [weak self] in
                 Task { await self?.model.togglePlayed() }
             }
@@ -269,28 +265,11 @@ final class ItemPage {
         shownChildren = key
         children.removeAll()
         guard !list.isEmpty else { return }
-        if item.type == .musicAlbum || item.type == .playlist {
-            let rows = ListBox()
-            for track in list {
-                let number = track.indexNumber.map(String.init) ?? ""
-                rows.append(Box.horizontal(spacing: 14) {
-                    Label(number, "dim-label", "numeric").size(width: 28)
-                    Box.vertical(spacing: 2) {
-                        Label(track.title).ellipsize()
-                        Label(track.artists?.joined(separator: ", ") ?? "", "dim-label", "caption").ellipsize()
-                    }.hexpand()
-                    Label(track.runtime.map(Ticks.clock) ?? "", "dim-label", "numeric")
-                }.margin(horizontal: 12, vertical: 8)) { [weak self] in self?.shell.window.play(track) }
-            }
-            children.append(rows)
-        } else {
-            let style: CardStyle = item.type == .musicArtist ? .square : .poster
-            let row = CardRow(title: item.type == .person ? "Filmography" : "Items", style: style) { [weak self] child in
-                self?.shell.open(child)
-            }
-            row.show(list, client: client)
-            children.append(row.root.margins(start: -24, end: -24))
+        let row = CardRow(title: item.type == .person ? "Filmography" : "In This Collection", style: .poster) { [weak self] child in
+            self?.shell.open(child)
         }
+        row.show(list, client: client)
+        children.append(row.root.margins(start: -24, end: -24))
     }
 
     private func renderInfo(_ item: BaseItem) {
@@ -315,7 +294,7 @@ final class ItemPage {
             extra.append(row.root)
         }
         if !model.similar.isEmpty {
-            let row = CardRow(title: "More Like This", style: item.type == .musicAlbum ? .square : .poster) { [weak self] other in self?.shell.open(other) }
+            let row = CardRow(title: "More Like This", style: .poster) { [weak self] other in self?.shell.open(other) }
             row.show(model.similar, client: client)
             extra.append(row.root)
         }

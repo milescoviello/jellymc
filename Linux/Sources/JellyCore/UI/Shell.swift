@@ -70,9 +70,7 @@ final class Shell {
         switch collectionType {
         case "movies": return "camera-video-symbolic"
         case "tvshows": return "video-display-symbolic"
-        case "music": return "audio-x-generic-symbolic"
         case "boxsets": return "view-grid-symbolic"
-        case "playlists": return "view-list-symbolic"
         case "homevideos", "photos": return "image-x-generic-symbolic"
         case "livetv": return "network-wireless-symbolic"
         default: return "folder-symbolic"
@@ -103,12 +101,10 @@ final class Shell {
 
     func open(_ item: BaseItem) {
         switch item.type {
-        case .episode?, .movie?, .video?, .musicVideo?, .trailer?, .series?, .season?, .boxSet?, .musicAlbum?, .playlist?, .folder?, .person?, .musicArtist?:
+        case .episode?, .movie?, .video?, .trailer?, .series?, .season?, .boxSet?, .folder?, .person?:
             content.push(NavigationPage(ItemPage(shell: self, item: item).root, title: item.title))
         case .collectionFolder?, .userView?:
             content.push(NavigationPage(LibraryPage(shell: self, library: item).root, title: item.title))
-        case .audio?:
-            window.play(item)
         default:
             if item.type?.isVideo == true { window.play(item) } else {
                 content.push(NavigationPage(ItemPage(shell: self, item: item).root, title: item.title))

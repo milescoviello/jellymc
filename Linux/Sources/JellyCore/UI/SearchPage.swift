@@ -14,7 +14,7 @@ final class SearchPage {
         self.shell = shell
         let model = shell.state.search
         model.client = shell.state.client
-        let entry = SearchEntry(placeholder: "Films, shows, episodes, people, music")
+        let entry = SearchEntry(placeholder: "Films, shows, episodes, people")
         entry.text = model.query
         entry.size(width: 420).searchDelay(150)
         entry.onSearch { model.query = $0 }

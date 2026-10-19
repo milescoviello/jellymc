@@ -248,9 +248,9 @@ final class PlayerPage {
         MediaControls.shared.update(
             track: MediaControls.Track(
                 id: session.item.id,
-                title: session.item.type == .episode ? session.item.title : session.title,
-                artist: session.item.type == .episode ? session.item.seriesName : session.item.artists?.first,
-                album: session.item.type == .episode ? session.item.seasonName : session.item.album,
+                title: session.item.title,
+                artist: session.item.type == .episode ? session.item.seriesName : session.item.productionYear.map(String.init),
+                album: session.item.type == .episode ? session.item.seasonName : nil,
                 duration: session.duration
             ),
             elapsed: session.position,

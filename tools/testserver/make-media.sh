@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Generates a small library for the local test server: films named after Blender's open
-# movies (so the server finds real posters and cast), a three-episode series and a FLAC
-# album. The pictures are test patterns with the title and a clock burnt in; what matters
+# movies (so the server finds real posters and cast) and a three-episode series. The pictures are test patterns with the title and a clock burnt in; what matters
 # is the mix of containers, codecs, subtitle formats and HDR signalling.
 set -euo pipefail
 
 ROOT="${JELLYMC_TESTSERVER:-$HOME/.local/share/jellymc-testserver}/media"
 FONT=/usr/share/fonts/dejavu/DejaVuSans.ttf
-mkdir -p "$ROOT"/{movies,shows,music}
+mkdir -p "$ROOT"/{movies,shows}
 
 ff() { ffmpeg -hide_banner -loglevel error -y "$@"; }
 
@@ -141,32 +140,6 @@ for e in 1 2 3; do
         -i "$TMP/ep.chapters" -map 0:v -map 1:a -map_chapters 2 \
         -c:v libx264 -preset veryfast -crf 30 -pix_fmt yuv420p -c:a aac -b:a 128k "$f"
 done
-
-# 6. A FLAC album with tags, cover art and synced lyrics on the first track.
-d="$ROOT/music/Test Artist/Signal Tones (2020)"; mkdir -p "$d"
-if [ ! -f "$d/cover.jpg" ]; then
-    ff -f lavfi -i "testsrc2=size=600x600:duration=1,drawtext=fontfile=$FONT:text='Signal Tones':fontsize=60:fontcolor=white:box=1:boxcolor=black@0.6:x=(w-tw)/2:y=(h-th)/2" \
-        -frames:v 1 "$d/cover.jpg"
-fi
-n=0
-for title in "Low Hum" "Middle C" "Concert A" "High Whistle"; do
-    n=$(( n + 1 ))
-    f="$d/0$n - $title.flac"
-    [ -f "$f" ] && continue
-    freq=$(( 110 * n * 2 ))
-    ff -f lavfi -i "$(tone 40 $freq)" -c:a flac \
-        -metadata title="$title" -metadata artist="Test Artist" -metadata album_artist="Test Artist" \
-        -metadata album="Signal Tones" -metadata date=2020 -metadata track="$n/4" -metadata genre="Electronic" \
-        "$f"
-done
-cat > "$d/01 - Low Hum.lrc" <<'LRC'
-[ar:Test Artist]
-[ti:Low Hum]
-[00:02.00]The first synced line
-[00:08.00]arrives two seconds in
-[00:14.00]and this one at fourteen
-[00:22.00]the last line of the hum
-LRC
 
 echo "media in $ROOT"
 du -sh "$ROOT"

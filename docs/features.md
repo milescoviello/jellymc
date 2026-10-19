@@ -6,10 +6,9 @@ Every feature is tagged with the milestone that delivers it. Milestones are defi
 |---|---|
 | **M1** | Watch |
 | **M2** | iPhone essentials + Linux integration |
-| **M3** | Music |
-| **M4** | Polish ("1.0 for me") |
-| **M5** | Extras |
-| **M6** | Maybe |
+| **M3** | Polish ("1.0 for me") |
+| **M4** | Extras |
+| **M5** | Maybe |
 
 The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPad), or Linux. API references are 12.2 routes.
 
@@ -21,9 +20,9 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Username/password login | M1 | Both | Token in Keychain or Secret Service |
 | Multiple addresses per server (LAN + remote) with auto-switching on network change | M2 | Both | Matters most on the iPhone |
 | Reverse-proxy base path, custom headers, your own CA | M2 | Both | Only if your setup needs them |
-| Approve another device's Quick Connect code from the app | M5 | Both | `POST /QuickConnect/Authorize`, handy for signing in TV apps |
-| Quick Connect login (code shown on this device) | M6 | Both | Rarely needed for one user |
-| Multi-server / multi-user switching UI | M6 | Both | The data model already supports it |
+| Approve another device's Quick Connect code from the app | M4 | Both | `POST /QuickConnect/Authorize`, handy for signing in TV apps |
+| Quick Connect login (code shown on this device) | M5 | Both | Rarely needed for one user |
+| Multi-server / multi-user switching UI | M5 | Both | The data model already supports it |
 | LAN discovery | — | — | Needs the iOS multicast entitlement (not on a free Apple ID), and you know your URL |
 
 ## 2. Home and discovery
@@ -52,7 +51,7 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Alphabet jump bar | M1 | Both | |
 | Shuffle a library or filtered view | M1 | Both | |
 | Series → seasons → episodes, with missing-episode toggle | M1 | Both | |
-| Collections (box sets): browse; create and edit | M1 / M5 | Both | `/Collections` |
+| Collections (box sets): browse; create and edit | M1 / M4 | Both | `/Collections` |
 | People pages (filmography) | M1 | Both | `/Persons` |
 | Genre, studio and year pages | M2 | Both | |
 | Multi-select: mark played, favourite, add to playlist, download | M2 | Both | Shift/ctrl-click on Linux; long-press on iOS |
@@ -72,9 +71,8 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Mark played/unplayed, favourite, rating | M1 | Both | `/UserPlayedItems`, `/UserFavoriteItems`, `/UserItems/{id}/Rating` |
 | Add to playlist or collection | M2 | Both | |
 | Download with a quality picker | M2 | Both | Mainly iOS |
-| Share a deep link (`jellymc://item/{itemId}`) | M4 | Both | E.g. send from Linux to the phone through KDE Connect |
-| Theme music/video on detail pages (opt-in) | M5 | Both | `/Items/{id}/ThemeMedia` |
-| Admin: refresh metadata, identify, edit images and metadata | M5 | Both | You're the admin. `/Items/RemoteSearch/*` |
+| Share a deep link (`jellymc://item/{itemId}`) | M3 | Both | E.g. send from Linux to the phone through KDE Connect |
+| Admin: refresh metadata, identify, edit images and metadata | M4 | Both | You're the admin. `/Items/RemoteSearch/*` |
 
 ## 5. Search
 
@@ -118,11 +116,11 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Background audio for video (keep listening, screen off) | M2 | iOS | Opt-in |
 | Sleep timer (end of episode / N minutes) | M2 | Both | |
 | Touch lock | M2 | iOS | |
-| Screenshot to file | M4 | Linux | |
-| Custom `mpv.conf` passthrough | M4 | Linux | For power tweaks (shaders, scalers) |
-| Cinema mode (trailers before the feature) | M5 | Both | `/Items/{id}/Intros` |
-| HDMI audio passthrough | M5 | Linux | Only if you connect a receiver |
-| mpv PiP on iOS (sample-buffer layer bridge) | M6 | iOS | Swift-heavy; only if mpv-only titles in PiP matter |
+| Screenshot to file | M3 | Linux | |
+| Custom `mpv.conf` passthrough | M3 | Linux | For power tweaks (shaders, scalers) |
+| Cinema mode (trailers before the feature) | M4 | Both | `/Items/{id}/Intros` |
+| HDMI audio passthrough | M4 | Linux | Only if you connect a receiver |
+| mpv PiP on iOS (sample-buffer layer bridge) | M5 | iOS | Swift-heavy; only if mpv-only titles in PiP matter |
 
 ## 7. Offline and downloads
 
@@ -136,71 +134,37 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Played state and progress sync back on reconnect | M2 | Both | |
 | Auto-download the next N episodes; delete after watched | M2 | Both | |
 | Series/season download in one tap | M2 | Both | |
-| Music downloads: albums, playlists, artists; keep playlists synced | M3 | Both | |
 
-## 8. Music
-
-| Feature | Tag | Where | Notes |
-|---|---|---|---|
-| Artists, album artists, albums, songs, genres, playlists | M3 | Both | `/Artists`, `/Artists/AlbumArtists` |
-| Album and artist pages: discography, appears-on, similar | M3 | Both | |
-| Now playing: full-screen with dynamic colours, mini-player, desktop sidebar | M3 | Both | |
-| Queue: play next, add to queue, reorder; persisted | M3 | Both | |
-| Shuffle and repeat | M3 | Both | |
-| Gapless playback | M3 | Both | |
-| Normalization (track/album mode) | M3 | Both | `NormalizationGain`, `AlbumNormalizationGain` |
-| Instant Mix from song, album, artist, genre or playlist | M3 | Both | `/…/InstantMix` |
-| Synced lyrics (line and word-level), tap to seek | M3 | Both | `/Audio/{id}/Lyrics` |
-| Playlists: create, edit, reorder | M3 | Both | `/Playlists/{id}/Items/{itemId}/Move/{newIndex}` |
-| Lock screen, Control Center, Dynamic Island, AirPods controls | M3 | iOS | `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` |
-| KDE media applet, media keys, KDE Connect controls | M3 | Linux | MPRIS |
-| Streaming quality per network | M3 | Both | `/Audio/{id}/universal` |
-| Sleep timer | M3 | Both | |
-| Crossfade | M5 | Linux first | |
-| Equalizer | M6 | Both | |
-| CarPlay | M6 | iOS | Needs a paid Apple account and an approved entitlement |
-| Scrobbling (Last.fm/ListenBrainz) | — | — | Server plugins; nothing in the client |
-
-## 9. Remote control, SyncPlay, casting
+## 8. Remote control, SyncPlay, casting
 
 | Feature | Tag | Where | Notes |
 |---|---|---|---|
 | Be a cast target: receive "Play on jellymc (Linux)" from jellyfin-web or the phone | M2 | Linux (and iOS in the foreground) | `/Sessions/Capabilities/Full` + WebSocket |
-| Use the iPhone as a remote for the Linux app or other sessions | M5 | iOS | `/Sessions/{id}/Playing`, `/Command` |
-| Hand-off: "continue on Linux" / "continue on phone" at the current position | M5 | Both | Built on the remote-control commands |
-| SyncPlay: watch in sync with friends | M5 | Both | 22 `/SyncPlay/*` routes + WebSocket; time sync via `/GetUtcTime` |
-| Chromecast | M6 | iOS | Only if you own a Chromecast |
+| Use the iPhone as a remote for the Linux app or other sessions | M4 | iOS | `/Sessions/{id}/Playing`, `/Command` |
+| Hand-off: "continue on Linux" / "continue on phone" at the current position | M4 | Both | Built on the remote-control commands |
+| SyncPlay: watch in sync with friends | M4 | Both | 22 `/SyncPlay/*` routes + WebSocket; time sync via `/GetUtcTime` |
+| Chromecast | M5 | iOS | Only if you own a Chromecast |
 
-## 10. Live TV, photos, books (only if your server has them)
-
-| Feature | Tag | Where | Notes |
-|---|---|---|---|
-| Live TV channels, now/next, watch live | M5 | Both | Only with a tuner. `/LiveTv/Channels`, `AutoOpenLiveStream` |
-| EPG guide grid, recordings, timers | M5 | Both | `/LiveTv/Programs`, `/LiveTv/Recordings`, `/LiveTv/Timers` |
-| Photo albums, zoomable viewer, slideshow | M5 | Both | |
-| Audiobooks: chapters, per-book progress, speed, skip ±30 s | M6 | Both | Reuses the music pipeline |
-| EPUB, PDF and CBZ/CBR readers | M6 | Both | Reading-progress sync needs a design (no server field) |
-
-## 11. Light admin (you're the admin)
+## 9. Light admin (you're the admin)
 
 | Feature | Tag | Where | Notes |
 |---|---|---|---|
-| Active sessions: who's playing what, transcode reasons, stop a session | M5 | Both | `/Sessions` |
-| Scheduled tasks: run a library scan, see progress | M5 | Both | `/ScheduledTasks` + WebSocket progress |
-| Refresh a library or item | M5 | Both | `/Library/Refresh` |
-| Activity log | M5 | Both | `/System/ActivityLog/Entries` |
-| Server log viewer | M6 | Linux | `/System/Logs` |
-| Plugin updates | M6 | Both | `/Plugins`, `/Packages` |
+| Active sessions: who's playing what, transcode reasons, stop a session | M4 | Both | `/Sessions` |
+| Scheduled tasks: run a library scan, see progress | M4 | Both | `/ScheduledTasks` + WebSocket progress |
+| Refresh a library or item | M4 | Both | `/Library/Refresh` |
+| Activity log | M4 | Both | `/System/ActivityLog/Entries` |
+| Server log viewer | M5 | Linux | `/System/Logs` |
+| Plugin updates | M5 | Both | `/Plugins`, `/Packages` |
 | Everything else | — | — | Deep-link to jellyfin-web |
 
-## 12. Integrations
+## 10. Integrations
 
 | Feature | Tag | Where | Notes |
 |---|---|---|---|
 | Intro Skipper (or any media-segment plugin) | M1 | Both | Generic through media segments |
-| Seerr: discover and request | M5 | Both | Only if you run Seerr |
+| Seerr: discover and request | M4 | Both | Only if you run Seerr |
 
-## 13. Platform polish
+## 11. Platform polish
 
 | Feature | Tag | Where | Notes |
 |---|---|---|---|
@@ -208,12 +172,12 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | iPad keyboard and trackpad: shortcuts, hover, context menus | M2 | iOS | Shared with Linux |
 | Tray icon, single instance, remembered window state | M2 | Linux | StatusNotifierItem on KDE |
 | Screen-saver inhibit during playback | M1 | Linux | |
-| Notifications (download done, library scan done) | M2 / M5 | Both | |
-| Deep links | M4 | Both | |
-| Discord Rich Presence | M5 | Linux | Opt-in |
+| Notifications (download done, library scan done) | M2 / M4 | Both | |
+| Deep links | M3 | Both | |
+| Discord Rich Presence | M4 | Linux | Opt-in |
 | Home-screen widgets, Live Activities, share extension | — | iOS | Each extension uses a free-account App ID, so only with a paid account |
 
-## 14. Settings
+## 12. Settings
 
 | Feature | Tag | Where | Notes |
 |---|---|---|---|
@@ -234,4 +198,5 @@ These no longer apply:
 - A formal accessibility audit (good practice stays).
 - SSO, parental controls and profile PINs.
 - Voice search.
+- Music, audiobooks, Live TV, photos and books: the app is for films and shows.
 - Emby support.

@@ -78,7 +78,6 @@ An mpv engine for iOS (MPVKit) is a later milestone, for direct play of MKV with
 
 - **Direct play:** `/Videos/{id}/stream?static=true&MediaSourceId=…&PlaySessionId=…&ApiKey=…`.
 - **Direct stream / transcode:** the server's `TranscodingUrl`. Append `ApiKey` if it's missing. Never hand-build HLS URLs; those routes aren't in the published spec.
-- **Music:** `/Audio/{id}/universal`.
 - **Versions:** an item can have several `MediaSources` (4K and 1080p). The user picks one, and the choice is remembered per series.
 
 ## Subtitles
@@ -137,6 +136,5 @@ The **stats overlay** (Diagnostics) shows the play method, `TranscodeReasons` (f
   - HEVC 10-bit MKV with styled ASS and chapters
   - an AC-3 5.1 MKV with PGS-like (dvdsub) subtitles
   - a three-episode series
-  - a FLAC album
 
   Each fixture is played on Linux, and on the iPhone for each play method.

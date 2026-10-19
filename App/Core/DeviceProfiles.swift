@@ -139,18 +139,11 @@ enum DeviceProfiles {
             musicStreamingTranscodingBitrate: 320_000,
             directPlayProfiles: preferences.forceTranscode ? [] : [
                 .init(container: "mp4,m4v,mov", type: "Video", videoCodec: "h264,hevc", audioCodec: videoAudio),
-                .init(container: "mp3", type: "Audio", videoCodec: nil, audioCodec: "mp3"),
-                .init(container: "m4a,m4b,mp4", type: "Audio", videoCodec: nil, audioCodec: "aac,alac,flac"),
-                .init(container: "flac", type: "Audio", videoCodec: nil, audioCodec: "flac"),
-                .init(container: "wav,aiff", type: "Audio", videoCodec: nil, audioCodec: nil),
             ],
             transcodingProfiles: [
                 .init(container: "mp4", type: "Video", videoCodec: "hevc,h264", audioCodec: "aac,ac3,eac3,flac,alac",
                       protocol: "hls", context: "Streaming", maxAudioChannels: "8", minSegments: 2, breakOnNonKeyFrames: true,
                       copyTimestamps: nil, enableSubtitlesInManifest: true),
-                .init(container: "mp4", type: "Audio", videoCodec: nil, audioCodec: "aac",
-                      protocol: "hls", context: "Streaming", maxAudioChannels: "2", minSegments: 1, breakOnNonKeyFrames: nil,
-                      copyTimestamps: nil, enableSubtitlesInManifest: nil),
             ],
             codecProfiles: codecs,
             subtitleProfiles: subtitles
@@ -180,14 +173,10 @@ enum DeviceProfiles {
             musicStreamingTranscodingBitrate: 320_000,
             directPlayProfiles: preferences.forceTranscode ? [] : [
                 .init(container: containers, type: "Video", videoCodec: nil, audioCodec: nil),
-                .init(container: "mp3,flac,ogg,oga,opus,m4a,m4b,mp4,aac,wav,aiff,ape,wv,mka,webma,alac,dsf,dff", type: "Audio", videoCodec: nil, audioCodec: nil),
             ],
             transcodingProfiles: [
                 .init(container: "mp4", type: "Video", videoCodec: "hevc,h264", audioCodec: "aac,ac3,eac3,opus,flac",
                       protocol: "hls", context: "Streaming", maxAudioChannels: "8", minSegments: 2, breakOnNonKeyFrames: true,
-                      copyTimestamps: nil, enableSubtitlesInManifest: nil),
-                .init(container: "ogg", type: "Audio", videoCodec: nil, audioCodec: "opus",
-                      protocol: "http", context: "Streaming", maxAudioChannels: "2", minSegments: nil, breakOnNonKeyFrames: nil,
                       copyTimestamps: nil, enableSubtitlesInManifest: nil),
             ],
             codecProfiles: codecs,

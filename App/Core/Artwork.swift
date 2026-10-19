@@ -1,7 +1,7 @@
 import Foundation
 
 /// Which of the server's images a card, a hero or a row shows: the item's own, or its
-/// series' or album's when it has none. Shared by both apps.
+/// series' when it has none. Shared by both apps.
 enum Artwork {
     static func primary(_ item: BaseItem, _ client: JellyfinClient, width: Int) -> URL? {
         if let tag = item.imageTags?["Primary"] {
@@ -9,9 +9,6 @@ enum Artwork {
         }
         if let seriesId = item.seriesId, let tag = item.seriesPrimaryImageTag {
             return client.imageURL(itemId: seriesId, tag: tag, maxWidth: width)
-        }
-        if let albumId = item.albumId, let tag = item.albumPrimaryImageTag {
-            return client.imageURL(itemId: albumId, tag: tag, maxWidth: width)
         }
         return nil
     }

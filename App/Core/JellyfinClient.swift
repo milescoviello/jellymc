@@ -204,7 +204,7 @@ final class JellyfinClient: Sendable {
         query.searchTerm = term
         query.recursive = true
         query.limit = limit
-        query.includeItemTypes = [.movie, .series, .episode, .musicAlbum, .musicArtist, .audio, .boxSet, .person]
+        query.includeItemTypes = [.movie, .series, .episode, .boxSet, .person]
         return try await items(query).items
     }
 
@@ -258,10 +258,6 @@ final class JellyfinClient: Sendable {
         return page.items
     }
 
-    func lyrics(itemId: String) async throws -> Lyrics {
-        try await get("Audio/\(itemId)/Lyrics")
-    }
-
     func sendLog(_ text: String) async throws {
         var request = try makeRequest("POST", "ClientLog/Document", query: [:])
         request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
@@ -291,19 +287,6 @@ final class JellyfinClient: Sendable {
         if let playSessionId { query += "&playSessionId=\(playSessionId)" }
         if let tag { query += "&Tag=\(tag)" }
         return authorizedURL("Videos/\(itemId)/stream?\(query)")
-    }
-
-    func audioURL(itemId: String, container: [String], maxBitrate: Int, transcodeCodec: String = "aac") -> URL? {
-        let query = [
-            "userId=\(userId ?? "")",
-            "deviceId=\(device.deviceId)",
-            "container=\(container.joined(separator: ","))",
-            "maxStreamingBitrate=\(maxBitrate)",
-            "audioCodec=\(transcodeCodec)",
-            "transcodingContainer=mp4",
-            "transcodingProtocol=hls",
-        ].joined(separator: "&")
-        return authorizedURL("Audio/\(itemId)/universal?\(query)")
     }
 
     func imageURL(itemId: String, type: String = "Primary", tag: String?, maxWidth: Int, index: Int? = nil) -> URL? {
@@ -466,7 +449,6 @@ struct ItemQuery: Sendable, Equatable {
     var filters: [Filter] = []
     var genres: [String] = []
     var personIds: [String] = []
-    var artistIds: [String] = []
     var searchTerm: String?
     var startIndex = 0
     var limit = 100
@@ -493,7 +475,6 @@ struct ItemQuery: Sendable, Equatable {
         if !filters.isEmpty { query["filters"] = filters.map(\.rawValue).joined(separator: ",") }
         if !genres.isEmpty { query["genres"] = genres.joined(separator: "|") }
         if !personIds.isEmpty { query["personIds"] = personIds.joined(separator: ",") }
-        if !artistIds.isEmpty { query["albumArtistIds"] = artistIds.joined(separator: ",") }
         return query
     }
 }

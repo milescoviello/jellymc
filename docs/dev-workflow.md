@@ -55,7 +55,7 @@ swift test                  # Core tests (the same tests CI runs on macOS)
 The real server (`.148`) has Jellyfin stopped on purpose. Development uses a throwaway local server instead:
 
 ```sh
-tools/testserver/make-media.sh   # FFmpeg-generated movies, a series, an album (with ASS, SRT, chapters)
+tools/testserver/make-media.sh   # FFmpeg-generated movies and a series (with ASS, SRT, chapters)
 tools/testserver/up.sh           # Jellyfin 12.2 in Docker on :8096, first-run wizard scripted, libraries added
 ```
 

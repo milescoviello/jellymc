@@ -37,7 +37,6 @@ extension CardStyle {
         switch self {
         case .poster: return 132
         case .landscape: return 236
-        case .square: return 144
         }
     }
 
@@ -45,13 +44,11 @@ extension CardStyle {
         switch self {
         case .poster: return 2.0 / 3.0
         case .landscape: return 16.0 / 9.0
-        case .square: return 1
         }
     }
 
     var placeholder: String {
         switch self {
-        case .square: return "music.note"
         case .landscape: return "tv"
         case .poster: return "film"
         }
@@ -79,7 +76,7 @@ struct CardView: View {
                     }
                 }
                 .overlay(alignment: .topTrailing) {
-                    if item.isPlayed, item.type != .series, item.type != .musicAlbum {
+                    if item.isPlayed, item.type != .series, item.type != .boxSet {
                         Image(systemName: "checkmark.circle.fill")
                             .symbolRenderingMode(.palette)
                             .foregroundStyle(.white, Color.accentColor)
