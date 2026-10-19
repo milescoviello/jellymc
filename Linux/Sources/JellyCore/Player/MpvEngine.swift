@@ -84,6 +84,17 @@ final class MpvEngine: PlayerEngine {
         ] {
             mpv_set_option_string(handle, name, value)
         }
+        // The person's own mpv.conf, read after the app's options so it can override them:
+        // shaders, scalers, anything mpv takes. `~/.config/jellymc/mpv.conf`.
+        let configDirectory = (ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"].map { URL(fileURLWithPath: $0) }
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config"))
+            .appendingPathComponent("jellymc", isDirectory: true)
+        mpv_set_option_string(handle, "config-dir", configDirectory.path)
+        mpv_set_option_string(handle, "config", "yes")
+        // JELLYMC_MPV_IPC=/path: mpv's JSON IPC socket, to ask it things while it plays.
+        if let socket = ProcessInfo.processInfo.environment["JELLYMC_MPV_IPC"] {
+            mpv_set_option_string(handle, "input-ipc-server", socket)
+        }
         guard mpv_initialize(handle) >= 0 else {
             mpv_terminate_destroy(handle)
             self.handle = nil
