@@ -88,6 +88,7 @@ let package = Package(
                 "Keychain.swift",
                 "Library.swift",
                 "AppLock.swift",
+                "RemoteControl.swift",
             ]
         ),
         .testTarget(

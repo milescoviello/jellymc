@@ -49,6 +49,8 @@ final class AppState {
     let realtime = Realtime()
     /// The PIN asked for when the app opens.
     let lock = AppLock()
+    /// What this user's other apps are playing, controlled from here (the phone's remote).
+    let remote = RemoteControl()
     /// Goes up when what pages show may have changed: the player here closed, or the
     /// server says something changed. Pages showing progress or watched marks reload.
     private(set) var dataGeneration = 0

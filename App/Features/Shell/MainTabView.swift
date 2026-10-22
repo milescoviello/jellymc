@@ -17,6 +17,8 @@ struct PlayRequest: Identifiable {
 @Observable
 final class PlayerRouter {
     var request: PlayRequest?
+    /// The remote for what another device plays.
+    var showsRemote = false
 
     func play(_ item: BaseItem, from start: Double? = nil, audio: Int? = nil, subtitle: Int? = nil, version: String? = nil, queue: [BaseItem] = []) {
         request = PlayRequest(item: item, start: start, audioIndex: audio, subtitleIndex: subtitle, mediaSourceId: version, queue: queue)
@@ -60,23 +62,31 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selection) {
             Tab("Home", systemImage: "house", value: Tabs.home) {
-                NavigationStack { HomeView().withRoutes() }
+                NavigationStack { HomeView().withRoutes() }.remoteBar()
             }
             Tab("Libraries", systemImage: "square.grid.2x2", value: Tabs.libraries) {
-                NavigationStack { LibrariesView().withRoutes() }
+                NavigationStack { LibrariesView().withRoutes() }.remoteBar()
             }
             Tab("Downloads", systemImage: "arrow.down.circle", value: Tabs.downloads) {
-                NavigationStack { DownloadsView().withRoutes() }
+                NavigationStack { DownloadsView().withRoutes() }.remoteBar()
             }
             Tab("Settings", systemImage: "gearshape", value: Tabs.settings) {
-                NavigationStack { SettingsView() }
+                NavigationStack { SettingsView() }.remoteBar()
             }
             Tab(value: Tabs.search, role: .search) {
-                NavigationStack { SearchView().withRoutes() }
+                NavigationStack { SearchView().withRoutes() }.remoteBar()
             }
         }
         .tabViewStyle(.sidebarAdaptable)
         .environment(router)
+        .sheet(isPresented: $router.showsRemote) {
+            RemoteView()
+                .environment(state)
+        }
+        // Reading what the other devices play, from whichever client is current.
+        .task(id: state.client.map { ObjectIdentifier($0) }) {
+            if let client = state.client { state.remote.start(client) }
+        }
         .fullScreenCover(item: $router.request, onDismiss: refresh) { request in
             PlayerView(request: request)
                 .environment(state)
@@ -131,6 +141,11 @@ struct MainTabView: View {
 }
 
 extension View {
+    /// The bar for what another device plays, above the tabs.
+    func remoteBar() -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) { RemoteBar() }
+    }
+
     /// The pages every tab's stack can open.
     func withRoutes() -> some View {
         navigationDestination(for: ItemRoute.self) { route in

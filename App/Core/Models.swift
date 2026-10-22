@@ -174,10 +174,22 @@ struct RemoteSession: Codable, Sendable, Equatable, Identifiable {
     var supportsRemoteControl: Bool?
     var playableMediaTypes: [String]?
     var lastActivityDate: Date?
+    var userId: String?
+    /// What it is playing, if anything, and where it was at its last report.
+    var nowPlayingItem: BaseItem?
+    var playState: RemotePlayState?
+    var lastPlaybackCheckIn: Date?
 
     var title: String {
         [deviceName, client].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
+}
+
+/// Where another app's playback was when it last told the server.
+struct RemotePlayState: Codable, Sendable, Equatable {
+    var positionTicks: Int64?
+    var isPaused: Bool?
+    var canSeek: Bool?
 }
 
 /// What a library's items can be filtered by: `/Items/Filters`.

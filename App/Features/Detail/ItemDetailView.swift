@@ -315,7 +315,9 @@ struct ItemDetailView: View {
                     audioIndex: isThis ? audioChoice : nil,
                     subtitleIndex: isThis ? subtitleChoice.flatMap { $0 < 0 ? nil : $0 } : nil
                 )
-                show("Playing on \(session.deviceName ?? "the other device")")
+                // As casting does: the remote, for what it now plays there.
+                state.remote.follow(session, playing: playable)
+                router.showsRemote = true
             } catch {
                 show("Couldn’t play there: \(error.localizedDescription)")
             }

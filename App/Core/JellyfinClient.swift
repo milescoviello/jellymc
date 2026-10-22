@@ -286,6 +286,22 @@ final class JellyfinClient: Sendable {
         }
     }
 
+    /// This user's other apps that are playing something, newest first.
+    func playingSessions() async throws -> [RemoteSession] {
+        guard let userId else { return [] }
+        let sessions: [RemoteSession] = try await get("Sessions", query: ["controllableByUserId": userId, "activeWithinSeconds": "960"], timeout: 10)
+        return sessions
+            .filter { $0.deviceId != device.deviceId && $0.userId == userId && $0.nowPlayingItem != nil && $0.supportsRemoteControl == true }
+            .sorted { ($0.lastPlaybackCheckIn ?? .distantPast) > ($1.lastPlaybackCheckIn ?? .distantPast) }
+    }
+
+    /// Pause, Unpause, PlayPause, Stop, Seek, NextTrack, PreviousTrack, Rewind, FastForward.
+    func sendPlaystate(_ command: String, to sessionId: String, seekTo seconds: Double? = nil) async throws {
+        var query: [String: String] = [:]
+        if let seconds { query["seekPositionTicks"] = String(Ticks.from(seconds: seconds)) }
+        try await sendNoContent("POST", "Sessions/\(sessionId)/Playing/\(command)", query: query)
+    }
+
     /// Asks another app to play the item, from where and with which tracks.
     func play(_ itemId: String, on sessionId: String, start: Double?, mediaSourceId: String?, audioIndex: Int?, subtitleIndex: Int?) async throws {
         var query = ["playCommand": "PlayNow", "itemIds": itemId]

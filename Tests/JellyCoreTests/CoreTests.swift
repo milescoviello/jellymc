@@ -1254,3 +1254,63 @@ extension AppLockTests {
         #expect(lock.isLocked)
     }
 }
+
+@MainActor
+struct RemoteControlTests {
+    private func playing(_ id: String, at seconds: Double, paused: Bool = false, checkIn: Date, runtime: Double = 3600) -> RemoteSession {
+        var item = BaseItem(id: "film")
+        item.type = .movie
+        item.runTimeTicks = Ticks.from(seconds: runtime)
+        var session = RemoteSession(id: id)
+        session.deviceName = "Laptop"
+        session.nowPlayingItem = item
+        session.playState = RemotePlayState(positionTicks: Ticks.from(seconds: seconds), isPaused: paused, canSeek: true)
+        session.lastPlaybackCheckIn = checkIn
+        return session
+    }
+
+    @Test func countsOnFromTheLastReportWhilePlaying() {
+        let clock = Date(timeIntervalSince1970: 1_000_000)
+        let remote = RemoteControl()
+        remote.now = { clock }
+        remote.apply([playing("s1", at: 100, checkIn: clock.addingTimeInterval(-4))])
+        #expect(remote.position() == 104)
+        remote.apply([playing("s1", at: 100, paused: true, checkIn: clock.addingTimeInterval(-4))])
+        #expect(remote.position() == 100)
+        // A clock that disagrees by minutes is held to what a report can be behind.
+        remote.apply([playing("s1", at: 100, checkIn: clock.addingTimeInterval(-600))])
+        #expect(remote.position() == 115)
+    }
+
+    @Test func whatIsAskedShowsUntilAReportAgrees() {
+        var clock = Date(timeIntervalSince1970: 1_000_000)
+        let remote = RemoteControl()
+        remote.now = { clock }
+        remote.apply([playing("s1", at: 100, checkIn: clock)])
+        remote.togglePause()
+        #expect(remote.isPaused)
+        clock.addTimeInterval(2)
+        #expect(remote.position() == 100)
+        // The device has not reported yet: still paused here.
+        remote.apply([playing("s1", at: 100, checkIn: clock.addingTimeInterval(-2))])
+        #expect(remote.isPaused)
+        remote.apply([playing("s1", at: 100, paused: true, checkIn: clock)])
+        #expect(remote.isPaused)
+        remote.seek(to: 500)
+        #expect(remote.position() == 500)
+    }
+
+    @Test func followsTheDevicePlayOnSentTo() {
+        let clock = Date(timeIntervalSince1970: 1_000_000)
+        let remote = RemoteControl()
+        remote.now = { clock }
+        var tv = RemoteSession(id: "tv")
+        tv.deviceName = "TV"
+        remote.follow(tv, playing: BaseItem(id: "film"))
+        #expect(remote.isShown && remote.session == nil && remote.deviceName == "TV")
+        remote.apply([playing("laptop", at: 5, checkIn: clock.addingTimeInterval(-1)), playing("tv", at: 0, checkIn: clock)])
+        #expect(remote.session?.id == "tv")
+        remote.apply([])
+        #expect(!remote.isShown)
+    }
+}
