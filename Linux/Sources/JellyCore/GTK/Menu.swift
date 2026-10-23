@@ -44,6 +44,7 @@ struct Menu {
         g_object_unref(group.rawPointer)
 
         gtk_widget_set_parent(popover, widget.widget)
+        Self.capHeight(popover, in: widget)
         if let x, let y {
             var point = GdkRectangle(x: Int32(x), y: Int32(y), width: 1, height: 1)
             gtk_popover_set_pointing_to(popover.cast(), &point)
@@ -58,6 +59,19 @@ struct Menu {
         }
         Menu.onOpen?(true)
         gtk_popover_popup(popover.cast())
+    }
+
+    /// A long list (a file's forty subtitle tracks) scrolls inside the menu. Left to its
+    /// natural height the menu is taller than the screen, and GTK asks the compositor to
+    /// shrink it to fit, which Plasma does not do: the player's menu did not open at all.
+    /// The menu's child is the scrolled window GTK puts its pages in.
+    private static func capHeight(_ popover: UnsafeMutablePointer<GtkWidget>, in widget: Widget) {
+        guard let child = gtk_popover_get_child(popover.cast()),
+              g_type_check_instance_is_a(child.cast(), gtk_scrolled_window_get_type()) != 0
+        else { return }
+        let window = gtk_widget_get_root(widget.widget).map { UnsafeMutableRawPointer($0).assumingMemoryBound(to: GtkWidget.self) }
+        let height = window.map { gtk_widget_get_height($0) } ?? 0
+        gtk_scrolled_window_set_max_content_height(child.cast(), max(260, Int32(Double(height) * 0.62)))
     }
 
     private static func model(for sections: [[Item]], group: UnsafeMutablePointer<GSimpleActionGroup>, counter: inout Int) -> OpaquePointer {
