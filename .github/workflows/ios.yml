@@ -82,11 +82,16 @@ jobs:
                   zip -qry Jellymc-unsigned.ipa Payload
                   ls -lh Jellymc-unsigned.ipa
 
+            # Never fails the run, and kept two days: the account's artifact storage is
+            # shared with every private repo, and once it was full the build failed here
+            # and the release below never went out. The release is what the phone uses.
             - uses: actions/upload-artifact@v4
+              continue-on-error: true
               with:
                   name: Jellymc-unsigned-ipa
                   path: ${{ runner.temp }}/Jellymc-unsigned.ipa
                   if-no-files-found: error
+                  retention-days: 2
 
             # Also published to a rolling prerelease, for two reasons: the artifact
             # API has gone down mid-install before, and a release asset has a stable

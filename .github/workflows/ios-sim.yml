@@ -86,3 +86,4 @@ jobs:
               with:
                   name: sim-shots
                   path: ${{ runner.temp }}/shots
+                  retention-days: 3
