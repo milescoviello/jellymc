@@ -33,7 +33,6 @@ final class PlayerPage {
     private var markedChapters: [Double] = []
     private let skipButton = Button("Skip", "osd-pill")
     private let upNext = Box.vertical(spacing: 10).css("up-next")
-    private let stillWatching = Box.vertical(spacing: 14).css("error-box")
     private let upNextTitle = Label("", "heading").wrap()
     private let upNextCount = Label("", "dim-label")
     /// Plex shows the next one's picture, with a countdown along its foot.
@@ -53,6 +52,8 @@ final class PlayerPage {
     private var pointerOnBars = false
     /// A menu from the bars is open: they stay until it closes.
     private var menuOpen = false
+    /// Paused at the last update: playing again starts the bars' wait to hide.
+    private var wasPaused = false
     private var showsStats = false
     private var lastPointer: (Double, Double) = (0, 0)
     /// No screen saver while a video is open.
@@ -154,18 +155,6 @@ final class PlayerPage {
         })
         upNext.size(width: 320).halign(GTK_ALIGN_END).valign(GTK_ALIGN_END).margins(bottom: 120, end: 32).visible(false)
 
-        // Plex's "Are you still watching?", after episodes that played on their own.
-        let keepGoing = Button("Continue Watching", "suggested-action", "pill")
-        let stop = Button("Stop", "pill")
-        stillWatching.append(Label("Are you still watching?", "title-3"))
-        stillWatching.append(Box.horizontal(spacing: 8) {
-            keepGoing
-            stop
-        }.halign(GTK_ALIGN_CENTER))
-        stillWatching.halign(GTK_ALIGN_CENTER).valign(GTK_ALIGN_CENTER).visible(false)
-        keepGoing.onClicked { [weak self] in self?.session?.keepWatching() }
-        stop.onClicked { [weak self] in self?.window.closePlayer() }
-
         skipButton.halign(GTK_ALIGN_END).valign(GTK_ALIGN_END).margins(bottom: 120, end: 32).visible(false)
         spinner.halign(GTK_ALIGN_CENTER).valign(GTK_ALIGN_CENTER).canTarget(false)
         stats.halign(GTK_ALIGN_START).valign(GTK_ALIGN_START).margins(top: 90, start: 24).visible(false)
@@ -188,7 +177,6 @@ final class PlayerPage {
             .add(stats)
             .add(skipButton)
             .add(upNext)
-            .add(stillWatching)
             .add(errorBox)
         overlay.css("player").focusable(true)
         root = overlay
@@ -350,9 +338,15 @@ final class PlayerPage {
             errorBox.visible(false)
         }
 
-        stillWatching.visible(session.isAskingStillWatching)
         if showsStats { stats.text = statsText(session) }
-        if session.isPaused { reveal(autohide: false) }
+        if session.isPaused {
+            reveal(autohide: false)
+        } else if wasPaused {
+            // Playing again: the bars go after the usual wait, however it was resumed (a
+            // key, a media key, the phone) and whether or not the pointer moves after.
+            reveal()
+        }
+        wasPaused = session.isPaused
 
         MediaControls.shared.update(
             track: MediaControls.Track(

@@ -757,7 +757,7 @@ struct PlayButtonTests {
 }
 
 @MainActor
-struct StillWatchingTests {
+struct AutoplayTests {
     private final class CountingEngine: PlayerEngine {
         let kind = PlayerKind.mpv
         var onEvent: (@MainActor (PlayerEvent) -> Void)?
@@ -787,36 +787,15 @@ struct StillWatchingTests {
         )
     }
 
-    @Test func asksAfterThreeInARowAndCountsOnlyWhatNobodyStarted() async {
+    @Test func episodesThatPlayOnTheirOwnAreNeverPaused() async {
         var episode = BaseItem(id: "e")
         episode.type = .episode
         let engine = CountingEngine()
-        let third = PlaybackSession(item: episode, client: nowhere, engine: engine, preferences: PlaybackPreferences(), continuing: .init(autoplayed: 3))
-        await third.start(at: 0, local: plan())
-        #expect(third.isAskingStillWatching)
-        // The pause comes with the first frame, not before it.
+        let session = PlaybackSession(item: episode, client: nowhere, engine: engine, preferences: PlaybackPreferences())
+        await session.start(at: 0, local: plan())
+        for second in 1 ... 5 { engine.onEvent?(.position(Double(second), duration: 330)) }
         #expect(engine.pauses == 0)
-        engine.onEvent?(.position(0.1, duration: 330))
-        #expect(engine.pauses == 1)
-        engine.onEvent?(.position(0.2, duration: 330))
-        #expect(engine.pauses == 1)
-        third.keepWatching()
-        #expect(!third.isAskingStillWatching)
-        #expect(engine.plays == 1)
-        third.stop()
-
-        let second = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), continuing: .init(autoplayed: 2))
-        await second.start(at: 0, local: plan())
-        #expect(!second.isAskingStillWatching)
-        var handedOn: [Int] = []
-        second.onPlayNext = { _, next in handedOn.append(next.autoplayed) }
-        second.playNext(BaseItem(id: "next"), automatic: true)
-        #expect(handedOn == [3])
-        let chosen = PlaybackSession(item: episode, client: nowhere, engine: CountingEngine(), preferences: PlaybackPreferences(), continuing: .init(autoplayed: 2))
-        await chosen.start(at: 0, local: plan())
-        chosen.onPlayNext = { _, next in handedOn.append(next.autoplayed) }
-        chosen.playNext(BaseItem(id: "next"))
-        #expect(handedOn == [3, 0])
+        session.stop()
     }
 }
 
@@ -858,7 +837,7 @@ struct QueueTests {
         #expect(session.next?.id == "b")
         var handed: [(String, [String])] = []
         session.onPlayNext = { item, next in handed.append((item.id, next.queue.map(\.id))) }
-        session.playNext(try #require(session.next), automatic: true)
+        session.playNext(try #require(session.next))
         #expect(handed.first?.0 == "b")
         #expect(handed.first?.1 == ["c"])
     }

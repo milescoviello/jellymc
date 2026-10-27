@@ -98,7 +98,7 @@ The **Where** column says which platform gets the feature: Both, iOS (iPhone/iPa
 | Trickplay thumbnails | M1 | Both | |
 | Chapters: markers, list, next/previous | M1 | Both | |
 | Skip intro / recap / preview / commercial; per-type auto-skip | M1 | Both | `/MediaSegments/{id}` |
-| Up next countdown; "Still watching?" | M1 | Both | |
+| Up next countdown (no "Still watching?": if it plays, someone is) | M1 | Both | |
 | Resume and progress reporting | M1 | Both | |
 | Quality selector (auto, original, bitrate ladder) | M1 | Both | |
 | Playback speed with pitch correction | M1 | Both | |

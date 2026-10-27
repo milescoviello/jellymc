@@ -201,23 +201,6 @@ private struct Overlays: View {
                 .padding(.bottom, 110)
             }
 
-            if session.isAskingStillWatching {
-                VStack(spacing: 14) {
-                    Text("Are you still watching?").font(.title3.bold())
-                    HStack {
-                        Button("Continue Watching") { session.keepWatching() }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.plexGold)
-                            .foregroundStyle(.black)
-                        Button("Stop") { session.end() }
-                            .buttonStyle(.bordered)
-                    }
-                }
-                .padding(24)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-
             if let error = session.error {
                 VStack(spacing: 12) {
                     Text("Playback Failed").font(.title3.bold())
