@@ -48,7 +48,18 @@ struct LibraryView: View {
         switch library.collectionType {
         case "movies": return Tab.allCases
         case "tvshows": return [.recommended, .library, .categories]
+        case "homevideos": return [.recommended, .library]
         default: return []
+        }
+    }
+
+    /// A home-video library's rows are its folders.
+    private func label(for option: Tab) -> String {
+        guard library.collectionType == "homevideos" else { return option.rawValue }
+        switch option {
+        case .recommended: return "Folders"
+        case .library: return "All"
+        default: return option.rawValue
         }
     }
 
@@ -66,7 +77,7 @@ struct LibraryView: View {
                                 Button {
                                     tab = option
                                 } label: {
-                                    Text(option.rawValue)
+                                    Text(label(for: option))
                                         .font(.subheadline.weight(.semibold))
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 7)

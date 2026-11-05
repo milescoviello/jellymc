@@ -11,7 +11,8 @@ final class LibraryPage {
     init(shell: Shell, library: BaseItem) {
         self.shell = shell
         let header = HeaderBar()
-        guard library.collectionType == "movies" || library.collectionType == "tvshows" else {
+        let isClips = library.collectionType == "homevideos"
+        guard library.collectionType == "movies" || library.collectionType == "tvshows" || isClips else {
             let grid = BrowseView(shell: shell, model: LibraryModel(library: library))
             header.title(WindowTitle(library.title)).end(grid.options).end(grid.count)
             root = ToolbarView(content: grid.root).top(header)
@@ -21,12 +22,14 @@ final class LibraryPage {
         let stack = ViewStack()
         let recommended = RecommendedView(shell: shell, library: library)
         let all = BrowseView(shell: shell, model: LibraryModel(library: library))
-        stack.add(recommended.root, name: "recommended", title: "Recommended")
-        stack.add(all.root, name: "library", title: "Library")
+        stack.add(recommended.root, name: "recommended", title: isClips ? "Folders" : "Recommended")
+        stack.add(all.root, name: "library", title: isClips ? "All" : "Library")
         if library.collectionType == "movies" {
             stack.add(BrowseView(shell: shell, model: .collections()).root, name: "collections", title: "Collections")
         }
-        stack.add(CategoriesView(shell: shell, library: library).root, name: "categories", title: "Categories")
+        if !isClips {
+            stack.add(CategoriesView(shell: shell, library: library).root, name: "categories", title: "Categories")
+        }
         header.title(ViewSwitcher(stack)).end(all.options).end(all.count)
         // Sorting and the count belong to the Library tab.
         all.options.visible(false)

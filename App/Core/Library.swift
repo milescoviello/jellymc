@@ -239,7 +239,90 @@ enum Hubs {
 
     /// A library's Recommended tab.
     static func recommended(for library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
-        library.collectionType == "tvshows" ? await shows(library, client) : await films(library, client)
+        switch library.collectionType {
+        case "tvshows": return await shows(library, client)
+        case "homevideos": return await clips(library, client)
+        default: return await films(library, client)
+        }
+    }
+
+    /// A folder of home videos, as a row: its newest clips, and how many it holds.
+    private struct ClipFolder: Sendable {
+        var folder: BaseItem
+        var title: String
+        var items: [BaseItem]
+        var total: Int
+    }
+
+    /// Home videos have no ratings, genres or release dates to make rows of. Their folders
+    /// are what sorts them: a row each, the folder with the newest clip first, and the
+    /// folders inside one right below it. A folder holding all its parent's clips would
+    /// only say the same thing twice.
+    private static func clips(_ library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
+        let id = library.id
+        async let resume = try? client.resume(parentId: id)
+        async let newest = query(library, client, sort: .dateAdded, limit: clipPool)
+
+        let tops = await folders(in: id, client)
+        let families = await withTaskGroup(of: [ClipFolder].self) { group in
+            for top in tops {
+                group.addTask {
+                    let parent = await clipFolder(top, title: top.title, client)
+                    var family = [parent]
+                    for inner in await folders(in: top.id, client) {
+                        let child = await clipFolder(inner, title: "\(top.title) · \(inner.title)", client)
+                        if child.total < parent.total { family.append(child) }
+                    }
+                    return family
+                }
+            }
+            var found: [[ClipFolder]] = []
+            for await family in group { found.append(family) }
+            return found
+        }
+        let byNewest = families.sorted { first, second in
+            let one = first.first?.items.first.map(Clips.made) ?? .distantPast
+            let other = second.first?.items.first.map(Clips.made) ?? .distantPast
+            return one > other
+        }
+
+        var rows: [HomeRow] = []
+        rows.append(row("continue", .continueWatching, "Continue Watching", .landscape, (await resume) ?? [], library))
+        rows.append(row("newest", .recentlyAdded, "Newest", .landscape, Array(Clips.newestFirst((await newest)?.items ?? []).prefix(clipRow)), library,
+                        Browse(title: "Newest", libraryId: id, itemTypes: [.video], sort: .dateAdded)))
+        for clips in byNewest.flatMap({ $0 }) {
+            rows.append(row("folder-\(clips.folder.id)", .recommended, clips.title, .landscape, clips.items, library,
+                            Browse(title: clips.title, libraryId: clips.folder.id, itemTypes: [.video], sort: .dateAdded)))
+        }
+        return rows.filter { !$0.items.isEmpty }
+    }
+
+    /// How many clips a row shows, of how many the server is asked for. It sorts by the
+    /// file's date, which a copy resets: the rest is put right here, by what the names say.
+    private static let clipRow = 20
+    private static let clipPool = 60
+
+    /// A folder's own folders. Asked for by type, the server would answer with every
+    /// folder at any depth, and the library's root too.
+    private static func folders(in id: String, _ client: JellyfinClient) async -> [BaseItem] {
+        var query = ItemQuery()
+        query.parentId = id
+        query.sort = .name
+        query.limit = 200
+        return ((try? await client.items(query).items) ?? []).filter { $0.type == .folder }
+    }
+
+    private static func clipFolder(_ folder: BaseItem, title: String, _ client: JellyfinClient) async -> ClipFolder {
+        var query = ItemQuery()
+        query.parentId = folder.id
+        query.includeItemTypes = [.video]
+        query.recursive = true
+        query.sort = .dateAdded
+        query.descending = true
+        query.limit = clipPool
+        let page = try? await client.items(query)
+        let items = Clips.newestFirst(page?.items ?? [])
+        return ClipFolder(folder: folder, title: title, items: Array(items.prefix(clipRow)), total: page?.totalRecordCount ?? items.count)
     }
 
     private static func films(_ library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
@@ -512,9 +595,12 @@ final class LibraryModel {
         resolution = nil
     }
 
-    /// The whole of a library, by title.
+    /// The whole of a library, by title; home videos newest first, their titles being dates.
     convenience init(library: BaseItem) {
-        self.init(browse: Browse(title: library.title, libraryId: library.id, itemTypes: libraryItemTypes(library)))
+        self.init(browse: Browse(
+            title: library.title, libraryId: library.id, itemTypes: libraryItemTypes(library),
+            sort: library.collectionType == "homevideos" ? .dateAdded : .name
+        ))
     }
 
     /// Every collection, from whichever library.

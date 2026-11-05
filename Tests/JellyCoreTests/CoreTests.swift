@@ -877,6 +877,106 @@ struct PlaylistTests {
     }
 }
 
+struct ClipTests {
+    private func clip(_ name: String, seconds: Double? = nil, premiere: Date? = nil, created: Date? = nil) -> BaseItem {
+        var item = BaseItem(id: name)
+        item.type = .video
+        item.name = name
+        item.runTimeTicks = seconds.map(Ticks.from(seconds:))
+        item.premiereDate = premiere
+        item.dateCreated = created
+        return item
+    }
+
+    @Test(arguments: [
+        ("Escape From Tarkov 2025.10.19 - 20.44.49.11.DVR", "Oct 19, 2025 · 8:44 PM", "Escape From Tarkov"),
+        ("Escape From Tarkov 2026.07.26 - 20.55.49.03 (HEVC)", "Jul 26, 2026 · 8:55 PM", "Escape From Tarkov"),
+        ("Escape From Tarkov  Arena 2026.10.04 - 16.15.48.03.DVR", "Oct 4, 2026 · 4:15 PM", "Escape From Tarkov Arena"),
+        ("Arma-Reforger__2026-05-11__21-59-08", "May 11, 2026 · 9:59 PM", "Arma Reforger"),
+        ("Stick Fight 2026-07-29 20-09-52 (OBS)", "Jul 29, 2026 · 8:09 PM", "Stick Fight"),
+        ("Stick_Fight__The_Game_2026-05-03_19-20-09", "May 3, 2026 · 7:20 PM", "Stick Fight The Game"),
+        ("Stick_Fight-_The_Game_-_2026-01-06_10-24-03_PM", "Jan 6, 2026 · 10:24 PM", "Stick Fight The Game"),
+    ])
+    func recorderNamesBecomeTheTimeAndTheGame(name: String, title: String, game: String) {
+        let item = clip(name, seconds: 300)
+        #expect(item.title == title)
+        #expect(item.subtitle == "\(game) · 5:00")
+    }
+
+    @Test(arguments: ["Base Profile 2024.12.25 - 09.08.26.02.DVR", "Desktop 2024.12.25 - 09.08.26.02.DVR", "2024-12-25 09-08-26"])
+    func aRecorderThatDoesNotKnowTheGameNamesNone(name: String) {
+        let item = clip(name, seconds: 42)
+        #expect(item.title == "Dec 25, 2024 · 9:08 AM")
+        #expect(item.subtitle == "0:42")
+    }
+
+    @Test(arguments: [
+        "0fb18a924a4648b28ee9da4fc6253214", "4ea86411807b70cfd38609e977ff7a0a(1)", "5C4B24FED4858622",
+        "BDE00620-5988-4083-9EFC-3C0F12583B67", "filtered-B57B0D7F-051D-4534-B635-F4DEA4C22D7B",
+        "69663605034__C1570FAF-E851-46A5-BF7D-A1A8B71BFCF4", "IMG_3823", "RPReplay_Final1607795796",
+        "recorded-152097704370", "ScreenRec_251210_71511_1", "ScreenRecording_07-25-2025 20-17-39_1",
+        "tinywow_eardrfrda_86539305", "Untitled", "Untitled_2", "Untitled video - Made with Clipchamp",
+        "00Qgsk1", "KiUHZBx", "USOrfPT", "cdesH1N",
+    ])
+    func idsAreNotShownAsNames(name: String) {
+        let item = clip(name, seconds: 10, created: Date(timeIntervalSince1970: 1_700_000_000))
+        #expect(item.title != name)
+        #expect(item.subtitle == "0:10")
+        #expect(clip(name).title == "Untitled Clip")
+    }
+
+    @Test(arguments: [
+        ("Tarkov chad", "Tarkov chad"), ("fail01", "fail01"), ("zoomies", "zoomies"), ("HACKEE", "HACKEE"),
+        ("772", "772"), ("f1", "f1"), ("yea", "yea"), ("Beamer1", "Beamer1"),
+        ("2 PMC kills then died to no food", "2 PMC kills then died to no food"),
+        ("When_the_hacker_hackusates_you", "When the hacker hackusates you"),
+        ("Beamer drifts - Made with Clipchamp", "Beamer drifts"),
+    ])
+    func aNameSomeoneChoseIsKept(name: String, title: String) {
+        #expect(clip(name).title == title)
+    }
+
+    @Test func aPremiereGuessedFromTheNameIsNotTheDate() {
+        let guess = Date(timeIntervalSince1970: 1_704_067_200) // 2024-01-01T00:00:00Z
+        let made = Date(timeIntervalSince1970: 1_728_000_000)
+        #expect(Clips.date(of: clip("IMG_1", premiere: guess, created: made)) == made)
+        #expect(Clips.date(of: clip("IMG_1", premiere: made, created: guess)) == made)
+    }
+
+    @Test func aNamedClipSaysWhenItWasMade() {
+        let made = Date(timeIntervalSince1970: 1_728_000_000)
+        #expect(clip("Tarkov chad", seconds: 120, created: made).subtitle?.hasSuffix(" · 2:00") == true)
+        #expect(clip("Tarkov chad", seconds: 120).subtitle == "2:00")
+    }
+
+    @Test func aRecordersStampBeatsWhenTheFileWasCopied() {
+        let copied = Date(timeIntervalSince1970: 1_790_000_000)
+        let old = clip("Digital Combat Simulator  Black Shark 2022.11.22 - 15.39.03.01", created: copied)
+        let newer = clip("Digital Combat Simulator  Black Shark 2024.05.13 - 17.59.19.02.DVR")
+        let unknown = clip("whatever")
+        #expect(Clips.newestFirst([unknown, old, newer]).map(\.id) == [newer.id, old.id, unknown.id])
+    }
+
+    @Test func otherKindsKeepTheirNames() {
+        var film = BaseItem(id: "m")
+        film.type = .movie
+        film.name = "IMG_1"
+        film.productionYear = 1999
+        #expect(film.title == "IMG_1")
+        #expect(film.subtitle == "1999")
+    }
+
+    @MainActor @Test func aHomeVideoLibraryOpensNewestFirst() {
+        var library = BaseItem(id: "clips")
+        library.collectionType = "homevideos"
+        #expect(LibraryModel(library: library).browse.sort == .dateAdded)
+        #expect(LibraryModel(library: library).style == .landscape)
+        var films = BaseItem(id: "films")
+        films.collectionType = "movies"
+        #expect(LibraryModel(library: films).browse.sort == .name)
+    }
+}
+
 @MainActor
 struct SleepTimerTests {
     @Test func timesOutAndStopsAtTheEnd() async throws {

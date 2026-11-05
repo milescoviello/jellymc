@@ -1,5 +1,133 @@
 import Foundation
 
+/// Home videos go by their file's name, and a recorder's name for a file says nothing to a
+/// person: "Escape From Tarkov 2025.10.19 - 20.44.49.11.DVR", or a phone's hex. A clip
+/// someone named keeps that name. The files and the server are left alone, so a new clip is
+/// worded this way the moment it appears.
+enum Clips {
+    /// When a clip was made, down to the minute.
+    struct Moment: Equatable {
+        var year: Int
+        var month: Int
+        var day: Int
+        var hour: Int
+        var minute: Int
+
+        private static let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+        var date: String { "\(Self.months[month - 1]) \(day), \(year)" }
+
+        var time: String {
+            let twelve = hour % 12 == 0 ? 12 : hour % 12
+            return "\(twelve):\(minute < 10 ? "0" : "")\(minute) \(hour < 12 ? "AM" : "PM")"
+        }
+
+        var text: String { "\(date) · \(time)" }
+    }
+
+    /// The game and time a recorder wrote into a name. The time is the recording machine's
+    /// own, so it is shown as written, in no time zone. NVIDIA, SteelSeries, OBS and Steam
+    /// each write it differently; "Base Profile" and "Desktop" are NVIDIA not knowing the game.
+    static func stamp(in name: String) -> (game: String?, moment: Moment)? {
+        let pattern = #"\d{4}[-.]\d{2}[-.]\d{2}[ _-]+\d{2}[-._]\d{2}[-._]\d{2}"#
+        guard let range = name.range(of: pattern, options: .regularExpression) else { return nil }
+        let numbers = name[range].split { !$0.isNumber }.compactMap { Int($0) }
+        guard numbers.count == 6, (1 ... 12).contains(numbers[1]), numbers[3] < 24 else { return nil }
+        var hour = numbers[3]
+        let after = name[range.upperBound...].lowercased()
+        if after.hasPrefix("_pm") || after.hasPrefix(" pm"), hour < 12 { hour += 12 }
+        if after.hasPrefix("_am") || after.hasPrefix(" am"), hour == 12 { hour = 0 }
+        let words = name[..<range.lowerBound]
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ")
+            .joined(separator: " ")
+        let game = ["", "Base Profile", "Desktop"].contains(words) ? nil : words
+        return (game, Moment(year: numbers[0], month: numbers[1], day: numbers[2], hour: hour, minute: numbers[4]))
+    }
+
+    /// A name no person chose: a phone's or a website's id for the file.
+    static func isAnonymous(_ name: String) -> Bool {
+        let patterns = [
+            #"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-"#,
+            #"^[0-9A-Fa-f]{16,}(\(\d+\))?$"#,
+            #"^(IMG|VID|MOV)_\d+"#,
+            #"^RPReplay_"#,
+            #"^ScreenRec"#,
+            #"^recorded-\d+"#,
+            #"^tinywow_"#,
+            #"^Untitled( video)?(_\d+)?$"#,
+        ]
+        if patterns.contains(where: { name.range(of: $0, options: .regularExpression) != nil }) { return true }
+        // A file host's seven characters: "KiUHZBx". "zoomies" and "Beamer1" are words.
+        return name.range(of: #"^[A-Za-z0-9]{7}$"#, options: .regularExpression) != nil
+            && name.range(of: #"^([A-Z]?[a-z]+|[A-Z]+)[0-9]*$"#, options: .regularExpression) == nil
+    }
+
+    /// What is left of a name once an editor's mark is off it.
+    private static func cleaned(_ name: String) -> String {
+        name.replacingOccurrences(of: " - Made with Clipchamp", with: "")
+            .replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// When a clip was made, as near as the server knows. Its premiere date is January 1st
+    /// of any year it finds in a name, so that one only counts with a time on it.
+    static func date(of item: BaseItem) -> Date? {
+        if let premiere = item.premiereDate {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: "UTC") ?? calendar.timeZone
+            let parts = calendar.dateComponents([.month, .day, .hour, .minute], from: premiere)
+            if !(parts.month == 1 && parts.day == 1 && parts.hour == 0 && parts.minute == 0) { return premiere }
+        }
+        return item.dateCreated
+    }
+
+    /// When to sort a clip by: a recorder's stamp, which no copy of the file can change,
+    /// before anything the server has.
+    static func made(_ item: BaseItem) -> Date {
+        if let name = item.name, let moment = stamp(in: name)?.moment {
+            let parts = DateComponents(year: moment.year, month: moment.month, day: moment.day, hour: moment.hour, minute: moment.minute)
+            if let date = Calendar(identifier: .gregorian).date(from: parts) { return date }
+        }
+        return date(of: item) ?? .distantPast
+    }
+
+    static func newestFirst(_ items: [BaseItem]) -> [BaseItem] {
+        items.map { ($0, made($0)) }.sorted { $0.1 > $1.1 }.map(\.0)
+    }
+
+    private static func moment(of item: BaseItem) -> Moment? {
+        guard let date = date(of: item) else { return nil }
+        let parts = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        guard let year = parts.year, let month = parts.month, let day = parts.day, let hour = parts.hour, let minute = parts.minute else { return nil }
+        return Moment(year: year, month: month, day: day, hour: hour, minute: minute)
+    }
+
+    static func title(_ item: BaseItem) -> String {
+        guard let name = item.name else { return "Untitled" }
+        if let stamp = stamp(in: name) { return stamp.moment.text }
+        if isAnonymous(cleaned(name)) || isAnonymous(name) { return moment(of: item)?.text ?? "Untitled Clip" }
+        return cleaned(name)
+    }
+
+    /// The card's second line: what the title leaves out, and how long it runs.
+    static func subtitle(_ item: BaseItem) -> String? {
+        let length = item.runtime.map(Ticks.clock)
+        guard let name = item.name else { return length }
+        let context: String?
+        if let stamp = stamp(in: name) {
+            context = stamp.game
+        } else if isAnonymous(cleaned(name)) || isAnonymous(name) {
+            context = nil
+        } else {
+            context = moment(of: item)?.date
+        }
+        let parts = [context, length].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
 /// What a detail page says about an item, worded once for both apps.
 enum Presentation {
     /// Plex's line under the title: "2010 · 1h 45m · PG-13", and when it would end; a

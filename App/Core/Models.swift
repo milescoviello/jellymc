@@ -332,6 +332,7 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
     var taglines: [String]?
     var productionYear: Int?
     var premiereDate: Date?
+    var dateCreated: Date?
     var endDate: Date?
     var status: String?
     var officialRating: String?
@@ -381,7 +382,7 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
     /// A cast or crew member's part, when a person is shown as an item.
     var role: String?
 
-    var title: String { name ?? "Untitled" }
+    var title: String { type == .video ? Clips.title(self) : name ?? "Untitled" }
 
     var runtime: Double? { runTimeTicks.map(Ticks.seconds) }
 
@@ -419,6 +420,8 @@ struct BaseItem: Codable, Sendable, Equatable, Identifiable {
             return seriesName
         case .person?:
             return role
+        case .video?:
+            return Clips.subtitle(self)
         default:
             return productionYear.map(String.init)
         }
