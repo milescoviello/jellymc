@@ -360,7 +360,7 @@ final class JellyfinClient: Sendable {
     /// Every kind at once, each with its own limit: in one request a common word filled
     /// all of it with episodes, and no film or show came back.
     func search(_ term: String, limitEach: Int = 24) async throws -> [BaseItem] {
-        let kinds: [ItemKind] = [.movie, .series, .episode, .boxSet, .person]
+        let kinds: [ItemKind] = [.movie, .series, .episode, .boxSet, .person, .video]
         return try await withThrowingTaskGroup(of: (Int, [BaseItem]).self) { group in
             for (index, kind) in kinds.enumerated() {
                 group.addTask {

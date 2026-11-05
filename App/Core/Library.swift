@@ -53,6 +53,7 @@ func libraryItemTypes(_ library: BaseItem) -> [ItemKind] {
     case "tvshows": return [.series]
     case "boxsets": return [.boxSet]
     case "playlists": return [.playlist]
+    case "homevideos": return [.video]
     default: return []
     }
 }
@@ -181,14 +182,14 @@ final class HomeModel {
         }
     }
 
-    /// Films and shows, and collections of them: the app is for watching. Music, books,
-    /// photos and Live TV libraries are left out.
+    /// Films and shows, and collections of them, and home videos: the app is for
+    /// watching. Music, books, photos and Live TV libraries are left out.
     nonisolated static func isShown(_ view: BaseItem) -> Bool {
-        ["movies", "tvshows", "boxsets", "playlists"].contains(view.collectionType)
+        ["movies", "tvshows", "boxsets", "playlists", "homevideos"].contains(view.collectionType)
     }
 
     nonisolated static func showsLatest(_ view: BaseItem) -> Bool {
-        ["movies", "tvshows"].contains(view.collectionType)
+        ["movies", "tvshows", "homevideos"].contains(view.collectionType)
     }
 }
 
@@ -229,7 +230,8 @@ enum Hubs {
     static func home(for library: BaseItem, _ client: JellyfinClient) async -> [HomeRow] {
         guard let items = try? await client.latest(parentId: library.id), !items.isEmpty else { return [] }
         return [HomeRow(
-            id: "added-\(library.id)", kind: .recentlyAdded, title: "Recently Added in \(library.title)", style: .poster,
+            id: "added-\(library.id)", kind: .recentlyAdded, title: "Recently Added in \(library.title)",
+            style: libraryItemTypes(library) == [.video] ? .landscape : .poster,
             items: items, libraryId: library.id,
             seeAll: Browse(title: "Recently Added", libraryId: library.id, itemTypes: libraryItemTypes(library), sort: .dateAdded)
         )]
@@ -522,7 +524,7 @@ final class LibraryModel {
 
     var title: String { browse.title }
 
-    var style: CardStyle { browse.itemTypes == [.episode] ? .landscape : .poster }
+    var style: CardStyle { browse.itemTypes == [.episode] || browse.itemTypes == [.video] ? .landscape : .poster }
 
     var kinds: [ItemKind] { browse.itemTypes }
 
@@ -865,6 +867,7 @@ final class SearchModel {
     var groups: [Group] {
         let order: [(ItemKind, String, CardStyle)] = [
             (.movie, "Movies", .poster), (.series, "Shows", .poster), (.episode, "Episodes", .landscape),
+            (.video, "Videos", .landscape),
             (.boxSet, "Collections", .poster), (.person, "People", .poster),
         ]
         return order.compactMap { kind, title, style in

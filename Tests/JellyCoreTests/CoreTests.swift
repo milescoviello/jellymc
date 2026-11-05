@@ -43,7 +43,7 @@ struct DecodingTests {
     @Test func decodesLibrariesAndServerInfo() throws {
         let views = try JSONCoding.decoder().decode(ItemsPage<BaseItem>.self, from: fixture("user-views"))
         #expect(Set(views.items.compactMap(\.collectionType)) == ["movies", "tvshows", "music"])
-        // The app shows films and shows only.
+        // The app shows films, shows and home videos only: music is left out.
         #expect(views.items.filter(HomeModel.isShown).compactMap(\.collectionType).sorted() == ["movies", "tvshows"])
         let info = try JSONCoding.decoder().decode(PublicSystemInfo.self, from: fixture("system-info-public"))
         #expect(info.version?.hasPrefix("12.") == true)
@@ -866,6 +866,11 @@ struct PlaylistTests {
         #expect(HomeModel.isShown(view))
         #expect(!HomeModel.showsLatest(view))
         #expect(libraryItemTypes(view) == [.playlist])
+        var clips = BaseItem(id: "clips")
+        clips.collectionType = "homevideos"
+        #expect(HomeModel.isShown(clips))
+        #expect(HomeModel.showsLatest(clips))
+        #expect(libraryItemTypes(clips) == [.video])
         var playlist = BaseItem(id: "pl")
         playlist.type = .playlist
         #expect(Presentation.playLabel(for: BaseItem(id: "f"), on: playlist) == "Play")

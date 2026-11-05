@@ -198,5 +198,5 @@ These no longer apply:
 - A formal accessibility audit (good practice stays).
 - SSO, parental controls and profile PINs.
 - Voice search.
-- Music, audiobooks, Live TV, photos and books: the app is for films and shows.
+- Music, audiobooks, Live TV, photos and books: the app is for films, shows and home videos.
 - Emby support.

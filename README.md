@@ -1,6 +1,6 @@
 # jellymc
 
-A personal Jellyfin client for **iPhone/iPad** and **Linux** (GTK 4 + libadwaita), laid out the way Plex is: films and shows only, sideloaded rather than published. Both apps share one Swift core (`App/Core`); the iPhone app is SwiftUI with AVPlayer, the Linux app is GTK with libmpv.
+A personal Jellyfin client for **iPhone/iPad** and **Linux** (GTK 4 + libadwaita), laid out the way Plex is: films, shows and home videos, sideloaded rather than published. Both apps share one Swift core (`App/Core`); the iPhone app is SwiftUI with AVPlayer, the Linux app is GTK with libmpv.
 
 ## What it does
 
