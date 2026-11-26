@@ -13,7 +13,12 @@ BUNDLE=com.milescoviello.jellymc
 mkdir -p "$OUT"
 
 step() { printf '%s  %s\n' "$(date +%T)" "$*"; }
-shot() { xcrun simctl io "$UDID" screenshot --type=png "$OUT/$1.png" >/dev/null 2>&1 && step "shot $1"; }
+# On a foldable (HINGE set, by the workflow) a plain simctl screenshot fails: hinge takes the
+# screen that shows the app.
+shot() {
+  if [ -n "${HINGE:-}" ]; then sleep 1; HINGE_DEVICE=$UDID "$HINGE" screenshot "$OUT/$1.png" >/dev/null 2>&1 && step "shot $1"
+  else xcrun simctl io "$UDID" screenshot --type=png "$OUT/$1.png" >/dev/null 2>&1 && step "shot $1"; fi
+}
 ui() { axe describe-ui --udid "$UDID" > "$OUT/$1.json" 2>&1 || true; step "ui $1"; }
 tap() { step "tap $1 $2"; axe tap -x "$1" -y "$2" --udid "$UDID"; }
 # By accessibility label; a miss is logged and the script goes on, so the shots say what happened.

@@ -21,14 +21,37 @@ on:
 
 jobs:
     shots:
-        runs-on: macos-26
+        runs-on: xcode-27
         timeout-minutes: 30
 
         steps:
             - uses: actions/checkout@v5
 
-            - name: AXe, for taps and typing
-              run: brew install cameroncooke/axe/axe
+            - name: Xcode 27.2, and AXe for taps and typing
+              run: |
+                  sudo xcode-select -s /Applications/Xcode_27.2.app
+                  brew install cameroncooke/axe/axe
+
+            # sim/duo-<script> runs <script> on an iPhone Duo, unfolded. simctl cannot fold the
+            # simulator; hinge (github.com/artemnovichkov/hinge, MIT, pinned to v0.3.1) sets the
+            # hinge the way Device Hub's hidden slider does, and screenshots whichever screen
+            # is showing (a plain simctl screenshot fails on a foldable).
+            - name: Which script, on which phone
+              id: plan
+              env:
+                  SCRIPT: ${{ inputs.script || github.ref_name }}
+                  DEVICE: ${{ inputs.device || 'iPhone 17 Pro' }}
+              run: |
+                  SCRIPT=${SCRIPT#sim/}
+                  case "$SCRIPT" in duo-*) SCRIPT=${SCRIPT#duo-}; DEVICE="iPhone Duo";; esac
+                  echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+                  echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+                  echo "$SCRIPT on $DEVICE"
+                  case "$DEVICE" in *Duo*)
+                    git clone --quiet https://github.com/artemnovichkov/hinge.git "$RUNNER_TEMP/hinge"
+                    git -C "$RUNNER_TEMP/hinge" checkout --quiet 06cb720276281da7f1aadd3874acb0d0ae5eb2b5
+                    echo "HINGE=$RUNNER_TEMP/hinge/skills/hinge/scripts/hinge" >> "$GITHUB_ENV";;
+                  esac
 
             - name: Build for the simulator
               run: |
@@ -51,7 +74,7 @@ jobs:
             - name: A phone
               id: phone
               env:
-                  DEVICE: ${{ inputs.device || 'iPhone 17 Pro' }}
+                  DEVICE: ${{ steps.plan.outputs.device }}
               run: |
                   RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; print(r[-1]["identifier"])')
                   TYPE=$(xcrun simctl list devicetypes -j | python3 -c 'import json,os,sys; t=json.load(sys.stdin)["devicetypes"]; want=os.environ["DEVICE"]; m=[x for x in t if x["name"]==want] or [x for x in t if x["name"].startswith("iPhone")]; print(m[-1]["identifier"])')
@@ -61,15 +84,16 @@ jobs:
                   xcrun simctl ui "$UDID" appearance dark
                   xcrun simctl install "$UDID" "$RUNNER_TEMP/build/Build/Products/Debug-iphonesimulator/Jellymc.app"
                   echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+                  # Unfolded: the inner screen is the one a Duo needs looking at.
+                  if [ -n "${HINGE:-}" ]; then HINGE_DEVICE=$UDID "$HINGE" open; HINGE_DEVICE=$UDID "$HINGE" posture; fi
                   echo "$TYPE on $RUNTIME: $UDID"
 
             - name: Drive
               env:
                   UDID: ${{ steps.phone.outputs.udid }}
                   OUT: ${{ runner.temp }}/shots
-                  # By hand, the input; pushed, the branch's name after sim/.
-                  SCRIPT: ${{ inputs.script || github.ref_name }}
-              run: tools/sim/drive.sh "${SCRIPT#sim/}"
+                  SCRIPT: ${{ steps.plan.outputs.script }}
+              run: tools/sim/drive.sh "$SCRIPT"
 
             - name: What the app logged
               if: always()
