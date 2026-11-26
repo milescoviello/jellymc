@@ -13,6 +13,9 @@ BUNDLE=com.milescoviello.jellymc
 mkdir -p "$OUT"
 
 step() { printf '%s  %s\n' "$(date +%T)" "$*"; }
+# AXe now and then refuses an input ("The input was refused"), more on a two-screen
+# simulator: tried up to three times, a second apart.
+ax() { for try in 1 2 3; do axe "$@" && return 0; [ $try = 3 ] || { step "  refused; again"; sleep 1; }; done; return 1; }
 # On a foldable (HINGE set, by the workflow) a plain simctl screenshot fails: hinge takes the
 # screen that shows the app.
 shot() {
@@ -30,12 +33,12 @@ print(int(f.get("width",0)), int(f.get("height",0)))' || echo "0 0")
 fi
 cx() { [ "$SW" -gt 0 ] && [ "$1" -ge "$SW" ] && echo $((SW - 2)) || echo "$1"; }
 cy() { [ "$SH" -gt 0 ] && [ "$1" -ge "$SH" ] && echo $((SH - 2)) || echo "$1"; }
-tap() { step "tap $1 $2"; axe tap -x "$(cx "$1")" -y "$(cy "$2")" --udid "$UDID"; }
+tap() { step "tap $1 $2"; ax tap -x "$(cx "$1")" -y "$(cy "$2")" --udid "$UDID"; }
 # By accessibility label; a miss is logged and the script goes on, so the shots say what happened.
 tapl() { step "tap '$1'"; axe tap --label "$1" --udid "$UDID" || step "  no '$1' on screen"; }
-typ() { step "type '$1'"; axe type "$1" --udid "$UDID"; }
-ret() { axe key 40 --udid "$UDID"; }
-swipe() { step "swipe $*"; axe swipe --start-x "$(cx "$1")" --start-y "$(cy "$2")" --end-x "$(cx "$3")" --end-y "$(cy "$4")" --duration "${5:-0.5}" --udid "$UDID"; }
+typ() { step "type '$1'"; ax type "$1" --udid "$UDID"; }
+ret() { ax key 40 --udid "$UDID"; }
+swipe() { step "swipe $*"; ax swipe --start-x "$(cx "$1")" --start-y "$(cy "$2")" --end-x "$(cx "$3")" --end-y "$(cy "$4")" --duration "${5:-0.5}" --udid "$UDID"; }
 pause() { sleep "$1"; }
 launch() { step launch; xcrun simctl launch "$UDID" "$BUNDLE" >/dev/null; }
 relaunch() { xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true; launch; }
