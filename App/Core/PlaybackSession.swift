@@ -125,6 +125,8 @@ final class PlaybackSession {
 
     var title: String { item.type == .episode ? (item.seriesName ?? item.title) : item.title }
     var subtitle: String? { item.type == .episode ? [item.episodeLabel, item.name].compactMap { $0 }.joined(separator: " · ") : item.productionYear.map(String.init) }
+    /// "Show S1:E8 · Name" or "Film 2024": what the log calls it.
+    var logName: String { [title, subtitle].compactMap { $0 }.joined(separator: " ") }
 
     // MARK: - Starting
 
@@ -145,7 +147,7 @@ final class PlaybackSession {
         do {
             let plan = try await makePlan(start: startSeconds, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: mediaSourceId)
             open(plan)
-            await Diagnostics.shared.record("playback", "\(item.title): \(plan.method.rawValue) via \(engine.kind.rawValue)\(plan.transcodeReasons.isEmpty ? "" : " (\(plan.reasonSummary))")")
+            await Diagnostics.shared.record("playback", "\(logName) [\(item.id)]: \(plan.logSummary), via \(engine.kind.rawValue)")
         } catch {
             self.error = error.localizedDescription
             await Diagnostics.shared.record("playback", "\(item.title): \(error.localizedDescription)")
@@ -331,9 +333,10 @@ final class PlaybackSession {
             do {
                 let plan = try await makePlan(start: at, audioIndex: audioIndex, subtitleIndex: subtitleIndex, mediaSourceId: old.source.id, forceTranscode: forceTranscode)
                 open(plan)
-                await Diagnostics.shared.record("playback", "\(item.title): now \(plan.method.rawValue) at \(maxBitrate / 1_000_000) Mbps max\(plan.transcodeReasons.isEmpty ? "" : " (\(plan.reasonSummary))")")
+                await Diagnostics.shared.record("playback", "\(item.title): now \(plan.logSummary), at \(maxBitrate / 1_000_000) Mbps max")
             } catch {
                 self.error = error.localizedDescription
+                await Diagnostics.shared.record("playback", "\(item.title): could not change the stream: \(error.localizedDescription)")
             }
         }
     }
@@ -419,7 +422,8 @@ final class PlaybackSession {
             }
         case let .failed(message):
             error = message
-            Task { await Diagnostics.shared.record("playback", "engine: \(message)") }
+            let name = logName
+            Task { await Diagnostics.shared.record("playback", "\(name): engine: \(message)") }
         }
     }
 

@@ -116,6 +116,28 @@ struct PlaybackPlan: Sendable, Equatable {
         )
     }
 
+    /// One line for the log: how it plays, and where each chosen track comes from.
+    var logSummary: String {
+        var parts = [method.title]
+        let container = source.container ?? "?"
+        parts.append(method == .directPlay ? container : "\(container) as \(source.transcodingContainer ?? "?") over \(source.transcodingSubProtocol ?? "http")")
+        if let video = source.videoStream {
+            parts.append("video \(video.codec ?? "?") \(video.width ?? 0)x\(video.height ?? 0)")
+        }
+        if let index = audioIndex, let audio = source.audioStreams.first(where: { $0.index == index }) {
+            parts.append("audio #\(index) \(audio.codec ?? "?") \(audio.language ?? "und")")
+        }
+        if let index = subtitleIndex, let subtitle = source.subtitleStreams.first(where: { $0.index == index }) {
+            let delivery = externalSubtitles.contains { $0.streamIndex == index } ? "drawn by the app" : (subtitle.deliveryMethod ?? "?")
+            parts.append("subtitle #\(index) \(subtitle.codec ?? "?") \(subtitle.language ?? "und") \(delivery)")
+        } else {
+            parts.append("no subtitle")
+        }
+        parts.append("from \(Ticks.clock(startSeconds))")
+        if !transcodeReasons.isEmpty { parts.append("because \(reasonSummary)") }
+        return parts.joined(separator: ", ")
+    }
+
     static func transcodeReasons(in url: String) -> [String] {
         guard let components = URLComponents(string: url.hasPrefix("http") ? url : "http://x" + (url.hasPrefix("/") ? url : "/" + url)),
               let value = components.queryItems?.first(where: { $0.name.lowercased() == "transcodereasons" })?.value

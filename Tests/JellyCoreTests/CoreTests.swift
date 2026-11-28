@@ -203,6 +203,28 @@ struct PlaybackPlanTests {
         #expect(plan.externalSubtitles.first?.url.absoluteString.contains("ApiKey=secret-token") == true)
     }
 
+    @Test func theLogSaysHowItPlaysAndWhereTheSubtitleComesFrom() throws {
+        var source = MediaSource(id: "ms1")
+        source.container = "mkv"
+        source.supportsDirectPlay = false
+        source.supportsDirectStream = true
+        source.transcodingUrl = "/videos/item/master.m3u8?MediaSourceId=ms1&TranscodeReasons=ContainerNotSupported"
+        source.transcodingContainer = "mp4"
+        source.transcodingSubProtocol = "hls"
+        var video = stream(.video, 0, codec: "hevc")
+        video.width = 1920
+        video.height = 1080
+        source.mediaStreams = [
+            video, stream(.audio, 1, codec: "aac", language: "jpn"),
+            stream(.subtitle, 2, codec: "subrip", language: "eng", url: "/Videos/item/ms1/Subtitles/2/0/Stream.srt"),
+        ]
+        let plan = try PlaybackPlan.make(
+            itemId: "item", response: PlaybackInfoResponse(mediaSources: [source], playSessionId: "ps"),
+            startSeconds: 323, audioIndex: 1, subtitleIndex: 2, client: client
+        )
+        #expect(plan.logSummary == "Direct Stream, mkv as mp4 over hls, video hevc 1920x1080, audio #1 aac jpn, subtitle #2 subrip eng drawn by the app, from 5:23, because container")
+    }
+
     @Test func aRemuxIsDirectStream() throws {
         var source = MediaSource(id: "ms1")
         source.supportsDirectPlay = false
@@ -229,7 +251,11 @@ struct ProfileTests {
     @Test func avPlayerBurnsInWhatItCannotDraw() {
         let profile = DeviceProfiles.avPlayer(PlaybackPreferences())
         let methods = Dictionary(profile.subtitleProfiles.map { ($0.format, $0.method) }, uniquingKeysWith: { first, _ in first })
-        #expect(methods["subrip"] == "Hls")
+        // Beside the video, never in the HLS manifest: the server's WebVTT segments are
+        // timed for MPEG-TS and land 10 s late on its fMP4 streams.
+        #expect(methods["subrip"] == "External")
+        #expect(!profile.subtitleProfiles.contains { $0.method == "Hls" })
+        #expect(profile.transcodingProfiles.first?.enableSubtitlesInManifest == false)
         #expect(methods["ass"] == "Encode")
         #expect(methods["pgssub"] == "Encode")
         #expect(profile.directPlayProfiles.first?.container == "mp4,m4v,mov")
@@ -238,7 +264,7 @@ struct ProfileTests {
         var flattened = PlaybackPreferences()
         flattened.keepASSStyling = false
         let plain = DeviceProfiles.avPlayer(flattened).subtitleProfiles.first { $0.format == "ass" }
-        #expect(plain?.method == "Hls")
+        #expect(plain?.method == "External")
     }
 
     @Test func mpvPlaysEverythingAsItIs() {
@@ -1296,5 +1322,39 @@ struct RemoteControlTests {
         #expect(remote.session?.id == "tv")
         remote.apply([])
         #expect(!remote.isShown)
+    }
+}
+
+struct DiagnosticsTests {
+    @Test func keepsWhatIsUnsentUntilItIsSent() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("jellymc-diagnostics-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let log = Diagnostics()
+        await log.record("startup", "before there is anywhere to keep it")
+        #expect(await log.unsent() == nil)
+
+        await log.persist(in: directory)
+        await log.record("playback", "one ApiKey=secret")
+        let first = try #require(await log.unsent())
+        #expect(first.text.contains("[playback] one ApiKey=…"))
+        #expect(!first.text.contains("secret"))
+        #expect(!first.text.contains("before there is"))
+
+        // Recorded while the first part was on its way: it stays for the next send.
+        await log.record("playback", "two")
+        await log.markSent(first.bytes)
+        let rest = try #require(await log.unsent())
+        #expect(rest.text.contains("[playback] two"))
+        #expect(!rest.text.contains("one"))
+
+        await log.markSent(rest.bytes)
+        #expect(await log.unsent() == nil)
+        // The screen still has all of it.
+        #expect(await log.text().contains("one ApiKey=…"))
+    }
+
+    @Test func aSentLogSaysWhyAndHowMuch() {
+        let document = LogUploader.document(reason: "a video was closed", header: "jellymc 0.1", body: "a\nb\n")
+        #expect(document.hasPrefix("Sent automatically: a video was closed\njellymc 0.1\n2 entries since the last log\n\na\nb"))
     }
 }

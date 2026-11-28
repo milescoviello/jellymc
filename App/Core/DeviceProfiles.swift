@@ -90,8 +90,8 @@ enum DeviceProfiles {
     // MARK: AVPlayer
 
     /// What AVFoundation really plays. Anything else is remuxed to HLS fMP4 (cheap: the
-    /// video is copied), or transcoded; text subtitles reach the player as WebVTT inside
-    /// the HLS stream, and image or styled ones are burnt in.
+    /// video is copied), or transcoded; text subtitles come beside the video as WebVTT and
+    /// the app draws them, and image or styled ones are burnt in.
     static func avPlayer(_ preferences: PlaybackPreferences) -> DeviceProfile {
         let videoAudio = "aac,ac3,eac3,alac,flac,mp3"
         var codecs: [DeviceProfile.Codec] = [
@@ -118,15 +118,20 @@ enum DeviceProfiles {
             ]))
         }
 
-        // Text subtitles go in the HLS manifest when the server is making a stream, and
-        // alongside as a file when it is not: AVPlayer cannot load a sidecar, so the app
-        // draws those itself. Without "External" the server will not direct play a file
-        // that has a default text subtitle at all, even with none requested.
-        var subtitles: [DeviceProfile.Subtitle] = ["vtt", "webvtt", "subrip", "srt", "mov_text", "ttml"].flatMap {
-            [DeviceProfile.Subtitle(format: $0, method: "Hls"), DeviceProfile.Subtitle(format: $0, method: "External")]
+        // Text subtitles always come alongside as a file, and the app draws them, whether
+        // the video plays as it is or the server makes a stream. Never "Hls" (WebVTT in the
+        // stream's manifest): the server stamps every WebVTT segment
+        // `X-TIMESTAMP-MAP=MPEGTS:900000`, which is right for MPEG-TS segments that start
+        // at 10 s, but its fMP4 segments start at 0, so AVPlayer showed every line 10 s
+        // late. Without "External" the server will not direct play a file that has a
+        // default text subtitle at all, even with none requested.
+        var subtitles: [DeviceProfile.Subtitle] = ["vtt", "webvtt", "subrip", "srt", "mov_text", "ttml"].map {
+            DeviceProfile.Subtitle(format: $0, method: "External")
         }
+        // Styled subtitles flattened to text: the server converts them to WebVTT for the
+        // app, the way it converts SRT.
         for format in ["ass", "ssa"] {
-            subtitles.append(.init(format: format, method: preferences.keepASSStyling ? "Encode" : "Hls"))
+            subtitles.append(.init(format: format, method: preferences.keepASSStyling ? "Encode" : "External"))
         }
         for format in ["pgssub", "pgs", "dvdsub", "dvbsub", "sub"] {
             subtitles.append(.init(format: format, method: "Encode"))
@@ -143,7 +148,7 @@ enum DeviceProfiles {
             transcodingProfiles: [
                 .init(container: "mp4", type: "Video", videoCodec: "hevc,h264", audioCodec: "aac,ac3,eac3,flac,alac",
                       protocol: "hls", context: "Streaming", maxAudioChannels: "8", minSegments: 2, breakOnNonKeyFrames: true,
-                      copyTimestamps: nil, enableSubtitlesInManifest: true),
+                      copyTimestamps: nil, enableSubtitlesInManifest: false),
             ],
             codecProfiles: codecs,
             subtitleProfiles: subtitles

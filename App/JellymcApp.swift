@@ -32,6 +32,7 @@ struct JellymcApp: App {
                 .environment(reachability)
                 .preferredColorScheme(.dark)
                 .task {
+                    await AutoLog.start()
                     reachability.onNetworkChange = { [state] in
                         Task { await state.reconnect() }
                     }
@@ -50,6 +51,7 @@ struct JellymcApp: App {
                         state.lock.becameInactive(playing: PlaybackSession.current != nil)
                     case .background:
                         state.lock.enteredBackground(playing: PlaybackSession.current != nil)
+                        AutoLog.send("the app went to the background", state: state)
                     @unknown default:
                         break
                     }

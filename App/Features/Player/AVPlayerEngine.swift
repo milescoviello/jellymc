@@ -32,6 +32,9 @@ final class AVPlayerEngine: PlayerEngine {
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var lastStatus: AVPlayer.TimeControlStatus?
     @ObservationIgnored private var reportedFailure = false
+    /// For the log: whether this item has played yet, and when a stall after that began.
+    @ObservationIgnored private var hasPlayed = false
+    @ObservationIgnored private var stalledSince: Date?
 
     init() {
         player.allowsExternalPlayback = true
@@ -56,6 +59,8 @@ final class AVPlayerEngine: PlayerEngine {
         captionTask?.cancel()
         reportedFailure = false
         lastStatus = nil
+        hasPlayed = false
+        stalledSince = nil
 
         var options: [String: Any] = [:]
         if !plan.httpHeaders.isEmpty {
@@ -153,6 +158,8 @@ final class AVPlayerEngine: PlayerEngine {
         case .failed:
             if !reportedFailure {
                 reportedFailure = true
+                let details = Self.failureDetails(item)
+                Task { await Diagnostics.shared.record("player", "failed: \(details)") }
                 onEvent?(.failed(item.error?.localizedDescription ?? "AVPlayer could not play this"))
             }
             return
@@ -171,6 +178,7 @@ final class AVPlayerEngine: PlayerEngine {
         let status = player.timeControlStatus
         guard status != lastStatus else { return }
         lastStatus = status
+        noteStall(status)
         switch status {
         case .paused:
             onEvent?(.paused(true))
@@ -184,16 +192,64 @@ final class AVPlayerEngine: PlayerEngine {
         }
     }
 
+    /// Waiting after it had started is a stall: the log gets when, why, and for how long.
+    private func noteStall(_ status: AVPlayer.TimeControlStatus) {
+        let at = Ticks.clock(player.currentTime().seconds.isFinite ? player.currentTime().seconds : 0)
+        switch status {
+        case .playing:
+            if let since = stalledSince {
+                let waited = String(format: "%.1f", Date().timeIntervalSince(since))
+                Task { await Diagnostics.shared.record("player", "playing again at \(at) after \(waited) s") }
+            }
+            stalledSince = nil
+            hasPlayed = true
+        case .waitingToPlayAtSpecifiedRate where hasPlayed && stalledSince == nil:
+            stalledSince = Date()
+            let reason = player.reasonForWaitingToPlay?.rawValue ?? "unknown"
+            Task { await Diagnostics.shared.record("player", "stalled at \(at) (\(reason))") }
+        case .paused:
+            stalledSince = nil
+        default:
+            break
+        }
+    }
+
+    /// The error, what it came from, and the stream's own last error: what the alert's one
+    /// line leaves out.
+    private static func failureDetails(_ item: AVPlayerItem) -> String {
+        var parts: [String] = []
+        if let error = item.error as NSError? {
+            parts.append("\(error.localizedDescription) (\(error.domain) \(error.code))")
+            if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError {
+                parts.append("underlying \(underlying.domain) \(underlying.code): \(underlying.localizedDescription)")
+            }
+        }
+        if let event = item.errorLog()?.events.last {
+            parts.append("stream error \(event.errorStatusCode) \(event.errorDomain) \(event.errorComment ?? "") at \(event.uri ?? "?")")
+        }
+        return parts.isEmpty ? "no error given" : parts.joined(separator: "; ")
+    }
+
     // MARK: - Subtitles
 
     private func loadCaptions(_ sidecar: ExternalSubtitle) {
         captionTask?.cancel()
         let url = sidecar.webVTTURL
+        let label = "subtitle #\(sidecar.streamIndex) \(sidecar.language ?? "und")"
         captionTask = Task {
-            guard let (data, _) = try? await URLSession.shared.data(from: url), !Task.isCancelled else { return }
+            let data: Data
+            do {
+                data = try await URLSession.shared.data(from: url).0
+            } catch {
+                if !Task.isCancelled { await Diagnostics.shared.record("player", "\(label) did not load: \(error.localizedDescription)") }
+                return
+            }
+            guard !Task.isCancelled else { return }
             let parsed = Captions(parsing: String(decoding: data, as: UTF8.self))
             self.captions = parsed
             self.updateCaption(self.player.currentTime().seconds)
+            let first = parsed.cues.first.map { Ticks.clock($0.start) } ?? "none"
+            await Diagnostics.shared.record("player", "\(label): \(parsed.cues.count) lines, the first at \(first)")
         }
     }
 

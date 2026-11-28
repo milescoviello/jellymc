@@ -90,7 +90,7 @@ struct SettingsView: View {
                 Text("For intros, recaps and credits the server has marked, with a plugin such as Intro Skipper.")
             }
 
-            Section("Diagnostics") {
+            Section {
                 NavigationLink("Recent Events") { DiagnosticsView() }
                 Button(sentLog ? "Sent to the Server" : "Send Log to Server") {
                     Task {
@@ -100,6 +100,10 @@ struct SettingsView: View {
                     }
                 }
                 LabeledContent("Version", value: "\(DeviceInfo.appVersion) (\(DeviceInfo.build))")
+            } header: {
+                Text("Diagnostics")
+            } footer: {
+                Text("The log also goes to the server on its own: after each video, when one fails, and when you leave the app.")
             }
 
             Section {
